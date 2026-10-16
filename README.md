@@ -27,6 +27,12 @@ Source: [`web/index.html`](web/index.html), a single self-contained page. It cov
 
 Data is shared between everyone the page is shared with (plan, versions and sessions are stored in the artifact's database). Registration and 3DGS training (steps 6–8) are shown as "No worker". They need a GPU backend that isn't built yet.
 
+### Vercel deploy
+
+The repo is connected to Vercel, so every push deploys automatically: pushes to the production branch go live, other branches get a preview URL. `vercel.json` runs `scripts/build-vercel.sh`, which wraps `web/index.html` in a full HTML document and writes it to `dist/`.
+
+The Vercel copy has no shared database. It runs as a standalone copy: the plan, history and sessions are saved in the visitor's browser (localStorage), and exports download directly. Use the claude.ai link above when several contributors need to edit the same plan.
+
 ---
 
 ## Architecture at a glance

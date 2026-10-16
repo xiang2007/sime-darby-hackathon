@@ -351,7 +351,7 @@ function renderBanner(){
     $("#blankEx").onclick=()=>{ S.plan={block:"B",floors:[{level:1,name:"Level 1"}],rooms:[],rev:0}; S.floor=1; S.sel=null; S.example=false; scheduleSave("Started a blank plan",0); fit(); renderAll(); };
     return;
   }
-  if (!S.db && S.loaded){ b.hidden=false; b.innerHTML=`<b>Offline copy.</b> <span>Shared storage isn't available in this view, so changes stay in this tab.</span>`; return; }
+  if (!S.db && S.loaded){ b.hidden=false; b.innerHTML=`<b>Standalone copy.</b> <span>Shared storage isn't available here, so the plan, history and sessions are saved in this browser only.</span>`; return; }
   b.hidden=true;
 }
 
@@ -589,7 +589,7 @@ async function commit(){
   const rev=(S.plan.rev||0)+1, at=Date.now(), body=planBody();
   S.plan.rev=rev;
   const ver={rev,at,by:S.meId,note,plan:clone(body)};
-  if (!S.db){ S.versions.unshift(ver); S.versions=S.versions.slice(0,MAX_VERSIONS); setSync("local","Saved in this tab"); updateCounts(); if(S.tab==="history") renderHistory(); return; }
+  if (!S.db){ S.versions.unshift(ver); S.versions=S.versions.slice(0,MAX_VERSIONS); saveLocal(); setSync("local","Saved in this browser"); updateCounts(); if(S.tab==="history") renderHistory(); return; }
   S.saving=true; setSync("saving","Saving…");
   try{
     await S.db.doc("plan/current").set({...clone(body),rev,at,by:S.meId});
@@ -803,7 +803,7 @@ async function submitSession(){
     medians:{sharp:+median(C.frames.filter(f=>f.sharp!=null).map(f=>f.sharp)).toFixed(1),bright:+median(C.frames.filter(f=>f.bright!=null).map(f=>f.bright)).toFixed(1)}};
   $("#cSubmit").disabled=true;
   try{
-    if (S.db){ await S.db.collection("sessions").add(doc); } else S.sessions.unshift({...doc,_id:uid()});
+    if (S.db){ await S.db.collection("sessions").add(doc); } else { S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
     C.frames=[]; C.consent=false; C.fromMarker=false;
     toast(sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":"Session submitted. Thanks!");
     if(!S.db){ updateCounts(); }
@@ -872,20 +872,40 @@ new ResizeObserver(()=>renderPlan()).observe(box);
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>renderAll());
 new MutationObserver(()=>renderAll()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 
+/* ---------- standalone (no shared store, e.g. the Vercel deploy): keep everything in this browser ---------- */
+const LOCAL_KEY="apu-outline-local";
+function saveLocal(){ try{ localStorage.setItem(LOCAL_KEY,JSON.stringify({plan:S.plan,versions:S.versions,sessions:S.sessions})); }catch(e){} }
+function loadLocal(){
+  try{
+    const d=JSON.parse(localStorage.getItem(LOCAL_KEY)||"null"); if(!d||!d.plan||!Array.isArray(d.plan.rooms)) return false;
+    S.plan=clone({block:d.plan.block||"B",floors:d.plan.floors||[],rooms:d.plan.rooms,rev:d.plan.rev||0});
+    S.versions=Array.isArray(d.versions)?d.versions:[]; S.sessions=Array.isArray(d.sessions)?d.sessions:[]; S.example=false;
+    if (!S.plan.floors.length) S.plan.floors=[{level:1,name:"Level 1"}];
+    if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
+    return true;
+  }catch(e){ return false; }
+}
+function goStandalone(){ S.loaded=true; const had=loadLocal(); setSync("local",had?"Saved in this browser":"Standalone copy"); renderAll(); if(had) fit(); }
+const browserDownloads={ async save({filename,data}){
+  const url=URL.createObjectURL(data instanceof Blob?data:new Blob([data])), a=document.createElement("a");
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+  return {status:"saved"};
+} };
+
 /* ---------- boot ---------- */
 try{ const t=localStorage.getItem("apu-tab"); if(t) S.tab=t; }catch(e){}
 setTab(S.tab); renderAll(); requestAnimationFrame(fit);
 
 (async function connect(){
   const c=window.claude;
-  if (!c || typeof c.use!=="function"){ S.loaded=true; setSync("local","Offline copy"); renderBanner(); return; }
+  if (!c || typeof c.use!=="function"){ S.dl=browserDownloads; goStandalone(); return; }
   const [db,user,dl]=await Promise.all([c.use("db"),c.use("user"),c.use("downloads")].map(p=>p.catch(()=>null)));
   S.db=db; S.user=user; S.dl=dl;
   $("#exNote").textContent = dl ? "" : "Saving files isn't available in this view.";
   ["#exGeo","#exGlb","#exJson"].forEach(s=>$(s).disabled=!dl);
   if (user){ try{ const me=await user.me(); S.meId=me.id; const m=$("#me"); m.hidden=false; m.innerHTML=`<img src="${esc(me.avatarUrl)}" alt=""><span>${esc(me.name||"You")}</span>`;
     const w=await user.can("data.write"); if (w===false) S.readOnly=true; }catch(e){} }
-  if (!db){ S.loaded=true; setSync("local","Offline copy"); renderAll(); return; }
+  if (!db){ goStandalone(); return; }
   setSync("saving","Loading shared plan…");
   db.doc("plan/current").onSnapshot(snap=>{
     if (snap.metadata.fromCache && !snap.exists) return;
