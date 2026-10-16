@@ -11,6 +11,24 @@ Build a structural 3D outline of a building (walls, floors, doors) with clearly 
 
 ---
 
+## Web app
+
+**Live:** https://claude.ai/artifact/EWr8GzRBKErHG9igFdL71C (private until shared from the page's Share menu)
+
+Source: [`web/index.html`](web/index.html), a single self-contained page. It covers the parts of the pipeline that don't need a GPU:
+
+| Tab | What it does | README steps |
+|-----|--------------|--------------|
+| Floor plan | Draw rooms (0.5 m grid, right-angle snapping), reshape corners, add doors, set room ID/type/height, colour by type or scan coverage, print QR door markers | 1, 3, 10–11, 13 |
+| 3D outline | Extrudes rooms to ceiling height with wall thickness and door openings, stacks floors; export GeoJSON, GLB (zipped) and plan JSON | 12, 14 |
+| Contribute | Checks photos in the browser (blur by Laplacian variance, exposure, blank wall, overlap between frames), reads door-marker QR codes, then submits the session. Photos never leave the device; only scores and counts are uploaded | 2, 3, 5 |
+| Sessions | Contributor sessions, quality verdicts, per-room coverage ("scan these next"), pipeline stage status | 4, 13 |
+| History | Every plan edit is a version; restore any one (restoring adds a new version) | 13 |
+
+Data is shared between everyone the page is shared with (plan, versions and sessions are stored in the artifact's database). Registration and 3DGS training (steps 6–8) are shown as "No worker". They need a GPU backend that isn't built yet.
+
+---
+
 ## Architecture at a glance
 
 ```

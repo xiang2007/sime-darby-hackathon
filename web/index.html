@@ -1,0 +1,910 @@
+<title>APU Campus Outline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a drafting table. Plan canvas fills the left, a narrow inspector sheet on the right; tabs switch the working surface. */
+:root{
+  --paper:#eef0ec; --sheet:#f9faf7; --ink:#1f2a33; --ink-2:#55626b; --rule:#cfd5cf; --grid:#dde2dc;
+  --accent:#d9541e; --accent-ink:#ffffff; --accent-soft:#f7e1d5;
+  --ok:#2f7d4f; --warn:#b07a10; --bad:#b83a32; --ok-soft:#dcefe2; --warn-soft:#f6ebcf; --bad-soft:#f5dcd9;
+  --t-lecture:#4a6fd1; --t-lab:#1f9d8b; --t-corridor:#a9b2ad; --t-toilet:#8d6cc7; --t-lobby:#d49a2a; --t-office:#d0607a; --t-stairs:#5b6b78; --t-other:#7f9a3e;
+  --cov0:#e5e2dc; --cov1:#f3c9ae; --cov2:#e98c5a; --cov3:#c3461a;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#141a1f; --sheet:#1b232a; --ink:#e4e8e4; --ink-2:#9aa6a6; --rule:#2e3a42; --grid:#222c33;
+  --accent:#f0773f; --accent-ink:#1a0d06; --accent-soft:#3a2418;
+  --ok:#5cc489; --warn:#e2b04a; --bad:#ef7a70; --ok-soft:#163222; --warn-soft:#352a12; --bad-soft:#3a1d1b;
+  --t-corridor:#6c7772; --cov0:#283139; --cov1:#5a3a2a; --cov2:#a8572f; --cov3:#f0773f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#141a1f; --sheet:#1b232a; --ink:#e4e8e4; --ink-2:#9aa6a6; --rule:#2e3a42; --grid:#222c33;
+  --accent:#f0773f; --accent-ink:#1a0d06; --accent-soft:#3a2418;
+  --ok:#5cc489; --warn:#e2b04a; --bad:#ef7a70; --ok-soft:#163222; --warn-soft:#352a12; --bad-soft:#3a1d1b;
+  --t-corridor:#6c7772; --cov0:#283139; --cov1:#5a3a2a; --cov2:#a8572f; --cov3:#f0773f; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font:14px/1.5 var(--f-body);display:flex;flex-direction:column;min-height:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sheet)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--sheet);border-bottom:1px solid var(--rule);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px 0}
+.bar-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand h1{font-family:var(--f-display);font-stretch:75%;font-weight:800;font-size:1.35rem;letter-spacing:.01em;margin:0;text-transform:uppercase;text-wrap:balance}
+.brand .tag{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2)}
+.bar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sync{font-size:.78rem;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--ink-2);display:inline-block}
+.sync[data-s="saved"] i{background:var(--ok)} .sync[data-s="saving"] i{background:var(--warn)} .sync[data-s="error"] i{background:var(--bad)}
+.me{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--ink-2)}
+.me img{width:22px;height:22px;border-radius:50%}
+nav.tabs{display:flex;gap:2px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 7px;cursor:pointer;font-family:var(--f-display);font-stretch:85%;font-weight:600;font-size:.92rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs .count{font-family:var(--f-mono);font-size:.7rem;margin-left:4px;color:var(--ink-2)}
+
+main{flex:1;display:flex;flex-direction:column;min-height:0}
+.view{flex:1;min-height:0}
+.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;max-width:1100px;width:100%;margin:0 auto}
+
+.banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border-bottom:1px solid var(--rule);font-size:.85rem;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px}
+.banner b{font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:6px 11px;cursor:pointer;font-size:.85rem;font-weight:500;line-height:1.2}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:4px 8px;font-size:.78rem}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden;background:var(--sheet)}
+.seg button{border:0;background:none;padding:6px 10px;cursor:pointer;font-size:.82rem;border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
+
+/* plan */
+.plan-wrap{display:grid;grid-template-columns:minmax(0,1fr) 330px;height:100%;min-height:520px}
+.canvas-col{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--rule);background:var(--paper)}
+.toolbar .sep{width:1px;height:22px;background:var(--rule)}
+.floors{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.floors .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-right:2px}
+.chip{border:1px solid var(--rule);background:var(--sheet);border-radius:999px;padding:3px 10px;font-size:.8rem;cursor:pointer;font-family:var(--f-mono)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.svgbox{flex:1;position:relative;min-height:380px;touch-action:none;background:var(--paper)}
+svg#plan{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none}
+.hint{position:absolute;left:12px;bottom:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;font-size:.78rem;color:var(--ink-2);max-width:calc(100% - 24px);pointer-events:none}
+.zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px}
+.zoom button{width:32px;height:32px;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;cursor:pointer;font-family:var(--f-mono)}
+.legend{position:absolute;right:12px;top:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;font-size:.74rem;display:grid;grid-template-columns:auto auto;gap:3px 12px;pointer-events:none}
+.legend span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.sw{width:10px;height:10px;border-radius:2px;display:inline-block;flex:none}
+
+aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overflow:auto;padding:16px;min-width:0}
+.inspector h2,.pad h2{font-family:var(--f-display);font-stretch:80%;font-weight:700;font-size:1.05rem;letter-spacing:.03em;text-transform:uppercase;margin:0 0 10px}
+.inspector h3{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:18px 0 8px;font-weight:600}
+.field{display:grid;gap:4px;margin-bottom:10px}
+.field label{font-size:.76rem;color:var(--ink-2)}
+.field input,.field select,.field textarea{border:1px solid var(--rule);background:var(--paper);border-radius:6px;padding:6px 8px;width:100%;min-width:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.84rem}
+.kv dt{color:var(--ink-2)} .kv dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.warn{color:var(--warn);font-size:.78rem}
+.muted{color:var(--ink-2)}
+.small{font-size:.8rem}
+.roomlist{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.roomlist button{width:100%;display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:center;text-align:left;border:0;background:none;padding:5px 6px;border-radius:5px;cursor:pointer;font-size:.84rem}
+.roomlist button:hover{background:var(--paper)}
+.roomlist .mono{font-size:.75rem;color:var(--ink-2)}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:1px 8px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.idle{background:var(--paper);color:var(--ink-2);border:1px solid var(--rule)}
+.qr{background:#fff;padding:10px;border-radius:6px;display:inline-block;border:1px solid var(--rule)}
+.qr svg{display:block;width:120px;height:120px}
+
+/* 3d */
+.three-wrap{position:relative;height:100%;min-height:520px;display:flex;flex-direction:column}
+#three{flex:1;position:relative;min-height:420px}
+#three canvas{display:block;width:100%;height:100%}
+.three-info{position:absolute;left:12px;top:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:8px 12px;font-size:.82rem;max-width:calc(100% - 24px)}
+
+/* capture */
+.cap-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+.drop{border:2px dashed var(--rule);border-radius:10px;padding:26px 18px;text-align:center;background:var(--sheet);cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop strong{font-family:var(--f-display);font-stretch:85%;font-size:1.1rem;letter-spacing:.02em}
+.frames{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:14px}
+.frame{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;overflow:hidden;font-size:.74rem}
+.frame img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;max-width:100%}
+.frame .m{padding:6px 8px;display:grid;gap:3px}
+.frame .m .r{display:flex;justify-content:space-between;gap:6px}
+.frame.rej{opacity:.75} .frame.rej img{filter:grayscale(1)}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px}
+.checks{list-style:none;padding:0;margin:0;display:grid;gap:6px;font-size:.84rem}
+.checks li{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.checks .mono{color:var(--ink-2);font-size:.76rem}
+.consent{display:flex;gap:8px;align-items:flex-start;font-size:.82rem;margin:10px 0}
+
+/* sessions */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.tile{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:12px 14px}
+.tile .n{font-family:var(--f-display);font-stretch:80%;font-weight:700;font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile .l{font-size:.76rem;color:var(--ink-2)}
+.stages{display:flex;gap:0;margin:0 0 24px;overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+.stage{flex:1 0 140px;padding:10px 12px;border-right:1px solid var(--rule);font-size:.8rem;min-width:140px}
+.stage:last-child{border-right:0}
+.stage b{display:block;font-size:.84rem;margin-bottom:4px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.84rem}
+th,td{padding:8px 12px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+th{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.who{display:flex;align-items:center;gap:6px}
+.who img{width:18px;height:18px;border-radius:50%}
+.empty{padding:28px;text-align:center;color:var(--ink-2)}
+.cov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.cov{display:flex;justify-content:space-between;gap:8px;align-items:center;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-size:.82rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--sheet);padding:9px 16px;border-radius:8px;font-size:.85rem;z-index:20;max-width:calc(100% - 32px)}
+
+@media (max-width:860px){
+  .plan-wrap{grid-template-columns:minmax(0,1fr);height:auto}
+  .svgbox{min-height:58vh}
+  aside.inspector{border-left:0;border-top:1px solid var(--rule)}
+  .cap-grid{grid-template-columns:minmax(0,1fr)}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .legend{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="bar">
+  <div class="bar-top">
+    <div class="brand"><h1>APU Campus Outline</h1><span class="tag" id="blockTag">Block B</span></div>
+    <div class="bar-right">
+      <span class="sync" id="sync" data-s="local"><i></i><span>Connecting…</span></span>
+      <span class="me" id="me" hidden></span>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" id="tab-plan" aria-selected="true" data-tab="plan">Floor plan</button>
+    <button role="tab" id="tab-3d" aria-selected="false" data-tab="3d">3D outline</button>
+    <button role="tab" id="tab-capture" aria-selected="false" data-tab="capture">Contribute</button>
+    <button role="tab" id="tab-sessions" aria-selected="false" data-tab="sessions">Sessions<span class="count" id="sessCount"></span></button>
+    <button role="tab" id="tab-history" aria-selected="false" data-tab="history">History<span class="count" id="histCount"></span></button>
+  </nav>
+</header>
+<div class="banner" id="banner" hidden></div>
+
+<main>
+  <!-- PLAN -->
+  <section class="view" id="view-plan">
+    <div class="plan-wrap">
+      <div class="canvas-col">
+        <div class="toolbar">
+          <div class="floors" id="floors"></div>
+          <span class="sep"></span>
+          <div class="seg" id="modes" aria-label="Tool">
+            <button data-mode="select" aria-pressed="true">Select</button>
+            <button data-mode="draw" aria-pressed="false">Draw room</button>
+            <button data-mode="door" aria-pressed="false">Doors</button>
+          </div>
+          <div class="seg" id="overlay" aria-label="Colour by">
+            <button data-ov="type" aria-pressed="true">Room type</button>
+            <button data-ov="coverage" aria-pressed="false">Coverage</button>
+          </div>
+        </div>
+        <div class="svgbox" id="svgbox">
+          <svg id="plan" aria-label="Floor plan editor"></svg>
+          <div class="legend" id="legend"></div>
+          <div class="hint" id="hint"></div>
+          <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Fit plan" style="font-size:.7rem">FIT</button></div>
+        </div>
+      </div>
+      <aside class="inspector" id="inspector"></aside>
+    </div>
+  </section>
+
+  <!-- 3D -->
+  <section class="view" id="view-3d" hidden>
+    <div class="three-wrap">
+      <div class="toolbar">
+        <div class="seg" id="floorScope">
+          <button data-scope="all" aria-pressed="true">All floors</button>
+          <button data-scope="one" aria-pressed="false">Current floor</button>
+        </div>
+        <span class="sep"></span>
+        <button class="btn sm" id="exGeo">Export GeoJSON</button>
+        <button class="btn sm" id="exGlb">Export GLB (zip)</button>
+        <button class="btn sm" id="exJson">Export plan JSON</button>
+        <span class="small muted" id="exNote"></span>
+      </div>
+      <div id="three"><div class="three-info" id="threeInfo">Drag to orbit · scroll to zoom · click a room</div></div>
+    </div>
+  </section>
+
+  <!-- CAPTURE -->
+  <section class="view" id="view-capture" hidden>
+    <div class="pad">
+      <div class="cap-grid">
+        <div style="min-width:0">
+          <h2>Contribute a capture session</h2>
+          <p class="muted small" style="margin-top:-4px;max-width:62ch">Walk one room or corridor slowly and take overlapping photos (about one every step, 60–80% overlap). Quality checks run in your browser. <b>Your photos never leave this device</b>: only the scores, the room tag and the frame count are uploaded.</p>
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add photos">
+            <strong>Drop photos here or tap to choose</strong>
+            <div class="small muted">JPEG or PNG · a door marker QR in any frame fills in the room tag</div>
+            <input type="file" id="fileIn" accept="image/*" multiple hidden>
+          </div>
+          <div class="frames" id="frames"></div>
+        </div>
+        <div class="card" id="capSide"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SESSIONS -->
+  <section class="view" id="view-sessions" hidden><div class="pad" id="sessionsPad"></div></section>
+
+  <!-- HISTORY -->
+  <section class="view" id="view-history" hidden><div class="pad" id="historyPad"></div></section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script>
+"use strict";
+/* ---------- constants ---------- */
+const TYPES = {
+  lecture:{label:"Lecture hall",v:"--t-lecture"}, lab:{label:"Lab",v:"--t-lab"}, corridor:{label:"Corridor",v:"--t-corridor"},
+  toilet:{label:"Toilet",v:"--t-toilet"}, lobby:{label:"Lobby",v:"--t-lobby"}, office:{label:"Office",v:"--t-office"},
+  stairs:{label:"Stairs / lift",v:"--t-stairs"}, other:{label:"Other",v:"--t-other"}
+};
+const FLOOR_H = 3.6, WALL_T = 0.1, DOOR_W = 0.9, DOOR_H = 2.1, GRID = 0.5, VSNAP = 0.25;
+const QC = { sharp:80, dark:45, bright:235, texture:0.035, minSide:480, overlap:0.25, minFrames:8, goodFrames:15 };
+const MAX_VERSIONS = 40;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmtArea = a => a.toFixed(1) + " m²";
+const ago = t => { if (!t) return ""; const s = (Date.now() - t) / 1000;
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + " min ago"; if (s < 86400) return Math.floor(s/3600) + " h ago";
+  return new Date(t).toLocaleDateString(undefined, {day:"numeric", month:"short"}); };
+
+/* ---------- example plan (shown only while the shared plan is empty) ---------- */
+function rect(x0,y0,x1,y1){ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]; }
+function exampleRoom(id,name,type,poly,doors){ return {k:uid(),id,name,type,floor:3,height:3.2,poly,doors:(doors||[]).map(([e,t])=>({e,t,w:DOOR_W}))}; }
+function examplePlan(){
+  return { block:"B", floors:[{level:3,name:"Level 3"}], rev:0, rooms:[
+    exampleRoom("B-03-00","Main corridor","corridor",rect(0,8,40,11)),
+    exampleRoom("B-03-01","Lecture Theatre 1","lecture",rect(0,11,12,19),[[0,.25],[0,.8]]),
+    exampleRoom("B-03-02","Computer Lab 2","lab",rect(12,11,22,19),[[0,.5]]),
+    exampleRoom("B-03-03","Engineering Lab 3","lab",rect(22,11,32,19),[[0,.5]]),
+    exampleRoom("B-03-04","Faculty office","office",rect(32,11,40,19),[[0,.3]]),
+    exampleRoom("B-03-05","Toilets","toilet",rect(0,2,5,8),[[2,.5]]),
+    exampleRoom("B-03-06","Stairwell","stairs",rect(5,2,10,8),[[2,.5]]),
+    exampleRoom("B-03-07","Lift lobby","lobby",rect(10,2,16,8),[[2,.35]]),
+    exampleRoom("B-03-08","Lecture Theatre 8","lecture",rect(16,0,30,8),[[2,.2],[2,.8]]),
+    exampleRoom("B-03-09","Student services","office",rect(30,2,40,8),[[2,.5]]),
+  ]};
+}
+
+/* ---------- state ---------- */
+const S = {
+  plan: examplePlan(), example: true, loaded: false,
+  floor: 3, sel: null, mode: "select", draft: [], cursor: null, hoverEdge: null, drag: null,
+  overlay: "type", tab: "plan", scope: "all",
+  sessions: [], versions: [], profiles: {},
+  db: null, user: null, dl: null, meId: null, readOnly: false,
+  saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
+  view: {cx: 20, cy: 9.5, scale: 18},
+  capture: {frames: [], block: "B", floor: 3, room: "", consent: false, busy: false}
+};
+
+/* ---------- geometry ---------- */
+const area = p => Math.abs(signed(p));
+function signed(p){ let a=0; for(let i=0;i<p.length;i++){const [x1,y1]=p[i],[x2,y2]=p[(i+1)%p.length]; a+=x1*y2-x2*y1;} return a/2; }
+function centroid(p){ let x=0,y=0; p.forEach(q=>{x+=q[0];y+=q[1]}); return [x/p.length,y/p.length]; }
+function inside(pt,p){ let c=false; for(let i=0,j=p.length-1;i<p.length;j=i++){ const [xi,yi]=p[i],[xj,yj]=p[j];
+  if(((yi>pt[1])!==(yj>pt[1])) && pt[0] < (xj-xi)*(pt[1]-yi)/(yj-yi)+xi) c=!c; } return c; }
+function edgeOf(p,i){ return [p[i], p[(i+1)%p.length]]; }
+function projT(pt,[a,b]){ const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy||1; return Math.max(0,Math.min(1,((pt[0]-a[0])*dx+(pt[1]-a[1])*dy)/L2)); }
+function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]; }
+function dist(a,b){ return Math.hypot(a[0]-b[0],a[1]-b[1]); }
+const snap = (v,g) => Math.round(v/g)*g;
+function doorCenter(room,d){ const [a,b]=edgeOf(room.poly,d.e); return lerp(a,b,d.t); }
+
+const floorRooms = f => S.plan.rooms.filter(r => r.floor === f);
+const roomByK = k => S.plan.rooms.find(r => r.k === k);
+
+/* coverage = accepted sessions tagged with this room id */
+function coverage(){ const m={}; S.sessions.forEach(s=>{ if(s.verdict!=="rejected" && s.room) m[s.room]=(m[s.room]||0)+1; }); return m; }
+const covLevel = n => n>=3?3:n>=2?2:n>=1?1:0;
+const COV_LABEL = ["Unscanned","Low (1 session)","Medium (2)","High (3+)"];
+
+/* ---------- toast & sync ---------- */
+let toastT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
+function setSync(s,text){ const el=$("#sync"); el.dataset.s=s; el.lastElementChild.textContent=text; }
+
+/* ---------- banner ---------- */
+function renderBanner(){
+  const b=$("#banner");
+  if (S.readOnly){ b.hidden=false; b.innerHTML=`<b>View only.</b> <span>You can look around, but your sharing level doesn't allow edits or new sessions.</span>`; return; }
+  if (S.example && S.loaded){
+    b.hidden=false;
+    b.innerHTML=`<b>Example layout.</b> <span>No one has saved a plan yet. This sample of Block B, Level 3 isn't saved until you edit it.</span>
+      <button class="btn sm" id="keepEx">Use this example</button><button class="btn sm" id="blankEx">Start blank</button>`;
+    $("#keepEx").onclick=()=>{ S.example=false; scheduleSave("Started from the example layout",0); renderAll(); };
+    $("#blankEx").onclick=()=>{ S.plan={block:"B",floors:[{level:1,name:"Level 1"}],rooms:[],rev:0}; S.floor=1; S.sel=null; S.example=false; scheduleSave("Started a blank plan",0); fit(); renderAll(); };
+    return;
+  }
+  if (!S.db && S.loaded){ b.hidden=false; b.innerHTML=`<b>Offline copy.</b> <span>Shared storage isn't available in this view, so changes stay in this tab.</span>`; return; }
+  b.hidden=true;
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+function setTab(t){
+  S.tab=t;
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
+  ["plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
+  if (t==="3d") { init3D(); build3D(); resize3D(); }
+  if (t==="plan") renderPlan();
+  if (t==="sessions") renderSessions();
+  if (t==="history") renderHistory();
+  if (t==="capture") renderCapture();
+  try{ localStorage.setItem("apu-tab",t); }catch(e){}
+}
+
+/* ---------- floors toolbar ---------- */
+function renderFloors(){
+  const fl=[...S.plan.floors].sort((a,b)=>a.level-b.level);
+  $("#floors").innerHTML=`<span class="lbl">Floor</span>`+fl.map(f=>`<button class="chip" data-f="${f.level}" aria-pressed="${f.level===S.floor}" title="${esc(f.name)}">L${f.level}</button>`).join("")
+    +(S.readOnly?"":`<button class="chip" id="addFloor" title="Add a floor">+</button>`);
+  $("#floors").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ S.floor=+b.dataset.f; S.sel=null; S.draft=[]; renderAll(); fit(); });
+  const af=$("#addFloor"); if(af) af.onclick=()=>{ const lv=Math.max(0,...S.plan.floors.map(f=>f.level))+1;
+    S.plan.floors.push({level:lv,name:"Level "+lv}); S.floor=lv; S.sel=null; edit("Added floor L"+lv); };
+  $("#blockTag").textContent="Block "+(S.plan.block||"?");
+}
+
+/* ---------- modes ---------- */
+$("#modes").querySelectorAll("button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+function setMode(m){ if(S.readOnly && m!=="select") return; S.mode=m; S.draft=[]; S.hoverEdge=null;
+  $("#modes").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m))); renderPlan(); }
+$("#overlay").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.overlay=b.dataset.ov;
+  $("#overlay").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); renderPlan(); if(S.three) build3D(); });
+
+/* ---------- plan SVG ---------- */
+const svg=$("#plan"), box=$("#svgbox");
+function vb(){ const w=box.clientWidth||800,h=box.clientHeight||500,s=S.view.scale; return [S.view.cx-w/2/s,S.view.cy-h/2/s,w/s,h/s]; }
+function toWorld(ev){ const r=svg.getBoundingClientRect(),[x,y,w,h]=vb(); return [x+(ev.clientX-r.left)/r.width*w, y+(ev.clientY-r.top)/r.height*h]; }
+function fit(){ const rs=floorRooms(S.floor); if(!rs.length){ S.view={cx:10,cy:8,scale:22}; renderPlan(); return; }
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; rs.forEach(r=>r.poly.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}));
+  const w=box.clientWidth||800,h=box.clientHeight||500; S.view={cx:(x0+x1)/2,cy:(y0+y1)/2,scale:Math.max(4,Math.min(80,Math.min(w/((x1-x0)+4),h/((y1-y0)+4))))}; renderPlan(); }
+function zoom(f,at){ const s0=S.view.scale,s1=Math.max(3,Math.min(160,s0*f)); if(at){ S.view.cx=at[0]+(S.view.cx-at[0])*s0/s1; S.view.cy=at[1]+(S.view.cy-at[1])*s0/s1; } S.view.scale=s1; renderPlan(); }
+$("#zin").onclick=()=>zoom(1.3); $("#zout").onclick=()=>zoom(1/1.3); $("#zfit").onclick=fit;
+svg.addEventListener("wheel",e=>{ e.preventDefault(); zoom(e.deltaY<0?1.15:1/1.15,toWorld(e)); },{passive:false});
+
+function roomFill(r,cov){ if(S.overlay==="coverage") return css(["--cov0","--cov1","--cov2","--cov3"][covLevel(cov[r.id]||0)]); return css((TYPES[r.type]||TYPES.other).v); }
+
+function renderPlan(){
+  if (S.tab!=="plan") return;
+  const [x,y,w,h]=vb(); svg.setAttribute("viewBox",`${x} ${y} ${w} ${h}`);
+  const ink=css("--ink"), paper=css("--paper"), grid=css("--grid"), acc=css("--accent"), cov=coverage();
+  let g="";
+  // grid: 1 m lines, 5 m bold
+  const gx0=Math.floor(x),gx1=Math.ceil(x+w),gy0=Math.floor(y),gy1=Math.ceil(y+h), step=S.view.scale<8?5:1;
+  for(let i=Math.ceil(gx0/step)*step;i<=gx1;i+=step) g+=`<line x1="${i}" y1="${y}" x2="${i}" y2="${y+h}" stroke="${grid}" stroke-width="${i%5===0?1.4:.7}" vector-effect="non-scaling-stroke"/>`;
+  for(let j=Math.ceil(gy0/step)*step;j<=gy1;j+=step) g+=`<line x1="${x}" y1="${j}" x2="${x+w}" y2="${j}" stroke="${grid}" stroke-width="${j%5===0?1.4:.7}" vector-effect="non-scaling-stroke"/>`;
+  // hatch for unscanned
+  let defs=`<defs><pattern id="hatch" width=".6" height=".6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".6" height=".6" fill="${css("--cov0")}"/><line x1="0" y1="0" x2="0" y2=".6" stroke="${css("--ink-2")}" stroke-opacity=".35" stroke-width=".12"/></pattern></defs>`;
+  const rs=floorRooms(S.floor); let rooms="",labels="",doors="",handles="";
+  const fs=Math.max(.35,Math.min(.9,13/S.view.scale));
+  rs.forEach(r=>{
+    const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel;
+    const unscanned=S.overlay==="coverage" && !(cov[r.id]>0);
+    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":roomFill(r,cov)}" fill-opacity="${S.overlay==="coverage"?.9:.28}" stroke="${sel?acc:ink}" stroke-width="${sel?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    const [cx,cy]=centroid(r.poly);
+    if (S.view.scale>6){
+      labels+=`<text x="${cx}" y="${cy-fs*.25}" text-anchor="middle" font-family="${css("--f-mono")}" font-size="${fs}" font-weight="500" fill="${ink}" pointer-events="none">${esc(r.id)}</text>`;
+      if (S.view.scale>12) labels+=`<text x="${cx}" y="${cy+fs*.95}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*.8}" fill="${css("--ink-2")}" pointer-events="none">${esc(S.overlay==="coverage"?COV_LABEL[covLevel(cov[r.id]||0)]:(r.name||TYPES[r.type]?.label||""))} · ${area(r.poly).toFixed(0)} m²</text>`;
+    }
+    r.doors.forEach((d,di)=>{
+      const [a,b]=edgeOf(r.poly,d.e), L=dist(a,b)||1, half=(d.w/L)/2, p0=lerp(a,b,Math.max(0,d.t-half)), p1=lerp(a,b,Math.min(1,d.t+half));
+      doors+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${paper}" stroke-width="6" vector-effect="non-scaling-stroke"/>`;
+      // swing arc into the room
+      const n=inwardNormal(r,d.e), rad=d.w, e1=[p0[0]+n[0]*rad,p0[1]+n[1]*rad];
+      const sweep = (( (p1[0]-p0[0])*n[1]-(p1[1]-p0[1])*n[0]) > 0) ? 0 : 1;
+      doors+=`<path d="M${p0[0]},${p0[1]} L${e1[0]},${e1[1]} A${rad},${rad} 0 0 ${sweep} ${p1[0]},${p1[1]}" fill="none" stroke="${ink}" stroke-opacity=".55" stroke-width="1" vector-effect="non-scaling-stroke" data-door="${r.k}:${di}" pointer-events="${S.mode==="door"?"visibleStroke":"none"}"/>`;
+    });
+    if (sel && S.mode==="select" && !S.readOnly) r.poly.forEach((p,i)=>handles+=`<rect data-h="${i}" x="${p[0]-6/S.view.scale}" y="${p[1]-6/S.view.scale}" width="${12/S.view.scale}" height="${12/S.view.scale}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke" style="cursor:move"/>`);
+  });
+  let overlay="";
+  if (S.mode==="door" && S.hoverEdge){ const r=roomByK(S.hoverEdge.k); if(r){ const [a,b]=edgeOf(r.poly,S.hoverEdge.e); const c=lerp(a,b,S.hoverEdge.t);
+    overlay+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${acc}" stroke-width="4" vector-effect="non-scaling-stroke" stroke-opacity=".6"/><circle cx="${c[0]}" cy="${c[1]}" r="${DOOR_W/2}" fill="${acc}" fill-opacity=".25" stroke="${acc}" vector-effect="non-scaling-stroke"/>`; } }
+  if (S.mode==="draw" && S.draft.length){
+    const pts=[...S.draft, ...(S.cursor?[S.cursor]:[])];
+    overlay+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="${acc}" fill-opacity=".12" stroke="${acc}" stroke-width="2.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>`;
+    S.draft.forEach((p,i)=>overlay+=`<circle cx="${p[0]}" cy="${p[1]}" r="${(i===0?7:4)/S.view.scale}" fill="${i===0?acc:css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke"/>`);
+    if (S.cursor && S.draft.length){ const a=S.draft[S.draft.length-1]; const L=dist(a,S.cursor);
+      overlay+=`<text x="${(a[0]+S.cursor[0])/2}" y="${(a[1]+S.cursor[1])/2 - .3}" font-family="${css("--f-mono")}" font-size="${fs*.85}" fill="${acc}" text-anchor="middle">${L.toFixed(2)} m</text>`; }
+  }
+  if (S.mode==="draw" && S.cursor) overlay+=`<circle cx="${S.cursor[0]}" cy="${S.cursor[1]}" r="${3/S.view.scale}" fill="${acc}"/>`;
+  // scale bar
+  const sb = S.view.scale>30?2:S.view.scale>12?5:S.view.scale>5?10:20, sx=x+w-sb-1.2-56/S.view.scale, sy=y+h-.9;
+  const scale=`<g pointer-events="none"><line x1="${sx}" y1="${sy}" x2="${sx+sb}" y2="${sy}" stroke="${ink}" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${sx+sb/2}" y="${sy-.25}" font-family="${css("--f-mono")}" font-size="${fs*.75}" fill="${ink}" text-anchor="middle">${sb} m</text></g>`;
+  const empty = !rs.length ? `<text x="${S.view.cx}" y="${S.view.cy}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*1.1}" fill="${css("--ink-2")}">No rooms on L${S.floor} yet. Pick “Draw room” and click the corners.</text>` : "";
+  svg.innerHTML=defs+`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${paper}" data-bg="1"/>`+g+rooms+doors+labels+overlay+handles+scale+empty;
+  renderHint(); renderLegend(); renderInspector();
+}
+function inwardNormal(r,e){ const [a,b]=edgeOf(r.poly,e), dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1, s=signed(r.poly)>0?1:-1; return [-dy/L*s, dx/L*s]; }
+
+function renderHint(){
+  const h={select:S.readOnly?"Click a room to see its details. Drag the background to pan.":"Click a room to edit it · drag corner handles to reshape · drag background to pan",
+    draw:S.draft.length?"Click to add corners (right angles snap; hold Shift for free angles) · click the first corner or press Enter to close · Esc cancels":"Click to place the first corner. Points snap to a 0.5 m grid.",
+    door:"Click on a wall to add a 0.9 m door · click a door swing to remove it"}[S.mode];
+  $("#hint").textContent=h;
+}
+function renderLegend(){
+  const l=$("#legend");
+  if (S.overlay==="coverage") l.innerHTML=COV_LABEL.map((t,i)=>`<span><i class="sw" style="background:var(${["--cov0","--cov1","--cov2","--cov3"][i]})"></i>${t}</span>`).join("");
+  else { const used=new Set(floorRooms(S.floor).map(r=>r.type)); l.innerHTML=Object.entries(TYPES).filter(([k])=>used.has(k)).map(([,t])=>`<span><i class="sw" style="background:var(${t.v})"></i>${t.label}</span>`).join(""); }
+  l.hidden = !l.innerHTML;
+}
+
+/* pointer interaction */
+let pan=null;
+svg.addEventListener("pointerdown",ev=>{
+  const pt=toWorld(ev), t=ev.target;
+  if (S.mode==="select"){
+    if (t.dataset.h!==undefined && S.sel){ S.drag={i:+t.dataset.h,k:S.sel,moved:false}; svg.setPointerCapture(ev.pointerId); return; }
+    const k=t.dataset.k || hitRoom(pt);
+    if (k){ S.sel=k; renderPlan(); return; }
+    S.sel=null; pan={x:ev.clientX,y:ev.clientY,cx:S.view.cx,cy:S.view.cy,moved:false}; svg.setPointerCapture(ev.pointerId); renderPlan(); return;
+  }
+  if (S.readOnly) return;
+  if (S.mode==="draw"){
+    const p=drawPoint(pt,ev.shiftKey);
+    if (S.draft.length>=3 && dist(p,S.draft[0])<.3) return closeDraft();
+    if (S.draft.length && dist(p,S.draft[S.draft.length-1])<.01) return;
+    S.draft.push(p); renderPlan(); return;
+  }
+  if (S.mode==="door"){
+    if (t.dataset.door){ const [k,di]=t.dataset.door.split(":"); const r=roomByK(k); r.doors.splice(+di,1); edit("Removed a door from "+r.id); return; }
+    const he=nearestEdge(pt); if(!he) return;
+    const r=roomByK(he.k), L=dist(...edgeOf(r.poly,he.e)); if (L<DOOR_W+.1){ toast("That wall is too short for a door."); return; }
+    const half=DOOR_W/2/L; r.doors.push({e:he.e,t:Math.max(half,Math.min(1-half,he.t)),w:DOOR_W}); edit("Added a door to "+r.id);
+  }
+});
+svg.addEventListener("pointermove",ev=>{
+  const pt=toWorld(ev);
+  if (S.drag){ const r=roomByK(S.drag.k); r.poly[S.drag.i]=[snap(pt[0],VSNAP),snap(pt[1],VSNAP)]; S.drag.moved=true; renderPlan(); return; }
+  if (pan){ const s=S.view.scale; S.view.cx=pan.cx-(ev.clientX-pan.x)/s; S.view.cy=pan.cy-(ev.clientY-pan.y)/s; pan.moved=true; renderPlan(); return; }
+  if (S.mode==="draw"){ S.cursor=drawPoint(pt,ev.shiftKey); renderPlan(); }
+  else if (S.mode==="door"){ const he=nearestEdge(pt); if(JSON.stringify(he)!==JSON.stringify(S.hoverEdge)){ S.hoverEdge=he; renderPlan(); } }
+});
+svg.addEventListener("pointerup",()=>{ if(S.drag){ const d=S.drag; S.drag=null; if(d.moved) edit("Reshaped "+roomByK(d.k).id); } pan=null; });
+svg.addEventListener("pointerleave",()=>{ if(S.mode==="draw"){S.cursor=null;renderPlan();} });
+svg.addEventListener("dblclick",()=>{ if(S.mode==="draw" && S.draft.length>=3) closeDraft(); });
+window.addEventListener("keydown",ev=>{
+  if (S.tab!=="plan" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  if (ev.key==="Escape"){ S.draft=[]; S.sel=null; renderPlan(); }
+  if (ev.key==="Enter" && S.mode==="draw" && S.draft.length>=3) closeDraft();
+  if (ev.key==="Delete" && S.sel && !S.readOnly){ deleteRoom(S.sel); }
+});
+function hitRoom(pt){ const rs=floorRooms(S.floor).filter(r=>inside(pt,r.poly)); rs.sort((a,b)=>area(a.poly)-area(b.poly)); return rs[0]?.k; }
+function drawPoint(pt,free){ let p=[snap(pt[0],GRID),snap(pt[1],GRID)];
+  if (!free && S.draft.length){ const a=S.draft[S.draft.length-1]; if (Math.abs(p[0]-a[0])<Math.abs(p[1]-a[1])) p[0]=a[0]; else p[1]=a[1]; }
+  if (S.draft.length>=2 && dist(p,S.draft[0])<.6) p=S.draft[0].slice();
+  return p; }
+function nearestEdge(pt){ let best=null,bd=.75; floorRooms(S.floor).forEach(r=>r.poly.forEach((_,e)=>{ const ed=edgeOf(r.poly,e), t=projT(pt,ed), d=dist(pt,lerp(ed[0],ed[1],t)); if(d<bd){ bd=d; best={k:r.k,e,t:+t.toFixed(4)}; } })); return best; }
+function closeDraft(){
+  const poly=S.draft.slice(); S.draft=[]; S.cursor=null;
+  if (area(poly)<1){ toast("That room is smaller than 1 m². Try again."); renderPlan(); return; }
+  const n=floorRooms(S.floor).length; const id=`${S.plan.block||"X"}-${String(S.floor).padStart(2,"0")}-${String(n+1).padStart(2,"0")}`;
+  const r={k:uid(),id:uniqueId(id),name:"",type:"other",floor:S.floor,height:3.2,poly,doors:[]};
+  S.plan.rooms.push(r); S.sel=r.k; setMode("select"); edit("Drew room "+r.id);
+}
+function uniqueId(id){ let x=id,i=2; while(S.plan.rooms.some(r=>r.id===x)) x=id+"-"+(i++); return x; }
+function deleteRoom(k){ const r=roomByK(k); if(!r) return; S.plan.rooms=S.plan.rooms.filter(x=>x.k!==k); S.sel=null; edit("Deleted room "+r.id); }
+
+/* ---------- inspector ---------- */
+let delArm=false;
+function renderInspector(){
+  const el=$("#inspector"), r=S.sel&&roomByK(S.sel), cov=coverage();
+  if (!r){
+    const rs=floorRooms(S.floor).slice().sort((a,b)=>a.id.localeCompare(b.id)), fl=S.plan.floors.find(f=>f.level===S.floor);
+    const tot=rs.reduce((s,r)=>s+area(r.poly),0), scanned=rs.filter(r=>cov[r.id]>0).length;
+    el.innerHTML=`<h2>${esc(fl?.name||"Level "+S.floor)}</h2>
+      ${S.readOnly?"":`<div class="row2" style="margin-bottom:10px"><div class="field"><label for="blk">Block</label><input id="blk" value="${esc(S.plan.block||"")}" maxlength="8"></div><div class="field"><label for="flName">Floor name</label><input id="flName" value="${esc(fl?.name||"")}" maxlength="40"></div></div>`}
+      <dl class="kv"><dt>Rooms</dt><dd>${rs.length}</dd><dt>Floor area</dt><dd>${fmtArea(tot)}</dd><dt>Doors</dt><dd>${rs.reduce((s,r)=>s+r.doors.length,0)}</dd><dt>Rooms with scans</dt><dd>${scanned} / ${rs.length}</dd></dl>
+      <h3>Rooms on this floor</h3>
+      ${rs.length?`<ul class="roomlist">${rs.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:`<p class="muted small">Nothing drawn yet.</p>`}
+      ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
+    el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
+    const blk=$("#blk"); if(blk) blk.onchange=()=>{ S.plan.block=blk.value.trim().toUpperCase(); edit("Renamed block to "+S.plan.block); };
+    const fn=$("#flName"); if(fn) fn.onchange=()=>{ fl.name=fn.value.trim()||"Level "+S.floor; edit("Renamed L"+S.floor); };
+    const df=$("#delFloor"); if(df) df.onclick=()=>{ if(!delArm){delArm=true;renderInspector();return;} delArm=false;
+      const lv=S.floor; S.plan.floors=S.plan.floors.filter(f=>f.level!==lv); S.plan.rooms=S.plan.rooms.filter(r=>r.floor!==lv); S.floor=S.plan.floors[0].level; edit("Deleted floor L"+lv); fit(); };
+    return;
+  }
+  delArm=false;
+  const dup=S.plan.rooms.some(x=>x!==r && x.id===r.id), n=cov[r.id]||0, ro=S.readOnly?"disabled":"";
+  el.innerHTML=`<h2>${esc(r.id)}</h2>
+    <div class="field"><label for="rId">Room ID (printed on the door marker)</label><input id="rId" class="mono" value="${esc(r.id)}" maxlength="24" ${ro}>${dup?`<span class="warn">Another room already uses this ID.</span>`:""}</div>
+    <div class="field"><label for="rName">Name</label><input id="rName" value="${esc(r.name)}" maxlength="60" placeholder="e.g. Lecture Theatre 4" ${ro}></div>
+    <div class="row2"><div class="field"><label for="rType">Type</label><select id="rType" ${ro}>${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===r.type?"selected":""}>${t.label}</option>`).join("")}</select></div>
+    <div class="field"><label for="rH">Ceiling height (m)</label><input id="rH" type="number" min="2.2" max="12" step="0.1" value="${r.height}" ${ro}></div></div>
+    <dl class="kv"><dt>Area</dt><dd>${fmtArea(area(r.poly))}</dd><dt>Corners</dt><dd>${r.poly.length}</dd><dt>Doors</dt><dd>${r.doors.length}</dd><dt>Floor</dt><dd>L${r.floor}</dd>
+      <dt>Coverage</dt><dd><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${COV_LABEL[covLevel(n)]}</span></dd></dl>
+    <h3>Door marker</h3>
+    <p class="small muted" style="margin:0 0 8px">Print and tape this at the door. Contributors who photograph it get the room tag filled in automatically.</p>
+    <div class="qr" id="qrBox">${qrSvg(markerText(r))}</div>
+    <div class="mono small muted" style="margin-top:4px">${esc(markerText(r))}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" id="qrSave" ${S.dl?"":"hidden"}>Save marker SVG</button></div>
+    ${S.readOnly?"":`<h3>Edit</h3><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="rDup">Duplicate</button><button class="btn sm danger" id="rDel">Delete room</button></div>`}
+    <h3></h3><button class="btn sm" id="rBack">← All rooms on L${S.floor}</button>`;
+  const bind=(id,fn)=>{ const e=$(id); if(e) e.onchange=fn; };
+  bind("#rId",e=>{ const v=e.target.value.trim(); if(!v) return renderInspector(); const old=r.id; r.id=v; edit(`Renamed ${old} to ${v}`); });
+  bind("#rName",e=>{ r.name=e.target.value.trim(); edit("Renamed "+r.id); });
+  bind("#rType",e=>{ r.type=e.target.value; edit(`Set ${r.id} to ${TYPES[r.type].label}`); });
+  bind("#rH",e=>{ const v=Math.max(2.2,Math.min(12,+e.target.value||3.2)); r.height=v; edit(`Set ${r.id} height to ${v} m`); });
+  $("#rBack").onclick=()=>{ S.sel=null; renderPlan(); };
+  const dl=$("#rDel"); if(dl) dl.onclick=()=>{ if(dl.dataset.arm){ deleteRoom(r.k); } else { dl.dataset.arm=1; dl.textContent="Confirm delete"; } };
+  const dp=$("#rDup"); if(dp) dp.onclick=()=>{ const c=clone(r); c.k=uid(); c.id=uniqueId(r.id); c.poly=c.poly.map(([x,y])=>[x+1,y+1]); S.plan.rooms.push(c); S.sel=c.k; edit("Duplicated "+r.id); };
+  const qs=$("#qrSave"); if(qs) qs.onclick=()=>saveFile(`marker-${r.id}.svg`, markerSvgFile(r));
+}
+function markerText(r){ return `APU|${S.plan.block||""}|${String(r.floor).padStart(2,"0")}|${r.id}`; }
+function qrSvg(text){ if(typeof qrcode!=="function") return `<span class="small">${esc(text)}</span>`;
+  const q=qrcode(0,"M"); q.addData(text); q.make(); const n=q.getModuleCount(); let d="";
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(q.isDark(r,c)) d+=`M${c},${r}h1v1h-1z`;
+  return `<svg viewBox="-2 -2 ${n+4} ${n+4}" xmlns="http://www.w3.org/2000/svg"><rect x="-2" y="-2" width="${n+4}" height="${n+4}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`; }
+function markerSvgFile(r){ const inner=qrSvg(markerText(r)).replace(/^<svg[^>]*>/,"").replace(/<\/svg>$/,""); const m=inner.match(/width="(\d+)"/); const n=+m[1];
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="100mm" viewBox="0 0 80 100"><rect width="80" height="100" fill="#fff"/><svg x="8" y="6" width="64" height="64" viewBox="-2 -2 ${n} ${n}">${inner}</svg><text x="40" y="82" font-family="monospace" font-size="9" text-anchor="middle">${esc(r.id)}</text><text x="40" y="93" font-family="sans-serif" font-size="5" text-anchor="middle">${esc(r.name||TYPES[r.type].label)} · Block ${esc(S.plan.block)} L${r.floor}</text></svg>`; }
+
+/* ---------- edits, saving, versions ---------- */
+function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll(); }
+function planBody(){ return {block:S.plan.block, floors:S.plan.floors, rooms:S.plan.rooms}; }
+function scheduleSave(note,delay=900){
+  if (!S.pendingNote) S.pendingNote=note;
+  else if (S.pendingNote!==note && !S.pendingNote.endsWith(" and more")) S.pendingNote+=" and more";
+  clearTimeout(S.saveTimer); setSync("saving","Unsaved changes");
+  S.saveTimer=setTimeout(commit,delay);
+}
+async function commit(){
+  const note=S.pendingNote||"Edited plan"; S.pendingNote=""; S.saveTimer=null;
+  const rev=(S.plan.rev||0)+1, at=Date.now(), body=planBody();
+  S.plan.rev=rev;
+  const ver={rev,at,by:S.meId,note,plan:clone(body)};
+  if (!S.db){ S.versions.unshift(ver); S.versions=S.versions.slice(0,MAX_VERSIONS); setSync("local","Saved in this tab"); updateCounts(); if(S.tab==="history") renderHistory(); return; }
+  S.saving=true; setSync("saving","Saving…");
+  try{
+    await S.db.doc("plan/current").set({...clone(body),rev,at,by:S.meId});
+    S.lastWritten=rev;
+    await S.db.collection("versions").doc("r"+String(rev).padStart(6,"0")).set(ver);
+    pruneVersions();
+    setSync("saved","Saved");
+  }catch(e){ handleWriteError(e); }
+  finally{ S.saving=false; }
+}
+async function pruneVersions(){ if(S.versions.length<=MAX_VERSIONS) return; const old=S.versions.slice(MAX_VERSIONS);
+  for(const v of old){ try{ await S.db.collection("versions").doc("r"+String(v.rev).padStart(6,"0")).delete(); }catch(e){ break; } } }
+function handleWriteError(e){
+  const c=e&&e.code;
+  if (c==="invalid_argument"){ S.readOnly=true; setSync("error","View only"); toast("Your sharing level doesn't allow edits here."); renderAll(); return; }
+  if (c==="quota_exceeded"){ setSync("error","Storage full"); toast("Shared storage is full. Delete old sessions or versions, then try again."); return; }
+  setSync("error","Not saved"); toast("Couldn't save just now. Your next edit will try again.");
+}
+let restoreArm=null;
+async function restore(v){
+  if (restoreArm!==v.rev){ restoreArm=v.rev; renderHistory(); return; }
+  restoreArm=null; const p=clone(v.plan); S.plan={...p,rev:S.plan.rev}; S.sel=null;
+  if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0]?.level??1;
+  edit(`Restored version r${v.rev}`); toast(`Restored r${v.rev}. The previous state is still in History.`);
+}
+
+/* ---------- 3D ---------- */
+let T=null;
+function init3D(){
+  if (T || typeof THREE==="undefined"){ if(typeof THREE==="undefined") $("#threeInfo").textContent="The 3D library didn't load. Check your connection and reload."; return; }
+  const host=$("#three"), renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio)); host.prepend(renderer.domElement);
+  const scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(45,1,.1,2000);
+  cam.position.set(20,40,55);
+  const ctl=new THREE.OrbitControls(cam,renderer.domElement); ctl.enableDamping=true; ctl.target.set(20,4,9);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x667788,.85)); const dl=new THREE.DirectionalLight(0xffffff,.55); dl.position.set(30,60,20); scene.add(dl);
+  const group=new THREE.Group(); scene.add(group);
+  T={renderer,scene,cam,ctl,group,picks:[],host};
+  S.three=true;
+  const ray=new THREE.Raycaster(), m=new THREE.Vector2(); let down=null;
+  renderer.domElement.addEventListener("pointerdown",e=>down=[e.clientX,e.clientY]);
+  renderer.domElement.addEventListener("pointerup",e=>{ if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5) return;
+    const r=renderer.domElement.getBoundingClientRect(); m.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1); ray.setFromCamera(m,cam);
+    const hit=ray.intersectObjects(T.picks)[0]; if(hit){ const room=roomByK(hit.object.userData.k); if(room){ S.sel=room.k; S.floor=room.floor; build3D(); showInfo3D(room);} } });
+  new ResizeObserver(resize3D).observe(host);
+  (function loop(){ requestAnimationFrame(loop); if(S.tab!=="3d") return; ctl.update(); renderer.render(scene,cam); })();
+}
+function resize3D(){ if(!T) return; const w=T.host.clientWidth,h=T.host.clientHeight; if(!w||!h) return; T.renderer.setSize(w,h,false); T.cam.aspect=w/h; T.cam.updateProjectionMatrix(); }
+function showInfo3D(r){ const cov=r?coverage()[r.id]||0:0;
+  $("#threeInfo").innerHTML=r?`<b class="mono">${esc(r.id)}</b> · ${esc(r.name||TYPES[r.type].label)}<br><span class="muted small">${TYPES[r.type].label} · L${r.floor} · ${fmtArea(area(r.poly))} · ${r.doors.length} door${r.doors.length===1?"":"s"} · ${COV_LABEL[covLevel(cov)]}</span>`:"Drag to orbit · scroll to zoom · click a room"; }
+function build3D(){
+  if (!T) return;
+  T.scene.background=new THREE.Color(css("--paper"));
+  while(T.group.children.length){ const c=T.group.children.pop(); c.geometry?.dispose(); c.material?.dispose(); }
+  T.picks=[]; const cov=coverage(), wallCol=new THREE.Color(css("--ink")), sel=S.sel;
+  const floors=S.scope==="one"?[S.floor]:[...new Set(S.plan.floors.map(f=>f.level))];
+  const minL=Math.min(...S.plan.floors.map(f=>f.level));
+  let bb=new THREE.Box3();
+  S.plan.rooms.filter(r=>floors.includes(r.floor)).forEach(r=>{
+    const base=(r.floor-minL)*FLOOR_H, dim = S.scope==="all" && r.floor!==S.floor;
+    const shape=new THREE.Shape(r.poly.map(([x,y])=>new THREE.Vector2(x,y)));
+    const slab=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.12,bevelEnabled:false}),
+      new THREE.MeshLambertMaterial({color:new THREE.Color(roomFill(r,cov)),transparent:true,opacity:dim?.35:(r.k===sel?1:.9)}));
+    slab.rotation.x=Math.PI/2; slab.position.y=base+.12; slab.userData.k=r.k; slab.name=r.id+"_floor"; T.group.add(slab); T.picks.push(slab);
+    const wm=new THREE.MeshLambertMaterial({color:r.k===sel?new THREE.Color(css("--accent")):wallCol,transparent:true,opacity:dim?.18:.82});
+    r.poly.forEach((_,e)=>wallPieces(r,e).forEach(([s0,s1,z0,z1])=>{
+      const [a,b]=edgeOf(r.poly,e), n=inwardNormal(r,e), L=dist(a,b);
+      const p0=lerp(a,b,s0/L), p1=lerp(a,b,s1/L), len=s1-s0; if(len<.02) return;
+      const g=new THREE.BoxGeometry(len,z1-z0,WALL_T), mesh=new THREE.Mesh(g,wm.clone());
+      mesh.position.set((p0[0]+p1[0])/2+n[0]*WALL_T/2, base+.12+(z0+z1)/2, (p0[1]+p1[1])/2+n[1]*WALL_T/2);
+      mesh.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]); mesh.name=r.id+"_wall"; T.group.add(mesh);
+    }));
+    r.poly.forEach(([x,y])=>bb.expandByPoint(new THREE.Vector3(x,base+r.height,y)));
+  });
+  if (!T.framed && !bb.isEmpty()){ const c=bb.getCenter(new THREE.Vector3()), s=bb.getSize(new THREE.Vector3()).length();
+    T.ctl.target.copy(c); T.cam.position.set(c.x+s*.15,c.y+s*.75,c.z+s*.85); T.framed=true; }
+  showInfo3D(sel&&roomByK(sel));
+}
+/* split an edge into wall boxes, leaving openings for this room's doors and any other room's door on the same wall line */
+function wallPieces(r,e){
+  const [a,b]=edgeOf(r.poly,e), L=dist(a,b), h=r.height, gaps=[];
+  r.doors.filter(d=>d.e===e).forEach(d=>gaps.push([d.t*L-d.w/2,d.t*L+d.w/2]));
+  floorRooms(r.floor).forEach(o=>{ if(o===r) return; o.doors.forEach(d=>{ const c=doorCenter(o,d), t=projT(c,[a,b]), p=lerp(a,b,t);
+    const [oa,ob]=edgeOf(o.poly,d.e), par=Math.abs(((b[0]-a[0])*(ob[1]-oa[1])-(b[1]-a[1])*(ob[0]-oa[0]))/((L||1)*(dist(oa,ob)||1)));
+    if(dist(c,p)<.15 && par<.05 && t>0 && t<1) gaps.push([t*L-d.w/2,t*L+d.w/2]); }); });
+  gaps.sort((x,y)=>x[0]-y[0]); const out=[]; let s=0;
+  gaps.forEach(([g0,g1])=>{ g0=Math.max(0,g0); g1=Math.min(L,g1); if(g0>s) out.push([s,g0,0,h]); out.push([g0,g1,DOOR_H,h]); s=Math.max(s,g1); });
+  if (s<L) out.push([s,L,0,h]); return out;
+}
+$("#floorScope").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.scope=b.dataset.scope; $("#floorScope").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); if(T){T.framed=false; build3D();} });
+
+/* ---------- export ---------- */
+async function saveFile(filename,data){
+  if (!S.dl){ toast("Saving files isn't available in this view."); return; }
+  try{ await S.dl.save({filename,data}); toast("Saved "+filename); }
+  catch(e){ if(e?.code==="declined") return; if(e?.code==="rate_limited") toast("Another save is waiting for your answer."); else toast("Couldn't save the file here."); }
+}
+function geojson(){
+  return JSON.stringify({type:"FeatureCollection",name:`APU Block ${S.plan.block} outline`,
+    crs_note:"Local building coordinates in metres (x east, y south of the block origin). Georeference before mixing with map data.",
+    features:S.plan.rooms.map(r=>({type:"Feature",properties:{id:r.id,name:r.name,type:r.type,type_label:TYPES[r.type]?.label,block:S.plan.block,floor:r.floor,
+      area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0},
+      geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(([x,y])=>[+x.toFixed(3),+y.toFixed(3)])]}}))},null,2);
+}
+$("#exGeo").onclick=()=>saveFile(`apu-block-${S.plan.block}-outline.geojson.json`,geojson());
+$("#exJson").onclick=()=>saveFile(`apu-block-${S.plan.block}-plan.json`,JSON.stringify({...planBody(),rev:S.plan.rev},null,2));
+$("#exGlb").onclick=()=>{
+  init3D(); if(!T||!THREE.GLTFExporter){ toast("The 3D exporter didn't load."); return; }
+  const prev=S.scope; S.scope="all"; build3D();
+  new THREE.GLTFExporter().parse(T.group,buf=>{ S.scope=prev; build3D();
+      const name=`apu-block-${S.plan.block}-outline`;
+      if (typeof fflate==="undefined"){ toast("The zip library didn't load."); return; }
+      const zip=fflate.zipSync({[name+".glb"]:new Uint8Array(buf),[name+".geojson"]:fflate.strToU8(geojson())});
+      saveFile(name+".zip",new Blob([zip])); },
+    err=>{ toast("Couldn't build the GLB."); S.scope=prev; build3D(); },{binary:true});
+};
+
+/* ---------- capture & quality checks ---------- */
+const drop=$("#drop"), fileIn=$("#fileIn");
+drop.onclick=()=>fileIn.click(); drop.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fileIn.click(); } };
+drop.ondragover=e=>{ e.preventDefault(); drop.classList.add("over"); }; drop.ondragleave=()=>drop.classList.remove("over");
+drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove("over"); addFiles([...e.dataTransfer.files]); };
+fileIn.onchange=()=>{ addFiles([...fileIn.files]); fileIn.value=""; };
+
+async function addFiles(files){
+  files=files.filter(f=>f.type.startsWith("image/")).sort((a,b)=>(a.lastModified-b.lastModified)||a.name.localeCompare(b.name));
+  if (!files.length) return;
+  S.capture.busy=true; renderCapture();
+  for (const f of files){ try{ S.capture.frames.push(await analyze(f)); }catch(e){ S.capture.frames.push({name:f.name,error:"Couldn't read this image (HEIC isn't supported in most browsers)",reasons:["unreadable"]}); } renderCapture(); }
+  scoreOverlap(); S.capture.busy=false; renderCapture();
+}
+async function analyze(file){
+  const bmp=await createImageBitmap(file), W=bmp.width, H=bmp.height, s=Math.min(1,640/Math.max(W,H)), w=Math.round(W*s), h=Math.round(H*s);
+  const c=document.createElement("canvas"); c.width=w; c.height=h; const ctx=c.getContext("2d",{willReadFrequently:true}); ctx.drawImage(bmp,0,0,w,h);
+  const img=ctx.getImageData(0,0,w,h), d=img.data, g=new Float32Array(w*h);
+  let sum=0; for(let i=0;i<w*h;i++){ const v=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2]; g[i]=v; sum+=v; }
+  const bright=sum/(w*h);
+  let ls=0,ls2=0,n=0,edges=0;
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const i=y*w+x, lap=g[i-w]+g[i+w]+g[i-1]+g[i+1]-4*g[i]; ls+=lap; ls2+=lap*lap; n++;
+    if (Math.abs(g[i+1]-g[i-1])+Math.abs(g[i+w]-g[i-w])>40) edges++; }
+  const sharp=ls2/n-(ls/n)**2, texture=edges/n;
+  const tc=document.createElement("canvas"); tc.width=32; tc.height=24; const tx=tc.getContext("2d",{willReadFrequently:true}); tx.drawImage(bmp,0,0,32,24);
+  const td=tx.getImageData(0,0,32,24).data, thumb=new Float32Array(768); for(let i=0;i<768;i++) thumb[i]=.299*td[i*4]+.587*td[i*4+1]+.114*td[i*4+2];
+  let qr=null; if (typeof jsQR==="function"){ const r=jsQR(d,w,h,{inversionAttempts:"dontInvert"}); if(r) qr=r.data; }
+  const tURL=document.createElement("canvas"); tURL.width=240; tURL.height=Math.round(240*H/W); tURL.getContext("2d").drawImage(bmp,0,0,tURL.width,tURL.height);
+  bmp.close?.();
+  const reasons=[]; if (sharp<QC.sharp) reasons.push("blurry"); if (bright<QC.dark) reasons.push("too dark"); if (bright>QC.bright) reasons.push("overexposed");
+  if (texture<QC.texture) reasons.push("blank wall"); if (Math.min(W,H)<QC.minSide) reasons.push("too small");
+  return {name:file.name,W,H,sharp,bright,texture,thumb,qr,preview:tURL.toDataURL("image/jpeg",.7),reasons};
+}
+function ncc(a,b){ let ma=0,mb=0; for(let i=0;i<a.length;i++){ma+=a[i];mb+=b[i];} ma/=a.length; mb/=b.length;
+  let n=0,da=0,db=0; for(let i=0;i<a.length;i++){ const x=a[i]-ma,y=b[i]-mb; n+=x*y; da+=x*x; db+=y*y; } return n/Math.sqrt(da*db||1); }
+function scoreOverlap(){ const fr=S.capture.frames.filter(f=>f.thumb); for(let i=0;i<fr.length;i++) fr[i].overlap=i?ncc(fr[i-1].thumb,fr[i].thumb):null; applyQR(); }
+function parseMarker(t){ if(!t) return null; const p=t.split("|"); if(p.length===4&&p[0]==="APU") return {block:p[1],floor:+p[2],room:p[3]};
+  const m=t.match(/^([A-Z0-9]+)-(\d{1,2})-\w+$/i); return m?{block:m[1].toUpperCase(),floor:+m[2],room:t}:null; }
+function applyQR(){ const f=S.capture.frames.find(f=>parseMarker(f.qr)); if(!f||S.capture.room) return; const m=parseMarker(f.qr);
+  Object.assign(S.capture,{block:m.block||S.capture.block,floor:m.floor||S.capture.floor,room:m.room,fromMarker:true}); toast("Room tag read from a door marker: "+m.room); }
+function summary(){
+  const fr=S.capture.frames, ok=fr.filter(f=>!f.reasons.length), tally={};
+  fr.forEach(f=>f.reasons.forEach(r=>tally[r]=(tally[r]||0)+1));
+  const jumps=fr.filter(f=>f.overlap!=null && f.overlap<QC.overlap).length;
+  const reasons=[];
+  if (ok.length<QC.minFrames) reasons.push(`Only ${ok.length} usable frame${ok.length===1?"":"s"}; at least ${QC.minFrames} are needed.`);
+  if (fr.length>2 && jumps/(fr.length-1)>.3) reasons.push("Big jumps between frames. Move slower and keep 60–80% overlap.");
+  if ((tally["blank wall"]||0)>fr.length*.4) reasons.push("Many frames show mostly blank wall. Include a corner, door or furniture in each shot.");
+  if ((tally["blurry"]||0)>fr.length*.3) reasons.push("Many frames are blurry. Hold still for a moment before each shot.");
+  if ((tally["too dark"]||0)>fr.length*.3) reasons.push("Many frames are too dark. Turn the lights on or open the blinds.");
+  const verdict = ok.length<QC.minFrames ? "rejected" : (ok.length<QC.goodFrames||reasons.length) ? "thin" : "accepted";
+  return {total:fr.length,ok:ok.length,tally,jumps,reasons,verdict};
+}
+const VERDICT={accepted:["ok","Accepted"],thin:["warn","Accepted, thin coverage"],rejected:["bad","Rejected"]};
+function renderCapture(){
+  if (S.tab!=="capture") return;
+  const C=S.capture, fr=C.frames;
+  $("#frames").innerHTML=fr.map(f=>f.error?`<div class="frame rej"><div class="m"><b>${esc(f.name)}</b><span class="warn">${esc(f.error)}</span></div></div>`:
+    `<div class="frame ${f.reasons.length?"rej":""}"><img src="${f.preview}" alt="${esc(f.name)}"><div class="m">
+      <div class="r"><span class="muted">Sharpness</span><span class="mono">${f.sharp.toFixed(0)}</span></div>
+      <div class="r"><span class="muted">Brightness</span><span class="mono">${f.bright.toFixed(0)}</span></div>
+      <div class="r"><span class="muted">Texture</span><span class="mono">${(f.texture*100).toFixed(1)}%</span></div>
+      ${f.overlap!=null?`<div class="r"><span class="muted">Match prev.</span><span class="mono">${f.overlap.toFixed(2)}</span></div>`:""}
+      <div>${f.reasons.length?f.reasons.map(r=>`<span class="pill bad">${esc(r)}</span>`).join(" "):`<span class="pill ok">usable</span>`}${f.overlap!=null&&f.overlap<QC.overlap?` <span class="pill warn">gap</span>`:""}${f.qr?` <span class="pill idle" title="${esc(f.qr)}">marker</span>`:""}</div>
+    </div></div>`).join("");
+  const sm=summary(), knownRooms=S.plan.rooms.map(r=>r.id).sort(), [cls,lab]=VERDICT[sm.verdict];
+  const canSubmit = fr.length && !C.busy && C.consent && C.room && !S.readOnly;
+  $("#capSide").innerHTML=`<h2>Session</h2>
+    <div class="row2"><div class="field"><label for="cBlock">Block</label><input id="cBlock" value="${esc(C.block)}" maxlength="8"></div>
+    <div class="field"><label for="cFloor">Floor</label><input id="cFloor" type="number" value="${C.floor}" min="0" max="60"></div></div>
+    <div class="field"><label for="cRoom">Room tag${C.fromMarker?" (from marker)":""}</label><input id="cRoom" class="mono" list="roomIds" value="${esc(C.room)}" placeholder="e.g. B-03-02" maxlength="24"><datalist id="roomIds">${knownRooms.map(r=>`<option value="${esc(r)}">`).join("")}</datalist></div>
+    ${fr.length?`<dl class="kv"><dt>Frames</dt><dd>${sm.total}</dd><dt>Usable</dt><dd>${sm.ok}</dd><dt>Gaps</dt><dd>${sm.jumps}</dd><dt>Verdict</dt><dd><span class="pill ${cls}">${C.busy?"Checking…":lab}</span></dd></dl>
+      ${sm.reasons.length?`<ul class="checks" style="margin-top:10px">${sm.reasons.map(r=>`<li><span>•</span><span>${esc(r)}</span></li>`).join("")}</ul>`:""}`
+    :`<h3 style="font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:14px 0 8px">Each photo is checked for</h3>
+      <ul class="checks"><li><span>•</span><span>Blur <span class="mono">Laplacian variance ≥ ${QC.sharp}</span></span></li><li><span>•</span><span>Exposure <span class="mono">mean ${QC.dark}–${QC.bright}</span></span></li>
+      <li><span>•</span><span>Blank wall <span class="mono">edge pixels ≥ ${QC.texture*100}%</span></span></li><li><span>•</span><span>Overlap with the previous frame <span class="mono">NCC ≥ ${QC.overlap}</span></span></li>
+      <li><span>•</span><span>Session size <span class="mono">≥ ${QC.minFrames} usable, ${QC.goodFrames}+ preferred</span></span></li></ul>`}
+    <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cSubmit" ${canSubmit?"":"disabled"}>Submit session</button>${fr.length?`<button class="btn" id="cClear">Clear photos</button>`:""}</div>
+    <p class="small muted" style="margin-bottom:0">${S.readOnly?"Your sharing level doesn't allow submitting sessions.":!C.room&&fr.length?"Add a room tag to submit.":!C.consent&&fr.length?"Tick the permission box to submit.":"Uploads only the scores, tag and counts. Photos stay here."}</p>
+    <p class="small muted" style="margin-bottom:0;border-top:1px solid var(--rule);padding-top:10px">Phone AR poses (ARKit/ARCore) need the native capture app. This web intake checks photo quality and coverage only.</p>`;
+  $("#cBlock").onchange=e=>{C.block=e.target.value.trim().toUpperCase();};
+  $("#cFloor").onchange=e=>{C.floor=+e.target.value||0;};
+  $("#cRoom").oninput=e=>{C.room=e.target.value.trim(); C.fromMarker=false; $("#cSubmit").disabled=!(fr.length&&!C.busy&&C.consent&&C.room&&!S.readOnly);};
+  $("#cRoom").onchange=()=>renderCapture();
+  $("#cConsent").onchange=e=>{C.consent=e.target.checked; renderCapture();};
+  const cl=$("#cClear"); if(cl) cl.onclick=()=>{ C.frames=[]; C.fromMarker=false; renderCapture(); };
+  $("#cSubmit").onclick=submitSession;
+}
+async function submitSession(){
+  const C=S.capture, sm=summary();
+  const doc={at:Date.now(),by:S.meId,block:C.block,floor:C.floor,room:C.room,frames:sm.total,usable:sm.ok,gaps:sm.jumps,verdict:sm.verdict,
+    reasons:sm.reasons,tally:sm.tally,marker:!!C.fromMarker,
+    medians:{sharp:+median(C.frames.filter(f=>f.sharp!=null).map(f=>f.sharp)).toFixed(1),bright:+median(C.frames.filter(f=>f.bright!=null).map(f=>f.bright)).toFixed(1)}};
+  $("#cSubmit").disabled=true;
+  try{
+    if (S.db){ await S.db.collection("sessions").add(doc); } else S.sessions.unshift({...doc,_id:uid()});
+    C.frames=[]; C.consent=false; C.fromMarker=false;
+    toast(sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":"Session submitted. Thanks!");
+    if(!S.db){ updateCounts(); }
+    setTab("sessions");
+  }catch(e){ handleWriteError(e); renderCapture(); }
+}
+const median=a=>{ if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y); return s[Math.floor(s.length/2)]; };
+
+/* ---------- people ---------- */
+async function resolve(ids){ ids=[...new Set(ids.filter(Boolean))]; if(!S.user||!ids.length) return; try{ Object.assign(S.profiles,await S.user.profiles(ids)); }catch(e){} }
+function who(id){ const p=S.profiles[id]; if(!id) return `<span class="muted">Someone</span>`;
+  return `<span class="who">${p?.avatarUrl?`<img src="${esc(p.avatarUrl)}" alt="">`:""}<span>${esc((p&&p.name)||(p?.isMe?"You":"Someone"))}</span></span>`; }
+
+/* ---------- sessions view ---------- */
+async function renderSessions(){
+  if (S.tab!=="sessions") return;
+  await resolve(S.sessions.map(s=>s.by));
+  const ss=S.sessions, acc=ss.filter(s=>s.verdict!=="rejected"), cov=coverage(), rooms=S.plan.rooms;
+  const covered=rooms.filter(r=>cov[r.id]>0).length, frames=acc.reduce((s,x)=>s+(x.usable||0),0);
+  const people=new Set(ss.map(s=>s.by).filter(Boolean)).size;
+  $("#sessionsPad").innerHTML=`<h2>Capture sessions</h2>
+    <div class="tiles">
+      <div class="tile"><div class="n">${ss.length}</div><div class="l">Sessions submitted${people?` by ${people} contributor${people===1?"":"s"}`:""}</div></div>
+      <div class="tile"><div class="n">${frames}</div><div class="l">Usable frames in accepted sessions</div></div>
+      <div class="tile"><div class="n">${covered}<span class="muted" style="font-size:1rem"> / ${rooms.length}</span></div><div class="l">Rooms with at least one scan</div></div>
+      <div class="tile"><div class="n">${ss.length-acc.length}</div><div class="l">Sessions rejected by quality checks</div></div>
+    </div>
+    <h3 class="small muted" style="text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px">Pipeline</h3>
+    <div class="stages">
+      <div class="stage"><b>Capture</b><span class="pill ok">Live</span><div class="small muted">Photos and door markers, in this app</div></div>
+      <div class="stage"><b>Privacy</b><span class="pill ok">Live</span><div class="small muted">Photos stay on the device; only scores upload</div></div>
+      <div class="stage"><b>Quality check</b><span class="pill ok">Live</span><div class="small muted">Blur, exposure, blank wall, overlap</div></div>
+      <div class="stage"><b>Registration</b><span class="pill idle">No worker</span><div class="small muted">hloc + markers + pose graph</div></div>
+      <div class="stage"><b>3DGS + geometry</b><span class="pill idle">No worker</span><div class="small muted">2DGS/PGSR, TSDF, RANSAC planes</div></div>
+      <div class="stage"><b>Rooms + review</b><span class="pill ok">Live</span><div class="small muted">Floor plan editor and History</div></div>
+    </div>
+    <h3 class="small muted" style="text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px">Coverage by room · scan these next</h3>
+    ${rooms.length?`<div class="cov-grid" style="margin-bottom:24px">${rooms.slice().sort((a,b)=>(cov[a.id]||0)-(cov[b.id]||0)||a.id.localeCompare(b.id)).map(r=>{const n=cov[r.id]||0;
+      return `<div class="cov"><span><span class="mono">${esc(r.id)}</span><br><span class="small muted">${esc(r.name||TYPES[r.type]?.label)}</span></span><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${n} scan${n===1?"":"s"}</span></div>`;}).join("")}</div>`:`<p class="muted">Draw rooms on the floor plan to track coverage.</p>`}
+    <h3 class="small muted" style="text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px">All sessions</h3>
+    <div class="tbl-wrap">${ss.length?`<table><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Reconstruction</th></tr></thead><tbody>
+      ${ss.map(s=>{ const [c,l]=VERDICT[s.verdict]||["idle",s.verdict]; const known=rooms.some(r=>r.id===s.room);
+        return `<tr><td>${esc(ago(s.at))}</td><td>${who(s.by)}</td><td class="mono">${esc(s.room)}${s.marker?` <span class="pill idle">marker</span>`:""}${known?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">Block ${esc(s.block)} · L${esc(s.floor)}</span></td>
+        <td><span class="pill ${c}">${l}</span></td><td class="num">${s.frames}</td><td class="num">${s.usable}</td><td class="num">${s.gaps}</td>
+        <td class="small">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td><span class="pill idle">${s.verdict==="rejected"?"Skipped":"Queued"}</span></td></tr>`;}).join("")}
+      </tbody></table>`:`<div class="empty">No sessions yet. Open <b>Contribute</b> to check and submit your first set of photos.</div>`}</div>`;
+}
+
+/* ---------- history view ---------- */
+async function renderHistory(){
+  if (S.tab!=="history") return;
+  await resolve(S.versions.map(v=>v.by));
+  const vs=S.versions;
+  $("#historyPad").innerHTML=`<h2>Plan history</h2><p class="muted small" style="margin-top:-4px">Every saved change is kept here (latest ${MAX_VERSIONS}). Restoring adds a new version, so nothing is lost.</p>
+    <div class="tbl-wrap">${vs.length?`<table><thead><tr><th>Version</th><th>Change</th><th>By</th><th>When</th><th style="text-align:right">Rooms</th><th></th></tr></thead><tbody>
+    ${vs.map((v,i)=>`<tr><td class="mono">r${v.rev}${i===0?` <span class="pill ok">current</span>`:""}</td><td>${esc(v.note)}</td><td>${who(v.by)}</td><td>${esc(ago(v.at))}</td><td class="num">${v.plan?.rooms?.length??0}</td>
+      <td style="text-align:right">${i===0||S.readOnly?"":`<button class="btn sm" data-rev="${v.rev}">${restoreArm===v.rev?"Confirm restore":"Restore"}</button>`}</td></tr>`).join("")}
+    </tbody></table>`:`<div class="empty">No saved versions yet. Your first edit on the floor plan creates one.</div>`}</div>`;
+  $("#historyPad").querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>restore(S.versions.find(v=>v.rev===+b.dataset.rev)));
+}
+
+/* ---------- render all ---------- */
+function updateCounts(){ $("#sessCount").textContent=S.sessions.length?S.sessions.length:""; $("#histCount").textContent=S.versions.length?S.versions.length:""; }
+function renderAll(){ renderBanner(); renderFloors(); updateCounts(); renderPlan(); if(S.tab==="3d") build3D(); renderSessions(); renderHistory(); renderCapture(); }
+new ResizeObserver(()=>renderPlan()).observe(box);
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>renderAll());
+new MutationObserver(()=>renderAll()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ---------- boot ---------- */
+try{ const t=localStorage.getItem("apu-tab"); if(t) S.tab=t; }catch(e){}
+setTab(S.tab); renderAll(); requestAnimationFrame(fit);
+
+(async function connect(){
+  const c=window.claude;
+  if (!c || typeof c.use!=="function"){ S.loaded=true; setSync("local","Offline copy"); renderBanner(); return; }
+  const [db,user,dl]=await Promise.all([c.use("db"),c.use("user"),c.use("downloads")].map(p=>p.catch(()=>null)));
+  S.db=db; S.user=user; S.dl=dl;
+  $("#exNote").textContent = dl ? "" : "Saving files isn't available in this view.";
+  ["#exGeo","#exGlb","#exJson"].forEach(s=>$(s).disabled=!dl);
+  if (user){ try{ const me=await user.me(); S.meId=me.id; const m=$("#me"); m.hidden=false; m.innerHTML=`<img src="${esc(me.avatarUrl)}" alt=""><span>${esc(me.name||"You")}</span>`;
+    const w=await user.can("data.write"); if (w===false) S.readOnly=true; }catch(e){} }
+  if (!db){ S.loaded=true; setSync("local","Offline copy"); renderAll(); return; }
+  setSync("saving","Loading shared plan…");
+  db.doc("plan/current").onSnapshot(snap=>{
+    if (snap.metadata.fromCache && !snap.exists) return;
+    S.loaded=true;
+    if (!snap.exists){ setSync("saved","Connected"); renderAll(); return; }
+    const d=snap.data();
+    if (S.saveTimer || S.saving) return;                 // our own edit is on its way; last writer wins
+    if (!S.example && d.rev===S.plan.rev && d.rev===S.lastWritten){ setSync("saved","Saved"); return; }
+    const first=S.example; S.plan=clone({block:d.block,floors:d.floors||[],rooms:d.rooms||[],rev:d.rev||0}); S.example=false;
+    if (!S.plan.floors.length) S.plan.floors=[{level:1,name:"Level 1"}];
+    if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
+    if (S.sel && !roomByK(S.sel)) S.sel=null;
+    setSync("saved","Saved"); renderAll(); if(first) fit();
+  }, e=>{ setSync("error","Shared plan unavailable"); });
+  db.collection("sessions").orderBy("at","desc").limit(300).onSnapshot(q=>{
+    S.sessions=q.docs.map(d=>({...d.data(),_id:d.id})); updateCounts(); renderSessions(); if(S.tab==="plan") renderPlan(); if(S.tab==="3d") build3D();
+  }, ()=>{});
+  db.collection("versions").orderBy("rev","desc").limit(60).onSnapshot(q=>{
+    S.versions=q.docs.map(d=>d.data()); updateCounts(); renderHistory();
+  }, ()=>{});
+})();
+</script>
