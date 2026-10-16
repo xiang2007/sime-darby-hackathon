@@ -13,25 +13,66 @@ Build a structural 3D outline of a building (walls, floors, doors) with clearly 
 
 ## Web app
 
-**Live:** https://claude.ai/artifact/EWr8GzRBKErHG9igFdL71C (private until shared from the page's Share menu)
-
-Source: [`web/index.html`](web/index.html), a single self-contained page. It covers the parts of the pipeline that don't need a GPU:
+A full-stack web app for the parts of the pipeline that don't need a GPU. The page is [`web/index.html`](web/index.html); the API is in [`api/`](api) and runs as Vercel serverless functions on Postgres.
 
 | Tab | What it does | README steps |
 |-----|--------------|--------------|
-| Floor plan | Draw rooms (0.5 m grid, right-angle snapping), reshape corners, add doors, set room ID/type/height, colour by type or scan coverage, print QR door markers | 1, 3, 10–11, 13 |
-| 3D outline | Extrudes rooms to ceiling height with wall thickness and door openings, stacks floors; export GeoJSON, GLB (zipped) and plan JSON | 12, 14 |
+| Floor plan | Draw rooms (0.5 m grid, right-angle snapping), reshape corners, add doors, set room ID/type/height, colour by type or scan coverage, print QR door markers. Stairwells show treads and an UP/DN arrow | 1, 3, 10–11, 13 |
+| 3D outline | Extrudes rooms to ceiling height with wall thickness and door openings, and stacks floors. Stairwells get real stairs (see below). Export GeoJSON, GLB (zipped) and plan JSON | 12, 14 |
 | Contribute | Checks photos in the browser (blur by Laplacian variance, exposure, blank wall, overlap between frames), reads door-marker QR codes, then submits the session. Photos never leave the device; only scores and counts are uploaded | 2, 3, 5 |
 | Sessions | Contributor sessions, quality verdicts, per-room coverage ("scan these next"), pipeline stage status | 4, 13 |
 | History | Every plan edit is a version; restore any one (restoring adds a new version) | 13 |
 
-Data is shared between everyone the page is shared with (plan, versions and sessions are stored in the artifact's database). Registration and 3DGS training (steps 6–8) are shown as "No worker". They need a GPU backend that isn't built yet.
+Registration and 3DGS training (steps 6–8) are shown as "No worker". They need a GPU backend that isn't built yet.
 
-### Vercel deploy
+### Stairwells
 
-The repo is connected to Vercel, so every push deploys automatically: pushes to the production branch go live, other branches get a preview URL. `vercel.json` runs `scripts/build-vercel.sh`, which wraps `web/index.html` in a full HTML document and writes it to `dist/`.
+A room of type **Stairs / lift** is built as a connector between floors (step 12):
 
-The Vercel copy has no shared database. It runs as a standalone copy: the plan, history and sessions are saved in the visitor's browser (localStorage), and exports download directly. Use the claude.ai link above when several contributors need to edit the same plan.
+- **Switchback** (default): floor landing by the door, a flight up one half, a mid landing, a flight back up the other half, and a balustrade along the well. **Straight**: one flight with a top landing. **Lift shaft**: walls only, with the car on the lowest floor.
+- Risers are sized to the storey height (3.6 m gives 22 × 164 mm), with treads up to 300 mm. The inspector shows the numbers and warns when treads, landings or flights are too small.
+- Shaft walls run up to the next floor, and the floor slab is left open above the lowest level. If the floor above has no stairwell in the same place, a top landing is drawn.
+- **Turn 90°** and **Mirror** change which way the flights run. By default you enter through the first door and climb away from it.
+- The stair geometry fills the room's bounding rectangle, so draw stairwells as rectangles. Stairwells on consecutive floors should share the same outline.
+- GeoJSON exports include `stair_kind`, `connects_to_floor`, `risers`, `riser_m`, `tread_m` and `flight_width_m`.
+
+### Backend
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/health` | Is a database connected, and is an edit key required? |
+| `GET /api/state` | Current plan, the latest 60 versions and 300 sessions. Supports `If-None-Match` (the app polls every 4 s) |
+| `PUT /api/plan` | Save the whole plan as a new revision. Sends `baseRev`; returns **409** with the current plan if someone else saved first |
+| `GET /api/versions?rev=N` | One saved revision, for restore. The latest 200 are kept |
+| `POST /api/sessions` | Submit a capture session (scores and counts only) |
+
+- **Concurrent edits:** on a 409 the app merges room by room against the version it last loaded. Edits to different rooms merge automatically. If two people changed the same room, a banner asks whether to keep your version or load theirs.
+- **Validation:** every request is rebuilt from known fields with limits on sizes and counts (`lib/validate.js`), and queries are parameterised.
+- **Identity:** there are no accounts. Contributors type a display name, which is saved in their browser.
+- **Optional edit key:** set `EDIT_KEY`, and writes then need that key. Without it, anyone with the link can view the plan.
+- **Schema:** the tables are created on first use (`lib/schema.js`): `plan` (one row), `versions` and `sessions`.
+
+### Deploy on Vercel
+
+The repo is connected to Vercel, so every push deploys. `vercel.json` runs `scripts/build-vercel.sh`, which wraps `web/index.html` in a full HTML document in `dist/`, and Vercel deploys `api/*.js` as functions.
+
+1. **Add a database:** in the Vercel project, open **Storage** → **Create Database** → **Neon (Postgres)** and connect it to the project. This sets `DATABASE_URL`. Any Postgres works if you set `DATABASE_URL` (or `POSTGRES_URL`) yourself. For providers whose TLS certificate isn't publicly trusted, also set `PGSSL_NO_VERIFY=1`.
+2. **Optionally set `EDIT_KEY`** under **Settings** → **Environment Variables**.
+3. **Redeploy** so the functions pick up the variables.
+
+Until a database is connected, the site still works as a standalone copy: a banner says so, and the plan, history and sessions are saved in each visitor's browser.
+
+### Run locally
+
+```sh
+npm install
+DATABASE_URL=postgres://user:pass@localhost/apu npm run dev   # http://localhost:3000
+TEST_DATABASE_URL=postgres://user:pass@localhost/apu_test npm test   # wipes that database's tables
+```
+
+Without `TEST_DATABASE_URL`, `npm test` runs only the validation tests.
+
+The same page also runs as a claude.ai artifact, where it uses the artifact's shared storage instead of the API: https://claude.ai/artifact/EWr8GzRBKErHG9igFdL71C (private until shared from the page's Share menu).
 
 ---
 

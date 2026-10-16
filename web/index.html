@@ -26,8 +26,9 @@
   --ok:#5cc489; --warn:#e2b04a; --bad:#ef7a70; --ok-soft:#163222; --warn-soft:#352a12; --bad-soft:#3a1d1b;
   --t-corridor:#6c7772; --cov0:#283139; --cov1:#5a3a2a; --cov2:#a8572f; --cov3:#f0773f; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%}
-body{background:var(--paper);color:var(--ink);font:14px/1.5 var(--f-body);display:flex;flex-direction:column;min-height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 var(--f-body);display:flex;flex-direction:column;min-height:100%}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sheet)}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -45,6 +46,11 @@ header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .sync[data-s="saved"] i{background:var(--ok)} .sync[data-s="saving"] i{background:var(--warn)} .sync[data-s="error"] i{background:var(--bad)}
 .me{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--ink-2)}
 .me img{width:22px;height:22px;border-radius:50%}
+.me button{font:inherit;color:inherit;background:none;border:1px solid var(--rule);border-radius:999px;padding:3px 10px;cursor:pointer}
+.me button:hover{border-color:var(--ink-2)}
+dialog.sheet{border:1px solid var(--rule);border-radius:10px;background:var(--sheet);color:var(--ink);padding:18px;width:min(380px,calc(100vw - 32px))}
+dialog.sheet::backdrop{background:rgb(0 0 0 / .35)}
+dialog.sheet h2{margin-top:0}
 nav.tabs{display:flex;gap:2px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
 nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 7px;cursor:pointer;font-family:var(--f-display);font-stretch:85%;font-weight:600;font-size:.92rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
@@ -254,6 +260,16 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
   <section class="view" id="view-history" hidden><div class="pad" id="historyPad"></div></section>
 </main>
 <div class="toast" id="toast" hidden></div>
+<dialog class="sheet" id="profile" aria-labelledby="profTitle">
+  <form id="profForm">
+    <h2 id="profTitle">Who's editing?</h2>
+    <p class="small muted">Your name appears next to your edits and sessions. It's saved in this browser. There are no accounts.</p>
+    <div class="field"><label for="profName">Your name</label><input id="profName" maxlength="60" autocomplete="name"></div>
+    <div class="field" id="profKeyField" hidden><label for="profKey">Edit key</label><input id="profKey" type="password" autocomplete="off"><span class="small muted">Ask whoever runs this deployment. Without it you can look but not edit.</span></div>
+    <p class="warn" id="profErr" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" type="button" id="profCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+  </form>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
@@ -285,9 +301,9 @@ const ago = t => { if (!t) return ""; const s = (Date.now() - t) / 1000;
 
 /* ---------- example plan (shown only while the shared plan is empty) ---------- */
 function rect(x0,y0,x1,y1){ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]; }
-function exampleRoom(id,name,type,poly,doors){ return {k:uid(),id,name,type,floor:3,height:3.2,poly,doors:(doors||[]).map(([e,t])=>({e,t,w:DOOR_W}))}; }
+function exampleRoom(id,name,type,poly,doors,floor=3){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t])=>({e,t,w:DOOR_W}))}; }
 function examplePlan(){
-  return { block:"B", floors:[{level:3,name:"Level 3"}], rev:0, rooms:[
+  return { block:"B", floors:[{level:3,name:"Level 3"},{level:4,name:"Level 4"}], rev:0, rooms:[
     exampleRoom("B-03-00","Main corridor","corridor",rect(0,8,40,11)),
     exampleRoom("B-03-01","Lecture Theatre 1","lecture",rect(0,11,12,19),[[0,.25],[0,.8]]),
     exampleRoom("B-03-02","Computer Lab 2","lab",rect(12,11,22,19),[[0,.5]]),
@@ -298,6 +314,14 @@ function examplePlan(){
     exampleRoom("B-03-07","Lift lobby","lobby",rect(10,2,16,8),[[2,.35]]),
     exampleRoom("B-03-08","Lecture Theatre 8","lecture",rect(16,0,30,8),[[2,.2],[2,.8]]),
     exampleRoom("B-03-09","Student services","office",rect(30,2,40,8),[[2,.5]]),
+    exampleRoom("B-04-00","Main corridor","corridor",rect(0,8,40,11),null,4),
+    exampleRoom("B-04-01","Seminar Room 1","lecture",rect(0,11,14,19),[[0,.5]],4),
+    exampleRoom("B-04-02","Design Studio","lab",rect(14,11,28,19),[[0,.3],[0,.7]],4),
+    exampleRoom("B-04-03","Meeting room","office",rect(28,11,40,19),[[0,.5]],4),
+    exampleRoom("B-04-05","Toilets","toilet",rect(0,2,5,8),[[2,.5]],4),
+    exampleRoom("B-04-06","Stairwell","stairs",rect(5,2,10,8),[[2,.5]],4),
+    exampleRoom("B-04-07","Lift lobby","lobby",rect(10,2,16,8),[[2,.35]],4),
+    exampleRoom("B-04-08","Library annex","other",rect(16,2,40,8),[[2,.2],[2,.8]],4),
   ]};
 }
 
@@ -308,6 +332,7 @@ const S = {
   overlay: "type", tab: "plan", scope: "all",
   sessions: [], versions: [], profiles: {},
   db: null, user: null, dl: null, meId: null, readOnly: false,
+  api: false, etag: null, conflict: null, editKey: false, failedNote: "", serverNote: null, maxVersions: MAX_VERSIONS,
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
   view: {cx: 20, cy: 9.5, scale: 18},
   capture: {frames: [], block: "B", floor: 3, room: "", consent: false, busy: false}
@@ -325,6 +350,75 @@ function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]; }
 function dist(a,b){ return Math.hypot(a[0]-b[0],a[1]-b[1]); }
 const snap = (v,g) => Math.round(v/g)*g;
 function doorCenter(room,d){ const [a,b]=edgeOf(room.poly,d.e); return lerp(a,b,d.t); }
+function bbox(p){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; p.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}); return [x0,y0,x1,y1]; }
+
+/* ---------- stairs (README step 12: stairwells connect the floors) ---------- */
+const RISER_MAX=.17, TREAD_MAX=.30, TREAD_OK=.25, LANDING=.6, WELL=.2, STAIR_T=.18;
+const DIRS=[[1,0],[0,1],[-1,0],[0,-1]];
+const STAIR_KINDS={switchback:"Switchback (two flights)",straight:"Straight (one flight)",lift:"Lift shaft"};
+function nextLevel(f){ const up=S.plan.floors.map(x=>x.level).filter(l=>l>f); return up.length?Math.min(...up):null; }
+function stairOf(r){
+  if (r.type!=="stairs") return null;
+  if (r.stair) return r.stair;
+  let dir;   // by default you enter through the first door and climb away from it
+  if (r.doors.length){ const n=inwardNormal(r,r.doors[0].e); dir=Math.abs(n[0])>Math.abs(n[1])?(n[0]>0?0:2):(n[1]>0?1:3); }
+  else { const b=bbox(r.poly); dir=(b[2]-b[0])>=(b[3]-b[1])?0:1; }
+  return {kind:"switchback",dir,mirror:false};
+}
+/* Lay a stair out inside the room's bounding rectangle. Local frame: u runs along the first flight, v across it.
+   Switchback: floor landing at u=0, flight 1 up one half, mid landing at the far end, flight 2 back up the other half
+   to the floor landing of the level above. Straight: one flight from the floor landing to a top landing at the far end. */
+function stairLayout(r){
+  const st=stairOf(r); if(!st) return null;
+  const nl=nextLevel(r.floor), up=nl!=null, rise=(up?nl-r.floor:1)*FLOOR_H;
+  const [bx0,by0,bx1,by1]=bbox(r.poly), x0=bx0+WALL_T, y0=by0+WALL_T, x1=bx1-WALL_T, y1=by1-WALL_T;
+  const D=DIRS[st.dir], V=st.mirror?[D[1],-D[0]]:[-D[1],D[0]];
+  const O=[D[0]?(D[0]>0?x0:x1):(V[0]>0?x0:x1), D[1]?(D[1]>0?y0:y1):(V[1]>0?y0:y1)];
+  const Lu=Math.abs(D[0]*(x1-x0)+D[1]*(y1-y0)), Wv=Math.abs(V[0]*(x1-x0)+V[1]*(y1-y0));
+  const P=(u,v)=>[O[0]+D[0]*u+V[0]*v, O[1]+D[1]*u+V[1]*v];
+  const L={kind:st.kind,st,up,nl,rise,Lu,Wv,P,D,V,flights:[],landings:[],warn:[]};
+  if (area(r.poly)<(bx1-bx0)*(by1-by0)*.95) L.warn.push("The stair fills the room's bounding rectangle. Draw the stairwell as a rectangle for an exact fit.");
+  if (st.kind==="lift") return L;
+  const sw=st.kind==="switchback";
+  let n=Math.ceil(rise/RISER_MAX-1e-9); if(sw&&n%2) n++;
+  const h=rise/n, per=sw?n/2:n, treads=per-1;
+  const tread=Math.max(.1,Math.min(TREAD_MAX,(Lu-2*LANDING)/treads)), run=tread*treads, A=Math.max(0,(Lu-run)/2), fw=sw?(Wv-WELL)/2:Wv;
+  Object.assign(L,{n,h,per,tread,run,A,fw});
+  L.landings.push({u0:0,u1:A,v0:0,v1:Wv,z:0,role:"floor"});
+  if (sw){
+    L.flights.push({v0:0,v1:fw,u:A,sgn:1,z0:0,steps:treads});
+    L.landings.push({u0:A+run,u1:Lu,v0:0,v1:Wv,z:per*h,role:"mid"});
+    L.flights.push({v0:Wv-fw,v1:Wv,u:A+run,sgn:-1,z0:per*h,steps:treads});
+    L.landings.push({u0:0,u1:A,v0:0,v1:Wv,z:rise,role:"top"});
+  } else {
+    L.flights.push({v0:0,v1:Wv,u:A,sgn:1,z0:0,steps:treads});
+    L.landings.push({u0:A+run,u1:Lu,v0:0,v1:Wv,z:rise,role:"top"});
+  }
+  if (tread<TREAD_OK) L.warn.push(`Treads are only ${Math.round(tread*1000)} mm deep (aim for 250–300 mm). Make the stairwell longer${sw?"":" or use a switchback"}.`);
+  if (A<1) L.warn.push(`Landings are only ${A.toFixed(2)} m deep (aim for 1 m or more).`);
+  if (fw<1) L.warn.push(`Flights are only ${fw.toFixed(2)} m wide (aim for 1 m or more).`);
+  return L;
+}
+// step i (1-based) of a flight: its tread span along u and the height of its top
+function stepOf(L,f,i){ const a=f.u+f.sgn*(i-1)*L.tread, b=f.u+f.sgn*i*L.tread; return {u0:Math.min(a,b),u1:Math.max(a,b),z:f.z0+i*L.h}; }
+// plan symbol: treads, a walking line and an UP/DN arrow, or a cross for a lift
+function stairSymbol(r,fs){
+  const L=stairLayout(r); if(!L) return "";
+  const ink=css("--ink"), P=L.P, ln=(a,b)=>`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${ink}" stroke-opacity=".5" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  if (L.kind==="lift") return `<g pointer-events="none">${ln(P(0,0),P(L.Lu,L.Wv))+ln(P(L.Lu,0),P(0,L.Wv))}</g>`;
+  if (S.view.scale<6) return "";
+  let g="";
+  L.flights.forEach(f=>{ for(let i=0;i<=f.steps;i++){ const u=f.u+f.sgn*i*L.tread; g+=ln(P(u,f.v0),P(u,f.v1)); } g+=ln(P(f.u,f.v0),P(f.u+f.sgn*L.run,f.v0))+ln(P(f.u,f.v1),P(f.u+f.sgn*L.run,f.v1)); });
+  const c=L.flights.map(f=>(f.v0+f.v1)/2), um=(L.A+L.run+L.Lu)/2;
+  let pts = L.kind==="switchback" ? [[L.A*.5,c[0]],[um,c[0]],[um,c[1]],[L.A,c[1]]] : [[L.A*.5,c[0]],[um,c[0]]];
+  if (!L.up) pts = L.kind==="switchback" ? [[L.A*.5,c[1]],[um,c[1]],[um,c[0]],[L.A,c[0]]] : [[um,c[0]],[L.A,c[0]]];
+  const W=pts.map(([u,v])=>P(u,v)), a=W[W.length-2], b=W[W.length-1], d=[b[0]-a[0],b[1]-a[1]], dl=Math.hypot(...d)||1, ux=d[0]/dl, uy=d[1]/dl, k=.35;
+  const acc=css("--accent");
+  g+=`<polyline points="${W.map(p=>p.join(",")).join(" ")}" fill="none" stroke="${acc}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+  g+=`<polygon points="${b[0]},${b[1]} ${b[0]-ux*k-uy*k*.6},${b[1]-uy*k+ux*k*.6} ${b[0]-ux*k+uy*k*.6},${b[1]-uy*k-ux*k*.6}" fill="${acc}"/>`;
+  g+=`<text x="${W[0][0]}" y="${W[0][1]}" dy="${fs*.35}" text-anchor="middle" font-family="${css("--f-mono")}" font-size="${fs*.7}" font-weight="500" fill="${acc}" stroke="${css("--paper")}" stroke-width="3" paint-order="stroke" vector-effect="non-scaling-stroke">${L.up?"UP":"DN"}</text>`;
+  return `<g pointer-events="none">${g}</g>`;
+}
 
 const floorRooms = f => S.plan.rooms.filter(r => r.floor === f);
 const roomByK = k => S.plan.rooms.find(r => r.k === k);
@@ -342,16 +436,22 @@ function setSync(s,text){ const el=$("#sync"); el.dataset.s=s; el.lastElementChi
 /* ---------- banner ---------- */
 function renderBanner(){
   const b=$("#banner");
+  if (S.conflict) return conflictBanner(b);
+  if (S.readOnly && S.api){ b.hidden=false; b.innerHTML=`<b>View only.</b> <span>This deployment needs an edit key to change the plan or submit sessions.</span><button class="btn sm" id="keyBtn">Enter edit key</button>`; $("#keyBtn").onclick=openProfile; return; }
   if (S.readOnly){ b.hidden=false; b.innerHTML=`<b>View only.</b> <span>You can look around, but your sharing level doesn't allow edits or new sessions.</span>`; return; }
   if (S.example && S.loaded){
     b.hidden=false;
-    b.innerHTML=`<b>Example layout.</b> <span>No one has saved a plan yet. This sample of Block B, Level 3 isn't saved until you edit it.</span>
+    b.innerHTML=`<b>Example layout.</b> <span>No one has saved a plan yet. This sample of Block B, Levels 3–4 isn't saved until you edit it.${S.serverNote?" No database is connected yet, so edits stay in this browser.":""}</span>
       <button class="btn sm" id="keepEx">Use this example</button><button class="btn sm" id="blankEx">Start blank</button>`;
     $("#keepEx").onclick=()=>{ S.example=false; scheduleSave("Started from the example layout",0); renderAll(); };
     $("#blankEx").onclick=()=>{ S.plan={block:"B",floors:[{level:1,name:"Level 1"}],rooms:[],rev:0}; S.floor=1; S.sel=null; S.example=false; scheduleSave("Started a blank plan",0); fit(); renderAll(); };
     return;
   }
-  if (!S.db && S.loaded){ b.hidden=false; b.innerHTML=`<b>Standalone copy.</b> <span>Shared storage isn't available here, so the plan, history and sessions are saved in this browser only.</span>`; return; }
+  if (!S.db && !S.api && S.loaded){ b.hidden=false;
+    b.innerHTML = S.serverNote==="unreachable" ? `<b>Database unreachable.</b> <span>The server can't connect to its Postgres database, so changes are saved in this browser only. Check DATABASE_URL in the Vercel project settings.</span>`
+      : S.serverNote ? `<b>No database connected yet.</b> <span>Changes are saved in this browser only. Add a Postgres database to the Vercel project (Storage → Neon), then redeploy to share the plan.</span>`
+      : `<b>Standalone copy.</b> <span>Shared storage isn't available here, so the plan, history and sessions are saved in this browser only.</span>`;
+    return; }
   b.hidden=true;
 }
 
@@ -411,12 +511,13 @@ function renderPlan(){
   for(let j=Math.ceil(gy0/step)*step;j<=gy1;j+=step) g+=`<line x1="${x}" y1="${j}" x2="${x+w}" y2="${j}" stroke="${grid}" stroke-width="${j%5===0?1.4:.7}" vector-effect="non-scaling-stroke"/>`;
   // hatch for unscanned
   let defs=`<defs><pattern id="hatch" width=".6" height=".6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".6" height=".6" fill="${css("--cov0")}"/><line x1="0" y1="0" x2="0" y2=".6" stroke="${css("--ink-2")}" stroke-opacity=".35" stroke-width=".12"/></pattern></defs>`;
-  const rs=floorRooms(S.floor); let rooms="",labels="",doors="",handles="";
+  const rs=floorRooms(S.floor); let rooms="",labels="",doors="",handles="",stairs="";
   const fs=Math.max(.35,Math.min(.9,13/S.view.scale));
   rs.forEach(r=>{
     const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel;
     const unscanned=S.overlay==="coverage" && !(cov[r.id]>0);
     rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":roomFill(r,cov)}" fill-opacity="${S.overlay==="coverage"?.9:.28}" stroke="${sel?acc:ink}" stroke-width="${sel?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    stairs+=stairSymbol(r,fs);
     const [cx,cy]=centroid(r.poly);
     if (S.view.scale>6){
       labels+=`<text x="${cx}" y="${cy-fs*.25}" text-anchor="middle" font-family="${css("--f-mono")}" font-size="${fs}" font-weight="500" fill="${ink}" pointer-events="none">${esc(r.id)}</text>`;
@@ -447,7 +548,7 @@ function renderPlan(){
   const sb = S.view.scale>30?2:S.view.scale>12?5:S.view.scale>5?10:20, sx=x+w-sb-1.2-56/S.view.scale, sy=y+h-.9;
   const scale=`<g pointer-events="none"><line x1="${sx}" y1="${sy}" x2="${sx+sb}" y2="${sy}" stroke="${ink}" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${sx+sb/2}" y="${sy-.25}" font-family="${css("--f-mono")}" font-size="${fs*.75}" fill="${ink}" text-anchor="middle">${sb} m</text></g>`;
   const empty = !rs.length ? `<text x="${S.view.cx}" y="${S.view.cy}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*1.1}" fill="${css("--ink-2")}">No rooms on L${S.floor} yet. Pick “Draw room” and click the corners.</text>` : "";
-  svg.innerHTML=defs+`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${paper}" data-bg="1"/>`+g+rooms+doors+labels+overlay+handles+scale+empty;
+  svg.innerHTML=defs+`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${paper}" data-bg="1"/>`+g+rooms+stairs+doors+labels+overlay+handles+scale+empty;
   renderHint(); renderLegend(); renderInspector();
 }
 function inwardNormal(r,e){ const [a,b]=edgeOf(r.poly,e), dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1, s=signed(r.poly)>0?1:-1; return [-dy/L*s, dx/L*s]; }
@@ -550,6 +651,7 @@ function renderInspector(){
     <div class="field"><label for="rH">Ceiling height (m)</label><input id="rH" type="number" min="2.2" max="12" step="0.1" value="${r.height}" ${ro}></div></div>
     <dl class="kv"><dt>Area</dt><dd>${fmtArea(area(r.poly))}</dd><dt>Corners</dt><dd>${r.poly.length}</dd><dt>Doors</dt><dd>${r.doors.length}</dd><dt>Floor</dt><dd>L${r.floor}</dd>
       <dt>Coverage</dt><dd><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${COV_LABEL[covLevel(n)]}</span></dd></dl>
+    ${stairPanel(r,ro)}
     <h3>Door marker</h3>
     <p class="small muted" style="margin:0 0 8px">Print and tape this at the door. Contributors who photograph it get the room tag filled in automatically.</p>
     <div class="qr" id="qrBox">${qrSvg(markerText(r))}</div>
@@ -560,12 +662,27 @@ function renderInspector(){
   const bind=(id,fn)=>{ const e=$(id); if(e) e.onchange=fn; };
   bind("#rId",e=>{ const v=e.target.value.trim(); if(!v) return renderInspector(); const old=r.id; r.id=v; edit(`Renamed ${old} to ${v}`); });
   bind("#rName",e=>{ r.name=e.target.value.trim(); edit("Renamed "+r.id); });
-  bind("#rType",e=>{ r.type=e.target.value; edit(`Set ${r.id} to ${TYPES[r.type].label}`); });
+  bind("#rType",e=>{ r.type=e.target.value; if(r.type!=="stairs") delete r.stair; edit(`Set ${r.id} to ${TYPES[r.type].label}`); });
+  bind("#sKind",e=>{ r.stair={...stairOf(r),kind:e.target.value}; edit(`Set ${r.id} to ${STAIR_KINDS[r.stair.kind].toLowerCase()}`); });
+  const sT=$("#sTurn"); if(sT) sT.onclick=()=>{ const st=stairOf(r); r.stair={...st,dir:(st.dir+1)%4}; edit("Turned the stair in "+r.id); };
+  const sM=$("#sFlip"); if(sM) sM.onclick=()=>{ const st=stairOf(r); r.stair={...st,mirror:!st.mirror}; edit("Mirrored the stair in "+r.id); };
   bind("#rH",e=>{ const v=Math.max(2.2,Math.min(12,+e.target.value||3.2)); r.height=v; edit(`Set ${r.id} height to ${v} m`); });
   $("#rBack").onclick=()=>{ S.sel=null; renderPlan(); };
   const dl=$("#rDel"); if(dl) dl.onclick=()=>{ if(dl.dataset.arm){ deleteRoom(r.k); } else { dl.dataset.arm=1; dl.textContent="Confirm delete"; } };
   const dp=$("#rDup"); if(dp) dp.onclick=()=>{ const c=clone(r); c.k=uid(); c.id=uniqueId(r.id); c.poly=c.poly.map(([x,y])=>[x+1,y+1]); S.plan.rooms.push(c); S.sel=c.k; edit("Duplicated "+r.id); };
   const qs=$("#qrSave"); if(qs) qs.onclick=()=>saveFile(`marker-${r.id}.svg`, markerSvgFile(r));
+}
+function stairPanel(r,ro){
+  const L=stairLayout(r); if(!L) return "";
+  const to=L.up?`L${L.nl} (+${L.rise.toFixed(1)} m)`:"Top floor. Flights from below arrive here";
+  const facts=L.kind==="lift"?`<dt>Shaft</dt><dd>${(L.Lu).toFixed(1)} × ${(L.Wv).toFixed(1)} m</dd><dt>Serves</dt><dd>${L.up?"Up to L"+L.nl:"Top stop"}</dd>`
+    :`<dt>Rises to</dt><dd>${to}</dd>${L.up?`<dt>Risers</dt><dd>${L.n} × ${Math.round(L.h*1000)} mm</dd><dt>Treads</dt><dd>${Math.round(L.tread*1000)} mm</dd>`:""}<dt>Flight width</dt><dd>${L.fw.toFixed(2)} m</dd><dt>Landings</dt><dd>${L.A.toFixed(2)} m deep</dd>`;
+  return `<h3>Stair</h3>
+    <div class="field"><label for="sKind">Kind</label><select id="sKind" ${ro}>${Object.entries(STAIR_KINDS).map(([k,t])=>`<option value="${k}" ${k===L.kind?"selected":""}>${t}</option>`).join("")}</select></div>
+    ${ro||L.kind==="lift"?"":`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><button class="btn sm" id="sTurn">Turn 90°</button>${L.kind==="switchback"?`<button class="btn sm" id="sFlip">Mirror</button>`:""}</div>`}
+    <dl class="kv">${facts}</dl>
+    ${L.warn.map(w=>`<p class="warn" style="margin:6px 0 0">${esc(w)}</p>`).join("")}
+    <p class="small muted" style="margin:8px 0 0">${L.kind==="lift"?"The shaft runs the full storey height. Its floor is only drawn on the lowest level.":"Stairwells on consecutive floors should share the same outline so the flights line up."}</p>`;
 }
 function markerText(r){ return `APU|${S.plan.block||""}|${String(r.floor).padStart(2,"0")}|${r.id}`; }
 function qrSvg(text){ if(typeof qrcode!=="function") return `<span class="small">${esc(text)}</span>`;
@@ -576,7 +693,8 @@ function markerSvgFile(r){ const inner=qrSvg(markerText(r)).replace(/^<svg[^>]*>
   return `<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="100mm" viewBox="0 0 80 100"><rect width="80" height="100" fill="#fff"/><svg x="8" y="6" width="64" height="64" viewBox="-2 -2 ${n} ${n}">${inner}</svg><text x="40" y="82" font-family="monospace" font-size="9" text-anchor="middle">${esc(r.id)}</text><text x="40" y="93" font-family="sans-serif" font-size="5" text-anchor="middle">${esc(r.name||TYPES[r.type].label)} · Block ${esc(S.plan.block)} L${r.floor}</text></svg>`; }
 
 /* ---------- edits, saving, versions ---------- */
-function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll(); }
+function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll();
+  if (S.api && !S.meId && !S.askedName){ S.askedName=true; openProfile(); } }
 function planBody(){ return {block:S.plan.block, floors:S.plan.floors, rooms:S.plan.rooms}; }
 function scheduleSave(note,delay=900){
   if (!S.pendingNote) S.pendingNote=note;
@@ -586,6 +704,7 @@ function scheduleSave(note,delay=900){
 }
 async function commit(){
   const note=S.pendingNote||"Edited plan"; S.pendingNote=""; S.saveTimer=null;
+  if (S.api) return commitApi(note);
   const rev=(S.plan.rev||0)+1, at=Date.now(), body=planBody();
   S.plan.rev=rev;
   const ver={rev,at,by:S.meId,note,plan:clone(body)};
@@ -603,6 +722,7 @@ async function commit(){
 async function pruneVersions(){ if(S.versions.length<=MAX_VERSIONS) return; const old=S.versions.slice(MAX_VERSIONS);
   for(const v of old){ try{ await S.db.collection("versions").doc("r"+String(v.rev).padStart(6,"0")).delete(); }catch(e){ break; } } }
 function handleWriteError(e){
+  if (e&&e.api){ if(e.status===401){ S.readOnly=true; renderAll(); openProfile(); } setSync("error","Not saved"); toast(e.message); return; }
   const c=e&&e.code;
   if (c==="invalid_argument"){ S.readOnly=true; setSync("error","View only"); toast("Your sharing level doesn't allow edits here."); renderAll(); return; }
   if (c==="quota_exceeded"){ setSync("error","Storage full"); toast("Shared storage is full. Delete old sessions or versions, then try again."); return; }
@@ -611,7 +731,11 @@ function handleWriteError(e){
 let restoreArm=null;
 async function restore(v){
   if (restoreArm!==v.rev){ restoreArm=v.rev; renderHistory(); return; }
-  restoreArm=null; const p=clone(v.plan); S.plan={...p,rev:S.plan.rev}; S.sel=null;
+  restoreArm=null;
+  let body=v.plan;
+  if (!body && S.api){ const res=await fetch("/api/versions?rev="+v.rev,{cache:"no-store"}).catch(()=>null);
+    if (!res||!res.ok){ toast(res?(await apiError(res)).message:"Couldn't reach the server."); renderHistory(); return; } body=(await res.json()).plan; }
+  const p=clone(body); S.plan={...p,rev:S.plan.rev}; S.sel=null;
   if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0]?.level??1;
   edit(`Restored version r${v.rev}`); toast(`Restored r${v.rev}. The previous state is still in History.`);
 }
@@ -650,12 +774,22 @@ function build3D(){
   let bb=new THREE.Box3();
   S.plan.rooms.filter(r=>floors.includes(r.floor)).forEach(r=>{
     const base=(r.floor-minL)*FLOOR_H, dim = S.scope==="all" && r.floor!==S.floor;
-    const shape=new THREE.Shape(r.poly.map(([x,y])=>new THREE.Vector2(x,y)));
-    const slab=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.12,bevelEnabled:false}),
-      new THREE.MeshLambertMaterial({color:new THREE.Color(roomFill(r,cov)),transparent:true,opacity:dim?.35:(r.k===sel?1:.9)}));
-    slab.rotation.x=Math.PI/2; slab.position.y=base+.12; slab.userData.k=r.k; slab.name=r.id+"_floor"; T.group.add(slab); T.picks.push(slab);
+    const L=stairLayout(r), lowest=r.floor===minL;
+    const fm=new THREE.MeshLambertMaterial({color:new THREE.Color(roomFill(r,cov)),transparent:true,opacity:dim?.35:(r.k===sel?1:.9)});
+    if (!L || lowest){   // stairwells and lift shafts stay open above the lowest floor
+      const shape=new THREE.Shape(r.poly.map(([x,y])=>new THREE.Vector2(x,y)));
+      const slab=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.12,bevelEnabled:false}),fm);
+      slab.rotation.x=Math.PI/2; slab.position.y=base+.12; slab.userData.k=r.k; slab.name=r.id+"_floor"; T.group.add(slab); T.picks.push(slab);
+    }
     const wm=new THREE.MeshLambertMaterial({color:r.k===sel?new THREE.Color(css("--accent")):wallCol,transparent:true,opacity:dim?.18:.82});
-    r.poly.forEach((_,e)=>wallPieces(r,e).forEach(([s0,s1,z0,z1])=>{
+    const wallH=L&&L.up?Math.max(r.height,L.rise):r.height;   // the shaft walls run up to the next floor
+    if (L){
+      const above=L.up && floors.includes(L.nl) && S.plan.rooms.some(o=>o.floor===L.nl && o.type==="stairs" && inside(L.P(L.Lu/2,L.Wv/2),o.poly));
+      const sm=fm.clone(); sm.color.lerp(new THREE.Color(css("--paper")),.5);   // lighter steps read against the dark shaft
+      stair3D(r,L,base+.12,sm,wm,{floorLanding:!lowest,topLanding:!above,car:lowest}).forEach(m=>{ m.userData.k=r.k; T.group.add(m); T.picks.push(m); });
+      if (L.up){ const p=L.P(0,0); bb.expandByPoint(new THREE.Vector3(p[0],base+L.rise,p[1])); }
+    }
+    r.poly.forEach((_,e)=>wallPieces(r,e,wallH).forEach(([s0,s1,z0,z1])=>{
       const [a,b]=edgeOf(r.poly,e), n=inwardNormal(r,e), L=dist(a,b);
       const p0=lerp(a,b,s0/L), p1=lerp(a,b,s1/L), len=s1-s0; if(len<.02) return;
       const g=new THREE.BoxGeometry(len,z1-z0,WALL_T), mesh=new THREE.Mesh(g,wm.clone());
@@ -668,9 +802,38 @@ function build3D(){
     T.ctl.target.copy(c); T.cam.position.set(c.x+s*.15,c.y+s*.75,c.z+s*.85); T.framed=true; }
   showInfo3D(sel&&roomByK(sel));
 }
+/* stair geometry in world space: steps, landings and a balustrade along the well (y0 = top of this floor's slab) */
+function stair3D(r,L,y0,mat,railMat,o){
+  const out=[], P=L.P, alongX=L.D[0]!==0;
+  const box=(u0,u1,v0,v1,z0,z1,name)=>{ const du=u1-u0, dv=v1-v0, dz=z1-z0; if(du<.01||dv<.01||dz<.005) return;
+    const c=P((u0+u1)/2,(v0+v1)/2), m=new THREE.Mesh(new THREE.BoxGeometry(alongX?du:dv,dz,alongX?dv:du),mat);
+    m.position.set(c[0],y0+z0+dz/2,c[1]); m.name=r.id+"_"+name; out.push(m); };
+  if (L.kind==="lift"){
+    if (o.car){ const cm=new THREE.MeshLambertMaterial({color:new THREE.Color(css("--accent")),transparent:true,opacity:.35});
+      const c=P(L.Lu/2,L.Wv/2), m=new THREE.Mesh(new THREE.BoxGeometry(alongX?L.Lu-.3:L.Wv-.3,2.3,alongX?L.Wv-.3:L.Lu-.3),cm);
+      m.position.set(c[0],y0+1.15,c[1]); m.name=r.id+"_lift_car"; out.push(m); }
+    return out;
+  }
+  const fl=L.landings.find(l=>l.role==="floor");
+  if (o.floorLanding) box(fl.u0,fl.u1,fl.v0,fl.v1,-.12,0,"landing");
+  if (!L.up) return out;
+  L.landings.forEach(l=>{ if(l.role==="mid" || (l.role==="top" && o.topLanding)) box(l.u0,l.u1,l.v0,l.v1,l.z-STAIR_T,l.z,l.role+"_landing"); });
+  L.flights.forEach((f,fi)=>{
+    for(let i=1;i<=f.steps;i++){ const st=stepOf(L,f,i); box(st.u0,st.u1,f.v0,f.v1,Math.max(-.12,st.z-L.h-STAIR_T),st.z,`flight${fi+1}_step${i}`); }
+    if (L.kind!=="switchback") return;
+    // 0.9 m balustrade along the open well, following the pitch of the flight
+    const v=fi===0?f.v1:f.v0, a=P(f.u,v), b=P(f.u+f.sgn*L.run,v);
+    const A3=new THREE.Vector3(a[0],y0+f.z0+L.h+.45,a[1]), B3=new THREE.Vector3(b[0],y0+f.z0+f.steps*L.h+.45,b[1]);
+    const x=B3.clone().sub(A3), len=x.length(); x.normalize();
+    const z=new THREE.Vector3(L.V[0],0,L.V[1]).normalize(), y=new THREE.Vector3().crossVectors(z,x);
+    const m=new THREE.Mesh(new THREE.BoxGeometry(len,.9,.04),railMat);
+    m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,y,z)); m.position.copy(A3).add(B3).multiplyScalar(.5); m.name=r.id+`_flight${fi+1}_rail`; out.push(m);
+  });
+  return out;
+}
 /* split an edge into wall boxes, leaving openings for this room's doors and any other room's door on the same wall line */
-function wallPieces(r,e){
-  const [a,b]=edgeOf(r.poly,e), L=dist(a,b), h=r.height, gaps=[];
+function wallPieces(r,e,h=r.height){
+  const [a,b]=edgeOf(r.poly,e), L=dist(a,b), gaps=[];
   r.doors.filter(d=>d.e===e).forEach(d=>gaps.push([d.t*L-d.w/2,d.t*L+d.w/2]));
   floorRooms(r.floor).forEach(o=>{ if(o===r) return; o.doors.forEach(d=>{ const c=doorCenter(o,d), t=projT(c,[a,b]), p=lerp(a,b,t);
     const [oa,ob]=edgeOf(o.poly,d.e), par=Math.abs(((b[0]-a[0])*(ob[1]-oa[1])-(b[1]-a[1])*(ob[0]-oa[0]))/((L||1)*(dist(oa,ob)||1)));
@@ -687,11 +850,15 @@ async function saveFile(filename,data){
   try{ await S.dl.save({filename,data}); toast("Saved "+filename); }
   catch(e){ if(e?.code==="declined") return; if(e?.code==="rate_limited") toast("Another save is waiting for your answer."); else toast("Couldn't save the file here."); }
 }
+function stairProps(r){ const L=stairLayout(r); if(!L) return {};
+  const p={stair_kind:L.kind,connects_to_floor:L.up?L.nl:null};
+  if (L.kind!=="lift" && L.up) Object.assign(p,{risers:L.n,riser_m:+L.h.toFixed(3),tread_m:+L.tread.toFixed(3),flight_width_m:+L.fw.toFixed(2)});
+  return p; }
 function geojson(){
   return JSON.stringify({type:"FeatureCollection",name:`APU Block ${S.plan.block} outline`,
     crs_note:"Local building coordinates in metres (x east, y south of the block origin). Georeference before mixing with map data.",
     features:S.plan.rooms.map(r=>({type:"Feature",properties:{id:r.id,name:r.name,type:r.type,type_label:TYPES[r.type]?.label,block:S.plan.block,floor:r.floor,
-      area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0},
+      area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0,...stairProps(r)},
       geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(([x,y])=>[+x.toFixed(3),+y.toFixed(3)])]}}))},null,2);
 }
 $("#exGeo").onclick=()=>saveFile(`apu-block-${S.plan.block}-outline.geojson.json`,geojson());
@@ -803,10 +970,11 @@ async function submitSession(){
     medians:{sharp:+median(C.frames.filter(f=>f.sharp!=null).map(f=>f.sharp)).toFixed(1),bright:+median(C.frames.filter(f=>f.bright!=null).map(f=>f.bright)).toFixed(1)}};
   $("#cSubmit").disabled=true;
   try{
-    if (S.db){ await S.db.collection("sessions").add(doc); } else { S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
+    if (S.api){ const res=await apiSend("POST","/api/sessions",{...doc,by:S.meId||""}); if(!res.ok) throw await apiError(res); poll(true); }
+    else if (S.db){ await S.db.collection("sessions").add(doc); } else { S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
     C.frames=[]; C.consent=false; C.fromMarker=false;
     toast(sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":"Session submitted. Thanks!");
-    if(!S.db){ updateCounts(); }
+    if(!S.db && !S.api){ updateCounts(); }
     setTab("sessions");
   }catch(e){ handleWriteError(e); renderCapture(); }
 }
@@ -815,6 +983,7 @@ const median=a=>{ if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y); retur
 /* ---------- people ---------- */
 async function resolve(ids){ ids=[...new Set(ids.filter(Boolean))]; if(!S.user||!ids.length) return; try{ Object.assign(S.profiles,await S.user.profiles(ids)); }catch(e){} }
 function who(id){ const p=S.profiles[id]; if(!id) return `<span class="muted">Someone</span>`;
+  if (S.api) return `<span class="who"><span>${esc(id)}${id===S.meId?` <span class="muted">(you)</span>`:""}</span></span>`;
   return `<span class="who">${p?.avatarUrl?`<img src="${esc(p.avatarUrl)}" alt="">`:""}<span>${esc((p&&p.name)||(p?.isMe?"You":"Someone"))}</span></span>`; }
 
 /* ---------- sessions view ---------- */
@@ -857,9 +1026,9 @@ async function renderHistory(){
   if (S.tab!=="history") return;
   await resolve(S.versions.map(v=>v.by));
   const vs=S.versions;
-  $("#historyPad").innerHTML=`<h2>Plan history</h2><p class="muted small" style="margin-top:-4px">Every saved change is kept here (latest ${MAX_VERSIONS}). Restoring adds a new version, so nothing is lost.</p>
+  $("#historyPad").innerHTML=`<h2>Plan history</h2><p class="muted small" style="margin-top:-4px">Every saved change is kept here (latest ${S.maxVersions}). Restoring adds a new version, so nothing is lost.</p>
     <div class="tbl-wrap">${vs.length?`<table><thead><tr><th>Version</th><th>Change</th><th>By</th><th>When</th><th style="text-align:right">Rooms</th><th></th></tr></thead><tbody>
-    ${vs.map((v,i)=>`<tr><td class="mono">r${v.rev}${i===0?` <span class="pill ok">current</span>`:""}</td><td>${esc(v.note)}</td><td>${who(v.by)}</td><td>${esc(ago(v.at))}</td><td class="num">${v.plan?.rooms?.length??0}</td>
+    ${vs.map((v,i)=>`<tr><td class="mono">r${v.rev}${i===0?` <span class="pill ok">current</span>`:""}</td><td>${esc(v.note)}</td><td>${who(v.by)}</td><td>${esc(ago(v.at))}</td><td class="num">${v.plan?.rooms?.length??v.rooms??0}</td>
       <td style="text-align:right">${i===0||S.readOnly?"":`<button class="btn sm" data-rev="${v.rev}">${restoreArm===v.rev?"Confirm restore":"Restore"}</button>`}</td></tr>`).join("")}
     </tbody></table>`:`<div class="empty">No saved versions yet. Your first edit on the floor plan creates one.</div>`}</div>`;
   $("#historyPad").querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>restore(S.versions.find(v=>v.rev===+b.dataset.rev)));
@@ -892,13 +1061,133 @@ const browserDownloads={ async save({filename,data}){
   return {status:"saved"};
 } };
 
+/* ---------- server backend (the Vercel deploy with a Postgres database; see api/) ---------- */
+const NAME_KEY="apu-name", EDITKEY_KEY="apu-edit-key";
+const lsGet=k=>{ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } };
+const lsSet=(k,v)=>{ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(e){} };
+function apiHeaders(){ const h={"content-type":"application/json"}, k=lsGet(EDITKEY_KEY); if(k) h["x-edit-key"]=k; return h; }
+const apiSend=(method,path,body)=>fetch(path,{method,headers:apiHeaders(),body:body&&JSON.stringify(body),cache:"no-store"});
+async function apiError(res){ const d=await res.json().catch(()=>({})); return Object.assign(new Error(d.message||"Request failed"),{api:true,status:res.status}); }
+
+async function connectApi(h){
+  S.api=true; S.meId=lsGet(NAME_KEY)||null; S.editKey=!!h.editKey; S.maxVersions=200;
+  if (h.editKey && !h.keyOk) S.readOnly=true;
+  renderMe(); setSync("saving","Loading shared plan…");
+  await poll(true);
+  setInterval(()=>poll(),4000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) poll(true); });
+}
+let polling=false;
+async function poll(force){
+  if (polling || (!force && document.hidden)) return;
+  polling=true;
+  try{
+    const res=await fetch("/api/state",{headers:S.etag?{"if-none-match":S.etag}:{},cache:"no-store"});
+    if (res.status===304) return;
+    if (!res.ok) throw await apiError(res);
+    const d=await res.json(); S.etag=res.headers.get("etag");
+    const sessKey=s=>s.length+":"+(s[0]?._id||""), sessChanged=sessKey(d.sessions||[])!==sessKey(S.sessions);
+    S.loaded=true; S.sessions=d.sessions||[]; S.versions=d.versions||[];
+    const adopted=applyRemote(d.plan);
+    updateCounts(); renderBanner(); renderSessions(); renderHistory();
+    if (!adopted && sessChanged){ if(S.tab==="plan") renderPlan(); if(S.tab==="3d") build3D(); }
+  }catch(e){ S.loaded=true; if(!S.saving && !S.saveTimer) setSync("error","Can't reach the server"); }
+  finally{ polling=false; }
+}
+// returns true when the remote plan replaced ours (and everything was re-rendered)
+function applyRemote(p){
+  if (S.saveTimer || S.saving || S.conflict) return false;   // our own edit is on its way
+  if (!p){ if(!S.example) setSync("saved","Saved"); else setSync("saved","Connected"); return false; }
+  if (!S.example && p.rev===S.plan.rev){ setSync("saved","Saved"); return false; }
+  const first=S.example; adoptPlan(p); setSync("saved","Saved"); renderAll(); if(first) fit();
+  return true;
+}
+/* Three-way merge by room key against the plan we last synced (S.base). Rooms only one side changed merge cleanly;
+   rooms both sides changed differently are clashes, where "mine" wins if the user chooses to keep their version. */
+function mergePlans(base,mine,theirs){
+  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b), byK=a=>new Map(a.map(r=>[r.k,r]));
+  const B=byK(base.rooms), M=byK(mine.rooms), T=byK(theirs.rooms), rooms=[], clash=[];
+  for (const k of new Set([...T.keys(),...M.keys(),...B.keys()])){
+    const b=B.get(k), m=M.get(k), t=T.get(k), mc=!same(b,m), tc=!same(b,t);
+    if (mc && tc && !same(m,t)) clash.push((m||t||b).id);
+    const pick=mc?m:t; if (pick) rooms.push(pick);          // undefined: deleted on the side that changed it
+  }
+  const field=f=>!same(base[f],mine[f])?mine[f]:theirs[f];
+  if (!same(base.block,mine.block) && !same(base.block,theirs.block) && !same(mine.block,theirs.block)) clash.push("block name");
+  return {plan:{block:field("block"),floors:field("floors"),rooms},clash};
+}
+function applyMerged(plan,theirs){
+  S.plan={...clone(plan),rev:theirs.rev}; S.base=clone({block:theirs.block,floors:theirs.floors,rooms:theirs.rooms});
+  if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
+  if (S.sel && !roomByK(S.sel)) S.sel=null;
+  renderAll();
+}
+async function commitApi(note){
+  S.saving=true; setSync("saving","Saving…");
+  try{
+    const body=clone(planBody());
+    const res=await apiSend("PUT","/api/plan",{plan:body,baseRev:S.plan.rev||0,note,by:S.meId||""});
+    if (res.status===409){
+      const t=(await res.json()).plan, m=S.base&&t?mergePlans(S.base,planBody(),t):null;
+      if (m && !m.clash.length){ applyMerged(m.plan,t); toast(`Merged with ${t.by||"another contributor"}'s changes (r${t.rev}).`); return await commitApi(note); }
+      S.conflict={note,theirs:t,merged:m&&m.plan,clash:m?m.clash:[]}; setSync("error","Not saved"); renderBanner(); return;
+    }
+    if (res.status===401){ S.failedNote=note; S.readOnly=true; setSync("error","View only"); toast("The edit key is missing or wrong, so that change wasn't saved."); renderAll(); openProfile(); return; }
+    if (!res.ok){ const e=await apiError(res); S.failedNote=note; setSync("error","Not saved"); toast(e.message); return; }
+    const d=await res.json(); S.plan.rev=d.rev; S.lastWritten=d.rev; S.base=body; S.failedNote=""; setSync("saved","Saved");
+    setTimeout(()=>poll(true),0);
+  }catch(e){   // network trouble: keep the edit and retry
+    setSync("error","Offline, retrying…"); S.pendingNote=S.pendingNote||note; clearTimeout(S.saveTimer); S.saveTimer=setTimeout(commit,5000);
+  }finally{ S.saving=false; }
+}
+function conflictBanner(b){
+  const C=S.conflict, t=C.theirs, who=esc(t?.by||"Another contributor"), list=C.clash.slice(0,4).map(esc).join(", ")+(C.clash.length>4?` and ${C.clash.length-4} more`:"");
+  b.hidden=false;
+  b.innerHTML=`<b>Edit clash.</b> <span>${C.merged?`You and ${who} both changed ${list}. Your change isn't saved yet.`:`${who} saved r${t?.rev??"?"} while you were editing, so your change isn't saved yet.`}</span>
+    <button class="btn sm" id="cfMine">${C.merged?"Keep my version of those":"Keep my version"}</button><button class="btn sm" id="cfTheirs">Load theirs</button>`;
+  $("#cfMine").onclick=()=>{ S.conflict=null; if(C.merged) applyMerged(C.merged,t); else S.plan.rev=t?.rev||0; renderBanner(); commitApi(C.note); };
+  $("#cfTheirs").onclick=()=>{ S.conflict=null; if(t) adoptPlan(t); setSync("saved","Saved"); renderAll(); fit(); toast(`Loaded r${t?.rev}. Your unsaved change was discarded.`); };
+}
+function renderMe(){
+  if (!S.api) return;
+  const m=$("#me"); m.hidden=false;
+  m.innerHTML=`<button type="button" id="meBtn" title="Change your name${S.editKey?" or edit key":""}">${S.meId?esc(S.meId):"Set your name"}</button>`;
+  $("#meBtn").onclick=openProfile;
+}
+function openProfile(){
+  const d=$("#profile"); if(!d.showModal) return;
+  $("#profName").value=S.meId||""; $("#profKeyField").hidden=!S.editKey; $("#profKey").value=lsGet(EDITKEY_KEY); $("#profErr").hidden=true;
+  if (!d.open) d.showModal();
+}
+$("#profCancel").onclick=()=>$("#profile").close();
+$("#profForm").onsubmit=async e=>{
+  e.preventDefault();
+  const name=$("#profName").value.trim().slice(0,60); lsSet(NAME_KEY,name); S.meId=name||null;
+  if (S.editKey){
+    lsSet(EDITKEY_KEY,$("#profKey").value);
+    const h=await fetch("/api/health",{headers:apiHeaders(),cache:"no-store"}).then(r=>r.json()).catch(()=>null);
+    if (!h || !h.keyOk){ const er=$("#profErr"); er.hidden=false; er.textContent=!h?"Couldn't reach the server to check the key.":$("#profKey").value?"That edit key isn't right.":"Enter the edit key to make changes."; S.readOnly=true; renderMe(); renderAll(); return; }
+    S.readOnly=false;
+  }
+  $("#profile").close(); renderMe(); renderAll();
+  if (S.failedNote && !S.readOnly){ const n=S.failedNote; S.failedNote=""; scheduleSave(n,0); }
+};
+
 /* ---------- boot ---------- */
 try{ const t=localStorage.getItem("apu-tab"); if(t) S.tab=t; }catch(e){}
 setTab(S.tab); renderAll(); requestAnimationFrame(fit);
 
 (async function connect(){
   const c=window.claude;
-  if (!c || typeof c.use!=="function"){ S.dl=browserDownloads; goStandalone(); return; }
+  if (c && typeof c.use==="function") return connectArtifact(c);
+  const h=await fetch("/api/health",{headers:apiHeaders(),cache:"no-store"})
+    .then(r=>r.ok && /json/.test(r.headers.get("content-type")||"") ? r.json() : null).catch(()=>null);
+  S.dl=browserDownloads;
+  if (h && h.db) return connectApi(h);
+  S.serverNote=h?(h.reason||"not_configured"):null; goStandalone();
+})();
+
+async function connectArtifact(c){
   const [db,user,dl]=await Promise.all([c.use("db"),c.use("user"),c.use("downloads")].map(p=>p.catch(()=>null)));
   S.db=db; S.user=user; S.dl=dl;
   $("#exNote").textContent = dl ? "" : "Saving files isn't available in this view.";
@@ -914,10 +1203,7 @@ setTab(S.tab); renderAll(); requestAnimationFrame(fit);
     const d=snap.data();
     if (S.saveTimer || S.saving) return;                 // our own edit is on its way; last writer wins
     if (!S.example && d.rev===S.plan.rev && d.rev===S.lastWritten){ setSync("saved","Saved"); return; }
-    const first=S.example; S.plan=clone({block:d.block,floors:d.floors||[],rooms:d.rooms||[],rev:d.rev||0}); S.example=false;
-    if (!S.plan.floors.length) S.plan.floors=[{level:1,name:"Level 1"}];
-    if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
-    if (S.sel && !roomByK(S.sel)) S.sel=null;
+    const first=S.example; adoptPlan(d);
     setSync("saved","Saved"); renderAll(); if(first) fit();
   }, e=>{ setSync("error","Shared plan unavailable"); });
   db.collection("sessions").orderBy("at","desc").limit(300).onSnapshot(q=>{
@@ -926,5 +1212,12 @@ setTab(S.tab); renderAll(); requestAnimationFrame(fit);
   db.collection("versions").orderBy("rev","desc").limit(60).onSnapshot(q=>{
     S.versions=q.docs.map(d=>d.data()); updateCounts(); renderHistory();
   }, ()=>{});
-})();
+}
+function adoptPlan(d){
+  S.plan=clone({block:d.block,floors:d.floors||[],rooms:d.rooms||[],rev:d.rev||0}); S.example=false;
+  if (!S.plan.floors.length) S.plan.floors=[{level:1,name:"Level 1"}];
+  if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
+  if (S.sel && !roomByK(S.sel)) S.sel=null;
+  S.base=clone(planBody());
+}
 </script>

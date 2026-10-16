@@ -1,0 +1,16 @@
+{
+  "name": "apu-campus-outline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "sh scripts/build-vercel.sh",
+    "dev": "node scripts/dev.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
