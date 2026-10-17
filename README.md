@@ -42,7 +42,7 @@ test/            API tests
 
 - **Front end:** a single HTML page using Three.js. It checks the server for changes every 4 seconds.
 - **Back end:** Vercel functions on Postgres. Four tables (`plan`, `versions`, `sessions`, `photos`) are created automatically on first use.
-- **Photos:** opt-in. The phone resizes each usable photo to 2048 px and re-encodes it, which strips GPS and other EXIF data, then uploads them one at a time to a private Vercel Blob store. They're only served back through `/api/photos`. Each session reserves its number of photos up front; uploads beyond that, or more than 2 hours later, are refused.
+- **Photos:** opt-in. The phone resizes each usable photo to 2048 px and re-encodes it, which strips GPS and other EXIF data, then uploads them one at a time. They're stored as JPEG bytes in the `photos` table of the same Neon database, and only served back through `/api/photos`. At about 0.5–1 MB a photo, Neon's free 0.5 GB holds roughly 500–1,000 photos. Each session reserves its number of photos up front; uploads beyond that, or more than 2 hours later, are refused.
 - **Saving:** each save includes the version it was based on. If someone else saved first, the server rejects it and the app merges room by room.
 - **Safety:** all input is checked field by field before it's stored. Setting `EDIT_KEY` makes every change require that key.
 - **No database?** The site still works, saving to each visitor's browser, and shows a banner saying so.
@@ -64,7 +64,7 @@ test/            API tests
 **On Vercel** (every push deploys automatically):
 
 1. **Storage → Create Database → Neon (Postgres)**, connected to this project. This sets `DATABASE_URL`.
-2. For photo uploads: **Storage → Create Database → Blob**, choose **Private** access, and connect it to this project. This sets `BLOB_READ_WRITE_TOKEN`. (If you use a public store instead, also set `BLOB_ACCESS=public`.) Without it, the upload option is hidden and photos stay on phones.
+2. Photo uploads need nothing extra: they're stored in the same database. To turn them off, set `PHOTO_UPLOAD=off`; the upload option is then hidden and photos stay on phones.
 3. Optional: add `EDIT_KEY` under **Settings → Environment Variables**. It's then also needed to view photos.
 4. Redeploy.
 
@@ -72,7 +72,7 @@ test/            API tests
 
 ```sh
 npm install
-DATABASE_URL=postgres://user:pass@localhost/apu npm run dev          # http://localhost:3000, photos go to .data/photos
+DATABASE_URL=postgres://user:pass@localhost/apu npm run dev          # http://localhost:3000
 TEST_DATABASE_URL=postgres://user:pass@localhost/apu_test npm test   # wipes that test database
 ```
 
@@ -84,7 +84,7 @@ TEST_DATABASE_URL=postgres://user:pass@localhost/apu_test npm test   # wipes tha
 2. **Web app:** built a single-page app covering the steps that don't need a GPU: floor plan, 3D outline, photo checks, sessions and history. Published it as a claude.ai artifact.
 3. **Vercel:** added a build step so the same page deploys to Vercel on every push.
 4. **Full stack and stairwells:** added the Postgres API, live sync between editors, room-by-room merging and an optional edit key. Added real stairs and lift shafts to the 3D model. Tested with 12 API tests and two-browser tests against a local database.
-5. **Phones and photo upload:** made the layout work on phones (bottom tabs, pull-up room sheet, touch drawing) and renamed the app UCampass(PIC). Added opt-in photo upload to Vercel Blob with a photo viewer and zip download, so sessions can feed a reconstruction server.
+5. **Phones and photo upload:** made the layout work on phones (bottom tabs, pull-up room sheet, touch drawing) and renamed the app UCampass(PIC). Added opt-in photo upload, stored in the Postgres database, with a photo viewer and zip download, so sessions can feed a reconstruction server.
 
 **Not built yet:** photo registration and 3D Gaussian Splatting training (pipeline steps 6–8), which need a GPU server.
 
@@ -99,7 +99,7 @@ The goal is to turn crowdsourced phone photos into a clean building model. 3D Ga
 | 1 | Define room and element classes; start with one floor | — | ✅ room types |
 | 2 | Get campus permission; plan for privacy (PDPA) | — | ✅ photos stay on device unless shared; EXIF removed |
 | 3 | Capture with AR poses; put QR markers on doors | ARKit / ARCore | ✅ QR markers |
-| 4 | Upload sessions to a job queue | FastAPI, S3, Celery, PostGIS | ✅ opt-in photo upload to private Blob storage (no job queue yet) |
+| 4 | Upload sessions to a job queue | FastAPI, S3, Celery, PostGIS | ✅ opt-in photo upload into the Postgres database (no job queue yet) |
 | 5 | Blur faces, mask people, reject bad photos | SAM, YOLO | ◐ quality checks, no face blur |
 | 6 | Register all sessions into one coordinate system | hloc, COLMAP, GTSAM | ❌ needs GPU |
 | 7 | Train splats block by block, with depth supervision | 2DGS, PGSR, gsplat | ❌ needs GPU |

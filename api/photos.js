@@ -5,8 +5,8 @@
 // When EDIT_KEY is set, viewing photos needs the key too.
 import { json, route, requireKey } from "../lib/http.js";
 import * as V from "../lib/validate.js";
-import { claimPhoto, setPhotoRef, dropPhoto, listPhotos, getPhoto } from "../lib/store.js";
-import { photoStore, savePhoto, loadPhoto } from "../lib/photos.js";
+import { claimPhoto, savePhotoData, dropPhoto, listPhotos, getPhoto } from "../lib/store.js";
+import { photoStore } from "../lib/photos.js";
 
 const noStore = () => json({ error: "no_photo_store", message: "Photo storage isn't set up on this deployment." }, 503);
 const CLAIM_ERRORS = {
@@ -22,9 +22,8 @@ export const GET = route(async req => {
   if (id != null) {
     if (!/^\d{1,18}$/.test(id)) throw new V.Invalid("id must be a whole number");
     const p = await getPhoto(id);
-    const body = p && (await loadPhoto(p.ref));
-    if (!body) return json({ error: "not_found", message: "That photo doesn't exist." }, 404);
-    return new Response(body, { headers: {
+    if (!p) return json({ error: "not_found", message: "That photo doesn't exist." }, 404);
+    return new Response(p.data, { headers: {
       "content-type": "image/jpeg", "cache-control": "private, max-age=86400, immutable",
       "content-disposition": `inline; filename="session-${p.session_id}-${String(p.idx).padStart(3, "0")}.jpg"`,
     } });
@@ -45,12 +44,11 @@ export const POST = route(async req => {
   const c = await claimPhoto({ ...p, bytes: bytes.length });
   if (c.error) { const [status, message] = CLAIM_ERRORS[c.error]; return json({ error: c.error, message }, status); }
   try {
-    const ref = await savePhoto(`sessions/${p.session}/${String(p.i).padStart(3, "0")}.jpg`, bytes);
-    await setPhotoRef(c.id, ref);
+    await savePhotoData(c.id, bytes);
   } catch (e) {
     await dropPhoto(c.id).catch(() => {});
     console.error(e);
-    // Most often a store/access mismatch (a public store needs BLOB_ACCESS=public) or a bad token.
+    // Most often the database is out of space.
     return json({ error: "photo_store", message: `Couldn't store the photo: ${String(e?.message || e).slice(0, 200)}` }, 502);
   }
   return json({ id: String(c.id), i: p.i }, 201);
