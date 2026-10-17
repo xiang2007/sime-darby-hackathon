@@ -127,6 +127,8 @@ aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overfl
 .field label{font-size:.76rem;color:var(--ink-2)}
 .field input,.field select,.field textarea{border:1px solid var(--rule);background:var(--paper);border-radius:6px;padding:6px 8px;width:100%;min-width:0}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tipbox{border:1px solid var(--rule);border-radius:8px;padding:8px 10px;margin:0 0 12px;background:var(--paper)}
+.tipbox ul{margin:4px 0 0;padding-left:18px} .tipbox li{margin:2px 0}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.84rem}
 .kv dt{color:var(--ink-2)} .kv dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .warn{color:var(--warn);font-size:.78rem}
@@ -464,6 +466,7 @@ const S = {
   db: null, user: null, dl: null, meId: null, readOnly: false,
   api: false, etag: null, conflict: null, editKey: false, failedNote: "", serverNote: null, maxVersions: MAX_VERSIONS,
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
+  worker: null, scanView: null, scanCache: {},
   view: {cx: 20, cy: 9.5, scale: 18},
   capture: {frames: [], block: "B", floor: 3, room: "", consent: false, share: false, busy: false, upload: null}
 };
@@ -668,7 +671,7 @@ function renderPlan(){
     });
     if (sel && S.mode==="select" && !S.readOnly) r.poly.forEach((p,i)=>handles+=`<rect data-h="${i}" x="${p[0]-6/S.view.scale}" y="${p[1]-6/S.view.scale}" width="${12/S.view.scale}" height="${12/S.view.scale}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke" style="cursor:move"/>`);
   });
-  let overlay="";
+  let overlay=scanOverlay(fs);
   if (S.mode==="door" && S.hoverEdge){ const r=roomByK(S.hoverEdge.k); if(r){ const [a,b]=edgeOf(r.poly,S.hoverEdge.e); const c=lerp(a,b,S.hoverEdge.t);
     overlay+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${acc}" stroke-width="4" vector-effect="non-scaling-stroke" stroke-opacity=".6"/><circle cx="${c[0]}" cy="${c[1]}" r="${DOOR_W/2}" fill="${acc}" fill-opacity=".25" stroke="${acc}" vector-effect="non-scaling-stroke"/>`; } }
   if (S.mode==="draw" && S.draft.length){
@@ -832,8 +835,9 @@ function renderInspector(){
     <dl class="kv"><dt>Area</dt><dd>${fmtArea(area(r.poly))}</dd><dt>Corners</dt><dd>${r.poly.length}</dd><dt>Doors</dt><dd>${r.doors.length}</dd><dt>Floor</dt><dd>L${r.floor}</dd>
       <dt>Coverage</dt><dd><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${COV_LABEL[covLevel(n)]}</span></dd></dl>
     ${stairPanel(r,ro)}
+    ${scanPanel(r,ro)}
     <h3>Door marker</h3>
-    <p class="small muted" style="margin:0 0 8px">Print and tape this at the door. Contributors who photograph it get the room tag filled in automatically.</p>
+    <p class="small muted" style="margin:0 0 8px">Print and tape this at the door. Contributors who photograph it get the room tag filled in automatically. Print at 100% size: the code is ${markerMM(r)} mm wide, and 3D measuring uses it as a ruler.</p>
     <div class="qr" id="qrBox">${qrSvg(markerText(r))}</div>
     <div class="mono small muted" style="margin-top:4px">${esc(markerText(r))}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" id="qrSave" ${S.dl?"":"hidden"}>Save marker SVG</button></div>
@@ -851,6 +855,8 @@ function renderInspector(){
   const dl=$("#rDel"); if(dl) dl.onclick=()=>{ if(dl.dataset.arm){ deleteRoom(r.k); } else { dl.dataset.arm=1; dl.textContent="Confirm delete"; } };
   const dp=$("#rDup"); if(dp) dp.onclick=()=>{ const c=clone(r); c.k=uid(); c.id=uniqueId(r.id); c.poly=c.poly.map(([x,y])=>[x+1,y+1]); S.plan.rooms.push(c); S.sel=c.k; edit("Duplicated "+r.id); };
   const qs=$("#qrSave"); if(qs) qs.onclick=()=>saveFile(`marker-${r.id}.svg`, markerSvgFile(r));
+  const ss=$("#scanShow"); if(ss) ss.onclick=()=>{ const id=ss.dataset.s; S.scanView=S.scanView===id?null:id; if(S.scanView) loadScan(id); renderPlan(); };
+  const su=$("#scanUse"); if(su) su.onclick=()=>applyScan(r,scansFor(r)[0]);
 }
 function stairPanel(r,ro){
   const L=stairLayout(r); if(!L) return "";
@@ -864,6 +870,7 @@ function stairPanel(r,ro){
     ${L.warn.map(w=>`<p class="warn" style="margin:6px 0 0">${esc(w)}</p>`).join("")}
     <p class="small muted" style="margin:8px 0 0">${L.kind==="lift"?"The shaft runs the full storey height. Its floor is only drawn on the lowest level.":"Stairwells on consecutive floors should share the same outline so the flights line up."}</p>`;
 }
+function markerMM(r){ if(typeof qrcode!=="function") return "54"; const q=qrcode(0,"M"); q.addData(markerText(r)); q.make(); const n=q.getModuleCount(); return (64*n/(n+4)).toFixed(1); }
 function markerText(r){ return `APU|${S.plan.block||""}|${String(r.floor).padStart(2,"0")}|${r.id}`; }
 function qrSvg(text){ if(typeof qrcode!=="function") return `<span class="small">${esc(text)}</span>`;
   const q=qrcode(0,"M"); q.addData(text); q.make(); const n=q.getModuleCount(); let d="";
@@ -1135,7 +1142,8 @@ function renderCapture(){
       <li><span>•</span><span>Blank wall <span class="mono">edge pixels ≥ ${+(QC.texture*100).toFixed(1)}%</span></span></li><li><span>•</span><span>Overlap with the previous frame <span class="mono">NCC ≥ ${QC.overlap}</span></span></li>
       <li><span>•</span><span>Session size <span class="mono">≥ ${QC.minFrames} usable, ${QC.goodFrames}+ preferred</span></span></li></ul>`}
     <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""} ${C.upload?"disabled":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
-    ${canShare()?`<label class="consent"><input type="checkbox" id="cShare" ${C.share?"checked":""} ${C.upload?"disabled":""}><span>Also upload the ${shareFrames().length||""} usable photo${shareFrames().length===1?"":"s"} for 3D reconstruction. They're resized to ${PHOTO_MAX}px and location data is removed.</span></label>`:""}
+    ${canShare()?`<label class="consent"><input type="checkbox" id="cShare" ${C.share?"checked":""} ${C.upload?"disabled":""}><span>Also upload the ${shareFrames().length||""} usable photo${shareFrames().length===1?"":"s"} so the room can be measured in 3D. They're resized to ${PHOTO_MAX}px and location data is removed.</span></label>
+      ${C.share?`<div class="tipbox small"><b>For accurate measurements</b><ul><li>Take 2–3 close photos of the door marker from different angles. Its printed size sets the scale.</li><li>Walk along the walls and turn slowly at corners, so photos overlap across each corner.</li><li>Add a few photos tilted up at the ceiling and down at the floor.</li></ul></div>`:""}`:""}
     ${C.upload?`<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${C.upload.total}" aria-valuenow="${C.upload.done}"><i style="width:${C.upload.total?100*C.upload.done/C.upload.total:0}%"></i></div>
       <p class="small" style="margin:0 0 10px">Uploading photo ${Math.min(C.upload.done+1,C.upload.total)} of ${C.upload.total}… keep this page open.</p>`:""}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cSubmit" ${canSubmit?"":"disabled"}>${C.share&&canShare()&&shareFrames().length?"Submit and upload photos":"Submit session"}</button>${fr.length&&!C.upload?`<button class="btn" id="cClear">Clear photos</button>`:""}</div>
@@ -1153,7 +1161,8 @@ function renderCapture(){
 /* Photo upload (only on the server backend with photo storage, and only when the contributor opts in). */
 const PHOTO_MAX=2048, PHOTO_LIMIT=200, PHOTO_BYTES=3_900_000;
 const canShare=()=>S.api && S.photoStore && !S.readOnly;
-const shareFrames=()=>S.capture.frames.filter(f=>f.file && !f.error && !f.reasons.length).slice(0,PHOTO_LIMIT);
+// Close-ups of the door marker often look like blank wall, but they set the scale for 3D measuring, so they go too.
+const shareFrames=()=>S.capture.frames.filter(f=>f.file && !f.error && (!f.reasons.length || (parseMarker(f.qr) && f.reasons.every(r=>r==="blank wall")))).slice(0,PHOTO_LIMIT);
 async function photoJpeg(file){
   const bmp=await createImageBitmap(file), s=Math.min(1,PHOTO_MAX/Math.max(bmp.width,bmp.height));
   const c=document.createElement("canvas"); c.width=Math.round(bmp.width*s); c.height=Math.round(bmp.height*s);
@@ -1231,20 +1240,107 @@ async function renderSessions(){
       <div class="stage"><b>Capture</b><span class="pill ok">Live</span><div class="small muted">Photos and door markers, in this app</div></div>
       <div class="stage"><b>Quality check</b><span class="pill ok">Live</span><div class="small muted">Blur, exposure, blank wall, overlap</div></div>
       <div class="stage"><b>Photo storage</b>${S.photoStore?`<span class="pill ok">Live</span><div class="small muted">Opt-in upload of usable photos, kept in the database</div>`:`<span class="pill idle">Off</span><div class="small muted">${S.api?"Turned off on this deployment (PHOTO_UPLOAD=off)":"Needs the server version of the app"}</div>`}</div>
-      <div class="stage"><b>Registration</b><span class="pill idle">No worker</span><div class="small muted">hloc + markers + pose graph</div></div>
-      <div class="stage"><b>3DGS + geometry</b><span class="pill idle">No worker</span><div class="small muted">2DGS/PGSR, TSDF, RANSAC planes</div></div>
+      ${(()=>{ const w=workerState(); return `<div class="stage"><b>3D measuring</b><span class="pill ${w.cls}">${w.label}</span><div class="small muted">${esc(w.note)}</div></div>`; })()}
       <div class="stage"><b>Rooms + review</b><span class="pill ok">Live</span><div class="small muted">Floor plan editor and History</div></div>
     </div>
     <h3 class="sec">Coverage by room · scan these next</h3>
     ${rooms.length?`<div class="cov-grid" style="margin-bottom:24px">${rooms.slice().sort((a,b)=>(cov[a.id]||0)-(cov[b.id]||0)||a.id.localeCompare(b.id)).map(r=>{const n=cov[r.id]||0;
       return `<div class="cov"><span><span class="mono">${esc(r.id)}</span><br><span class="small muted">${esc(r.name||TYPES[r.type]?.label)}</span></span><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${n} scan${n===1?"":"s"}</span></div>`;}).join("")}</div>`:`<p class="muted">Draw rooms on the floor plan to track coverage.</p>`}
     <h3 class="sec">All sessions</h3>
-    <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Photos</th></tr></thead><tbody>
+    <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Photos</th><th>3D measurement</th></tr></thead><tbody>
       ${ss.map(s=>{ const [c,l]=VERDICT[s.verdict]||["idle",s.verdict]; const known=rooms.some(r=>r.id===s.room);
         return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${esc(s.room)}${s.marker?` <span class="pill idle">marker</span>`:""}${known?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">Block ${esc(s.block)} · L${esc(s.floor)}</span></td>
         <td data-l="Verdict"><span class="pill ${c}">${l}</span></td><td class="num" data-l="Frames">${s.frames}</td><td class="num" data-l="Usable">${s.usable}</td><td class="num" data-l="Gaps">${s.gaps}</td>
-        <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Photos">${s.photos?`<button class="btn sm" data-gal="${esc(s._id)}" data-room="${esc(s.room)}">View ${s.photos}</button>`:`<span class="muted small">${s.photoSlots&&Date.now()-s.at<2*3600e3?"Uploading…":"Kept on phone"}</span>`}</td></tr>`;}).join("")}
+        <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Photos">${s.photos?`<button class="btn sm" data-gal="${esc(s._id)}" data-room="${esc(s.room)}">View ${s.photos}</button>`:`<span class="muted small">${s.photoSlots&&Date.now()-s.at<2*3600e3?"Uploading…":"Kept on phone"}</span>`}</td><td data-l="3D measurement" class="${!s.recon&&!(s.photos>=MIN_RECON&&s.verdict!=="rejected")?"none":"wide"}">${reconCell(s)}</td></tr>`;}).join("")}
       </tbody></table>`:`<div class="empty">No sessions yet. Open <b>Contribute</b> to check and submit your first set of photos.</div>`}</div>`;
+}
+
+/* ---------- 3D measurements from the worker (worker/worker.py) ---------- */
+const MIN_RECON=8;
+function workerState(){
+  const w=S.worker;
+  if (!w) return {cls:"idle",label:"No worker",note:S.api?"Run worker/worker.py on a computer to measure rooms (see README)":"Needs the server version of the app"};
+  return Date.now()-w.seen<3*60e3 ? {cls:"ok",label:"Live",note:`“${w.name}” is checking for new photos`} : {cls:"idle",label:"Offline",note:`“${w.name}” last checked in ${ago(w.seen)}`};
+}
+const scanRoom=s=>{ const rs=S.plan.rooms.filter(r=>r.id===s.room); return rs.find(r=>r.floor===s.floor)||rs[0]||null; };
+function scansFor(r){ return S.sessions.filter(s=>s.recon?.status==="done" && s.recon.result && scanRoom(s)===r).sort((a,b)=>b.recon.at-a.recon.at); }
+// Where the measured outline sits on the plan. The worker places it over the drawn room when it can.
+function scanShift(m,r){ if(m.aligned||!r) return [0,0]; const a=centroid(r.poly), b=centroid(m.poly); return [a[0]-b[0],a[1]-b[1]]; }
+function reconCell(s){
+  const r=s.recon;
+  if (!r) return s.photos>=MIN_RECON && s.verdict!=="rejected" ? `<span class="pill idle">Waiting for worker</span>` : `<span class="muted small">—</span>`;
+  if (r.status==="processing") return `<span class="pill warn">Measuring…</span>`;
+  if (r.status==="failed") return `<span class="pill bad">Failed</span><div class="small muted" style="margin:4px 0">${esc(r.error||"")}</div>${S.readOnly?"":`<button class="btn sm" data-retry="${esc(s._id)}">Try again</button>`}`;
+  const m=r.result, onPlan=!!scanRoom(s);
+  return `<span class="mono small">${m.size[0].toFixed(2)} × ${m.size[1].toFixed(2)} m</span>${m.height?`<span class="small muted"> · ${m.height.toFixed(2)} m high</span>`:""}
+    <div style="margin-top:4px">${onPlan?`<button class="btn sm" data-scan="${esc(s._id)}">Show on plan</button>`:S.readOnly?`<span class="small muted">Room isn't on the plan</span>`:`<button class="btn sm" data-addscan="${esc(s._id)}">Add room to plan</button>`}</div>`;
+}
+async function loadScan(id){
+  if (S.scanCache[id]) return;
+  const h=apiHeaders(); delete h["content-type"];
+  try{ const r=await fetch("/api/jobs?session="+encodeURIComponent(id),{headers:h,cache:"no-store"}); if(!r.ok) return;
+    S.scanCache[id]=(await r.json()).recon.result; if(S.scanView===id) renderPlan(); }catch(e){}
+}
+function showScan(id){
+  const s=S.sessions.find(x=>x._id===id), r=s&&scanRoom(s); if(!r) return;
+  S.floor=r.floor; S.sel=r.k; S.scanView=id; loadScan(id); setTab("plan"); setSheet(false);
+  const [x0,y0,x1,y1]=bbox([...r.poly,...s.recon.result.poly]); S.view.cx=(x0+x1)/2; S.view.cy=(y0+y1)/2; renderPlan();
+}
+function scanOverlay(fs){
+  const s=S.scanView&&S.sessions.find(x=>x._id===S.scanView), m=s?.recon?.result, r=s&&scanRoom(s);
+  if (!m || !r || r.floor!==S.floor) return "";
+  const [dx,dy]=scanShift(m,r), acc=css("--accent"), P=m.poly.map(p=>[p[0]+dx,p[1]+dy]), full=S.scanCache[s._id];
+  let g="";
+  if (full){ const w=2.5/S.view.scale; let d=""; full.wallPoints.forEach(([x,y])=>d+=`M${x+dx-w/2},${y+dy-w/2}h${w}v${w}h${-w}z`); g+=`<path d="${d}" fill="${css("--ink")}" fill-opacity=".45"/>`; }
+  g+=`<polygon points="${P.map(p=>p.join(",")).join(" ")}" fill="${acc}" fill-opacity=".08" stroke="${acc}" stroke-width="2.5" stroke-dasharray="7 4" vector-effect="non-scaling-stroke"/>`;
+  if (m.marker){ const [x,y]=[m.marker[0]+dx,m.marker[1]+dy], w=8/S.view.scale; g+=`<rect x="${x-w/2}" y="${y-w/2}" width="${w}" height="${w}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke"/>`; }
+  const top=P.reduce((a,b)=>b[1]<a[1]||(b[1]===a[1]&&b[0]<a[0])?b:a);
+  g+=`<text x="${top[0]}" y="${top[1]-fs*.4}" font-family="${css("--f-body")}" font-size="${fs*.8}" font-weight="600" fill="${acc}">Measured from photos</text>`;
+  return `<g pointer-events="none">${g}</g>`;
+}
+function scanPanel(r,ro){
+  const list=scansFor(r); if(!list.length) return "";
+  const s=list[0], m=s.recon.result, [x0,y0,x1,y1]=bbox(r.poly), on=S.scanView===s._id;
+  const diff=(a,b)=>{ const d=a-b; return Math.abs(d)<.05?"":` <span class="${Math.abs(d)>=.25?"warn":"muted"}">${d>0?"+":"−"}${Math.abs(d).toFixed(2)}</span>`; };
+  const src=m.scale.source==="marker"?"door marker":"phone height (rough)";
+  return `<h3>Measured from photos</h3>
+    <p class="small muted" style="margin:0 0 8px">${esc(ago(s.recon.at))}, from ${m.images.placed} of ${m.images.total||s.photos} photos${list.length>1?` · newest of ${list.length} measurements`:""}.</p>
+    <dl class="kv"><dt>Width × depth</dt><dd>${m.size[0].toFixed(2)} × ${m.size[1].toFixed(2)} m</dd>
+      <dt>As drawn</dt><dd>${(x1-x0).toFixed(2)} × ${(y1-y0).toFixed(2)} m</dd>
+      <dt>Area</dt><dd>${fmtArea(m.area)}${diff(m.area,area(r.poly))}</dd>
+      <dt>Ceiling</dt><dd>${m.height?m.height.toFixed(2)+" m"+diff(m.height,r.height):"not measured"}</dd>
+      <dt>Scale from</dt><dd>${src}</dd><dt>Confidence</dt><dd><span class="pill ${m.scale.confidence==="high"?"ok":m.scale.confidence==="medium"?"warn":"bad"}">${m.scale.confidence}</span></dd></dl>
+    ${m.notes.length?`<ul class="checks" style="margin-top:8px">${m.notes.map(n=>`<li><span>•</span><span class="small">${esc(n)}</span></li>`).join("")}</ul>`:""}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn sm" id="scanShow" data-s="${esc(s._id)}" aria-pressed="${on}">${on?"Hide on plan":"Show on plan"}</button>${ro?"":`<button class="btn sm primary" id="scanUse">Use measured outline${m.height?" and height":""}</button>`}</div>`;
+}
+// Doors stay where they were: each moves to the nearest point on the new outline.
+function remapDoors(oldPoly,doors,poly){
+  return doors.map(d=>{ const [a,b]=edgeOf(oldPoly,d.e), c=lerp(a,b,d.t); let best=null,bd=1e9;
+    poly.forEach((_,e)=>{ const ed=edgeOf(poly,e), t=projT(c,ed), q=dist(c,lerp(ed[0],ed[1],t)); if(q<bd){ bd=q; best={e,t:+t.toFixed(4),w:d.w}; } });
+    return best; });
+}
+function applyScan(r,s){
+  if (!s || S.readOnly) return;
+  const m=s.recon.result, [dx,dy]=scanShift(m,r), poly=m.poly.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]);
+  r.doors=remapDoors(r.poly,r.doors,poly); r.poly=poly;
+  if (m.height) r.height=Math.max(2.2,Math.min(12,+m.height.toFixed(2)));
+  S.scanView=s._id; edit(`Applied measured outline to ${r.id}`);
+  toast(`Updated ${r.id} from the photos. The old outline is still in History.`);
+}
+function addScanRoom(id){
+  const s=S.sessions.find(x=>x._id===id), m=s?.recon?.result; if(!m || S.readOnly) return;
+  if (!S.plan.floors.some(f=>f.level===s.floor)) S.plan.floors.push({level:s.floor,name:"Level "+s.floor});
+  const others=floorRooms(s.floor).flatMap(r=>r.poly), [px0,py0]=bbox(m.poly);
+  const [ox,oy]=others.length?[bbox(others)[2]+1-px0,bbox(others)[1]-py0]:[-px0,-py0];
+  const k=uid(); S.plan.rooms.push({k,id:uniqueId(s.room),name:"",type:"other",floor:s.floor,height:m.height?Math.max(2.2,Math.min(12,+m.height.toFixed(2))):3.2,
+    poly:m.poly.map(p=>[+(p[0]+ox).toFixed(2),+(p[1]+oy).toFixed(2)]),doors:[]});
+  S.floor=s.floor; S.sel=k; setTab("plan"); edit(`Added ${s.room} from measurements`); fit();
+  toast(`Added ${s.room}. Drag it into place and set its type.`);
+}
+async function retryScan(id,b){
+  b.disabled=true;
+  try{ const r=await apiSend("DELETE","/api/jobs?session="+encodeURIComponent(id)); if(!r.ok) throw await apiError(r); toast("Queued for measuring again."); poll(true); }
+  catch(e){ toast(e.message||"Couldn't queue it again."); b.disabled=false; }
 }
 
 /* ---------- photo viewer ---------- */
@@ -1288,7 +1384,13 @@ $("#galZip").onclick=async()=>{
   }catch(e){ toast("Couldn't build the zip."); }
   finally{ b.textContent="Download all (.zip)"; b.disabled=false; }
 };
-$("#sessionsPad").addEventListener("click",e=>{ const b=e.target.closest("[data-gal]"); if(b) openGallery(b.dataset.gal,b.dataset.room); });
+$("#sessionsPad").addEventListener("click",e=>{
+  const b=e.target.closest("[data-gal],[data-scan],[data-retry],[data-addscan]"); if(!b) return;
+  if (b.dataset.gal) openGallery(b.dataset.gal,b.dataset.room);
+  else if (b.dataset.scan) showScan(b.dataset.scan);
+  else if (b.dataset.addscan) addScanRoom(b.dataset.addscan);
+  else retryScan(b.dataset.retry,b);
+});
 
 /* ---------- history view ---------- */
 async function renderHistory(){
@@ -1355,8 +1457,8 @@ async function poll(force){
     if (res.status===304) return;
     if (!res.ok) throw await apiError(res);
     const d=await res.json(); S.etag=res.headers.get("etag");
-    const sessKey=s=>s.length+":"+(s[0]?._id||""), sessChanged=sessKey(d.sessions||[])!==sessKey(S.sessions);
-    S.loaded=true; S.sessions=d.sessions||[]; S.versions=d.versions||[];
+    const sessKey=s=>s.map(x=>x._id+(x.recon?x.recon.status+x.recon.at:"")).join(), sessChanged=sessKey(d.sessions||[])!==sessKey(S.sessions);
+    S.loaded=true; S.sessions=d.sessions||[]; S.versions=d.versions||[]; S.worker=d.worker||null;
     const adopted=applyRemote(d.plan);
     updateCounts(); renderBanner(); renderSessions(); renderHistory();
     if (!adopted && sessChanged){ if(S.tab==="plan") renderPlan(); if(S.tab==="3d") build3D(); }

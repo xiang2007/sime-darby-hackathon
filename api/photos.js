@@ -2,8 +2,8 @@
 //   POST /api/photos?session=&i=&w=&h=   body: the JPEG (image/jpeg). Slot i must be one the session reserved.
 //   GET  /api/photos?session=ID          the session's photos: [{id, i, w, h, bytes, at}]
 //   GET  /api/photos?id=ID               one photo's bytes
-// When EDIT_KEY is set, viewing photos needs the key too.
-import { json, route, requireKey } from "../lib/http.js";
+// When EDIT_KEY is set, viewing photos needs the key too (or the worker's WORKER_KEY).
+import { json, route, requireKey, workerKeyOk } from "../lib/http.js";
 import * as V from "../lib/validate.js";
 import { claimPhoto, savePhotoData, dropPhoto, listPhotos, getPhoto } from "../lib/store.js";
 import { photoStore } from "../lib/photos.js";
@@ -17,7 +17,7 @@ const CLAIM_ERRORS = {
 };
 
 export const GET = route(async req => {
-  const denied = requireKey(req); if (denied) return denied;
+  if (!workerKeyOk(req)) { const denied = requireKey(req); if (denied) return denied; }
   const q = new URL(req.url).searchParams, id = q.get("id"), session = q.get("session");
   if (id != null) {
     if (!/^\d{1,18}$/.test(id)) throw new V.Invalid("id must be a whole number");
