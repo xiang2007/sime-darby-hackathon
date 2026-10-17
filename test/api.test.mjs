@@ -1,6 +1,6 @@
 // API tests. The database tests need a throwaway Postgres:
 //   TEST_DATABASE_URL=postgres://user:pass@localhost/apu_test npm test
-// They wipe the plan, versions, sessions and photos tables.
+// They wipe every table.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import * as V from "../lib/validate.js";
@@ -53,13 +53,13 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
   const { query, closeDb } = await import("../lib/db.js");
   after(closeDb);
   await query("SELECT 1");
-  await query("TRUNCATE plan, versions, sessions, photos RESTART IDENTITY");
+  await query("TRUNCATE plan, versions, sessions, photos, recon, workers RESTART IDENTITY");
   const api = name => import(`../api/${name}.js`);
   const call = async (name, method, body, headers = {}) => {
     const req = new Request(`http://x/api/${name}`, { method, headers: { "content-type": "application/json", ...headers },
       body: body === undefined ? undefined : JSON.stringify(body) });
     const res = await (await api(name.split("?")[0]))[method](new Request(`http://x/api/${name}`, req));
-    return { status: res.status, etag: res.headers.get("etag"), body: res.status === 304 ? null : await res.json() };
+    return { status: res.status, etag: res.headers.get("etag"), body: [204, 304].includes(res.status) ? null : await res.json() };
   };
 
   await t.test("health reports the database", async () => {
@@ -156,6 +156,61 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     } finally { delete process.env.PHOTO_UPLOAD; }
   });
 
+  await t.test("jobs: claim, report, reset", async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
+    const up = (q) => api("photos").then(m => m.POST(new Request(`http://x/api/photos?${q}`, { method: "POST", headers: { "content-type": "image/jpeg" }, body: jpeg })));
+    const W = { "x-worker-key": "worker secret" };
+    const claim = (q = "", h = W) => call("jobs" + q, "POST", { name: "test-pc", version: "1" }, h);
+    const result = { poly: [[0, 0], [7.2, 0], [7.2, 5.4], [0, 5.4]], size: [7.2, 5.4], area: 38.88, height: 3, aligned: true, match: 0.9,
+      scale: { source: "marker", confidence: "high", views: 3 }, images: { placed: 9, total: 9 }, points: 5000, notes: [],
+      marker: [1, 0], wallPoints: [[0, 1], [7.2, 2]], cameras: [[3, 3]], worker: { version: "1" }, extra: "dropped" };
+
+    assert.equal((await claim("", {})).status, 503, "no WORKER_KEY on the server");
+    process.env.WORKER_KEY = "worker secret";
+    try {
+      assert.equal((await claim("", { "x-worker-key": "nope" })).status, 401);
+      const s = await call("sessions", "POST", { block: "B", floor: 3, room: "B-03-01", verdict: "accepted", frames: 9, usable: 9, gaps: 0, photos: 9 });
+      const id = s.body._id;
+      for (let i = 0; i < 8; i++) assert.equal((await up(`session=${id}&i=${i}&w=4&h=3`)).status, 201);
+      assert.equal((await claim()).status, 204, "uploads not finished yet");
+      await up(`session=${id}&i=8&w=4&h=3`);
+      const j = await claim();
+      assert.equal(j.status, 200);
+      assert.equal(j.body.job.session._id, id);
+      assert.equal(j.body.job.photos.length, 9);
+      assert.equal(j.body.job.room.id, "B-03-01");
+      assert.equal(j.body.job.marker, "APU|B|03|B-03-01");
+      assert.equal((await claim()).status, 204, "already being processed");
+
+      process.env.EDIT_KEY = "open sesame";
+      try {
+        const photo = id => api("photos").then(m => m.GET(new Request(`http://x/api/photos?id=${id}`, { headers: W })));
+        assert.equal((await photo(j.body.job.photos[0].id)).status, 200, "the worker can fetch photos with its own key");
+      } finally { delete process.env.EDIT_KEY; }
+
+      assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result: { ...result, poly: [[0, 0]] } }, W)).status, 400);
+      assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result }, W)).status, 200);
+      assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result }, W)).status, 409, "not claimed any more");
+      const st = await call("state", "GET");
+      const rec = st.body.sessions.find(x => x._id === id).recon;
+      assert.equal(rec.status, "done");
+      assert.equal(rec.result.area, 38.88);
+      assert.equal(rec.result.wallPoints, undefined, "point lists stay out of /api/state");
+      assert.equal(rec.result.extra, undefined);
+      assert.equal(st.body.worker.name, "test-pc");
+      const full = await call(`jobs?session=${id}`, "GET");
+      assert.deepEqual(full.body.recon.result.wallPoints, [[0, 1], [7.2, 2]]);
+
+      assert.equal((await call(`jobs?session=${id}`, "DELETE")).status, 200);
+      assert.equal((await claim()).status, 200, "measured again after a reset");
+      assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "failed", error: "Too blurry" }, W)).status, 200);
+      const failed = (await call("state", "GET")).body.sessions.find(x => x._id === id).recon;
+      assert.deepEqual([failed.status, failed.error], ["failed", "Too blurry"]);
+      assert.equal((await claim()).status, 204, "failed sessions wait for a reset");
+      assert.equal((await claim(`?session=${id}`)).status, 200, "unless asked for by ID");
+    } finally { delete process.env.WORKER_KEY; }
+  });
+
   await t.test("edit key", async () => {
     process.env.EDIT_KEY = "open sesame";
     try {
@@ -166,6 +221,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
       const yes = await call("plan", "PUT", { plan: plan(), baseRev: 4 }, { "x-edit-key": "open sesame" });
       assert.equal(yes.status, 200);
       assert.equal((await call("photos?session=1", "GET")).status, 401, "photos need the key too");
+      assert.equal((await call("jobs?session=1", "DELETE")).status, 401, "so does resetting a measurement");
       const h = await call("health", "GET", undefined, { "x-edit-key": "wrong" });
       assert.equal(h.body.editKey, true); assert.equal(h.body.keyOk, false);
     } finally { delete process.env.EDIT_KEY; }
