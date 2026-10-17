@@ -6,6 +6,17 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 
 ---
 
+## What's new
+
+- **Measure rooms from photos.** A worker program on your own laptop turns uploaded photos into a measured room outline and ceiling height, using the door marker for scale. Compare it with the drawn room on the Floor plan tab and apply it in one click. [How to run it](#measuring-rooms-from-photos)
+- **Photos saved in the database.** Contributors can choose to upload their photos. They're stored in the same Neon database as the plan, with GPS and other hidden data removed. View them or download a zip from Sessions.
+- **Works on phones.** Bottom tab bar, pull-up room details, and touch drawing, panning and zooming.
+- **New name:** UCampass(PIC).
+
+**To turn on 3D measuring:** add `WORKER_KEY` in Vercel and redeploy, then on a laptop run `python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY` inside `worker/` ([full steps](#run-it)).
+
+---
+
 ## What it does
 
 | Tab | Purpose |
@@ -100,7 +111,7 @@ The worker turns a contributor's photos into a measured room outline and ceiling
 
 On the **Floor plan** tab, pick the room and look under **Measured from photos**: measured and drawn sizes side by side, the ceiling height, and where the scale came from. **Show on plan** draws the measured outline and wall points over the drawing. **Use measured outline** replaces the drawn shape and height; doors move to the nearest point on the new outline, and the old shape stays in History. If the room isn't on the plan yet, **Add room to plan** on the Sessions tab creates it.
 
-**Run it**
+### Run it
 
 Needs Python 3.10–3.13.
 
@@ -140,7 +151,6 @@ Real rooms will be less exact: glass, mirrors, blank walls and moving people all
 3. **Vercel:** added a build step so the same page deploys to Vercel on every push.
 4. **Full stack and stairwells:** added the Postgres API, live sync between editors, room-by-room merging and an optional edit key. Added real stairs and lift shafts to the 3D model. Tested with 12 API tests and two-browser tests against a local database.
 5. **Phones and photo upload:** made the layout work on phones (bottom tabs, pull-up room sheet, touch drawing) and renamed the app UCampass(PIC). Added opt-in photo upload, stored in the Postgres database, with a photo viewer and zip download, so sessions can feed a reconstruction server.
-
 6. **3D measuring:** added the local worker (COLMAP through pycolmap, then floor, ceiling and wall fitting with marker scale), a job queue in Postgres, and the Floor plan comparison, overlay and apply. Tested on rendered rooms with known sizes, end to end through the phone UI.
 
 **Not built yet:** 3D Gaussian Splatting (pipeline steps 7–8) for photoreal views. The outline doesn't need it.
