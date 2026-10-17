@@ -34,13 +34,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
+:root{--navh:0px;--peek:56px}
 header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--sheet);border-bottom:1px solid var(--rule);
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px 0}
-.bar-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
-.brand h1{font-family:var(--f-display);font-stretch:75%;font-weight:800;font-size:1.35rem;letter-spacing:.01em;margin:0;text-transform:uppercase;text-wrap:balance}
-.brand .tag{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2)}
-.bar-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar-top{display:flex;align-items:center;column-gap:24px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0;padding-block:12px}
+.brand h1{font-family:var(--f-display);font-stretch:75%;font-weight:800;font-size:1.3rem;letter-spacing:.01em;margin:0;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .tag{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2);white-space:nowrap}
+.bar-right{margin-left:auto;display:flex;align-items:center;gap:10px;order:3;min-width:0}
 .sync{font-size:.78rem;color:var(--ink-2);display:flex;align-items:center;gap:6px}
 .sync i{width:8px;height:8px;border-radius:50%;background:var(--ink-2);display:inline-block}
 .sync[data-s="saved"] i{background:var(--ok)} .sync[data-s="saving"] i{background:var(--warn)} .sync[data-s="error"] i{background:var(--bad)}
@@ -51,18 +52,30 @@ header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 dialog.sheet{border:1px solid var(--rule);border-radius:10px;background:var(--sheet);color:var(--ink);padding:18px;width:min(380px,calc(100vw - 32px))}
 dialog.sheet::backdrop{background:rgb(0 0 0 / .35)}
 dialog.sheet h2{margin-top:0}
-nav.tabs{display:flex;gap:2px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
-nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 7px;cursor:pointer;font-family:var(--f-display);font-stretch:85%;font-weight:600;font-size:.92rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;order:2;align-self:stretch}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{position:relative;display:flex;align-items:center;background:none;border:0;border-bottom:3px solid transparent;padding:14px 12px 11px;cursor:pointer;font-family:var(--f-display);font-stretch:85%;font-weight:600;font-size:.92rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-nav.tabs .count{font-family:var(--f-mono);font-size:.7rem;margin-left:4px;color:var(--ink-2)}
+nav.tabs svg{display:none}
+nav.tabs .count{font-family:var(--f-mono);font-size:.7rem;margin-left:5px;color:var(--ink-2)}
+nav.tabs .count:empty{display:none}
+@media (max-width:1040px) and (min-width:721px){ nav.tabs{flex-basis:100%;order:4;margin-left:-12px} nav.tabs button{padding-top:6px} }
 
 main{flex:1;display:flex;flex-direction:column;min-height:0}
-.view{flex:1;min-height:0}
-.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px;max-width:1100px;width:100%;margin:0 auto}
+.view{flex:1;min-height:0;display:flex;flex-direction:column}
+body.fill{height:100vh;height:100dvh;overflow:hidden}
+.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 48px;max-width:1100px;width:100%;margin:0 auto}
+.pad h2+.lead{margin-top:-4px}
+.sec{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px;font-weight:600}
 
-.banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border-bottom:1px solid var(--rule);font-size:.85rem;
+.banner{display:flex;gap:6px 14px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border-bottom:1px solid var(--rule);font-size:.84rem;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:8px}
+.banner .msg{flex:1 1 320px;min-width:0}
 .banner b{font-weight:600}
+.banner .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.banner .x{border:0;background:none;cursor:pointer;font-size:1.1rem;line-height:1;padding:6px 8px;color:var(--ink-2);border-radius:6px}
+.banner .x:hover{color:var(--ink);background:rgb(0 0 0 / .05)}
 .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:6px 11px;cursor:pointer;font-size:.85rem;font-weight:500;line-height:1.2}
 .btn:hover{border-color:var(--ink-2)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -75,24 +88,39 @@ main{flex:1;display:flex;flex-direction:column;min-height:0}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet)}
 
 /* plan */
-.plan-wrap{display:grid;grid-template-columns:minmax(0,1fr) 330px;height:100%;min-height:520px}
+.plan-wrap{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0}
 .canvas-col{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--rule);background:var(--paper)}
+.toolbar .grow{flex:1}
+.ovl{position:absolute;left:12px;top:12px;box-shadow:0 1px 3px rgb(0 0 0 / .08)}
+.hint button{pointer-events:auto}
+.hint{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hint .acts{display:flex;gap:6px}
+.menu{position:relative}
+.menu summary{list-style:none}
+.menu summary::-webkit-details-marker{display:none}
+.menu .pop{position:absolute;right:0;top:calc(100% + 6px);z-index:8;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;box-shadow:0 8px 24px rgb(0 0 0 / .14);padding:6px;display:grid;min-width:220px}
+.menu .pop button{text-align:left;border:0;background:none;padding:9px 10px;border-radius:6px;cursor:pointer;font-size:.86rem}
+.menu .pop button:hover{background:var(--paper)}
+.menu .pop button small{display:block;color:var(--ink-2);font-size:.74rem}
+.menu .pop button[disabled]{opacity:.45;cursor:not-allowed}
+.sheet-handle{display:none}
+.insp-body{padding:16px}
 .toolbar .sep{width:1px;height:22px;background:var(--rule)}
 .floors{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .floors .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-right:2px}
 .chip{border:1px solid var(--rule);background:var(--sheet);border-radius:999px;padding:3px 10px;font-size:.8rem;cursor:pointer;font-family:var(--f-mono)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
-.svgbox{flex:1;position:relative;min-height:380px;touch-action:none;background:var(--paper)}
+.svgbox{flex:1;position:relative;min-height:0;touch-action:none;background:var(--paper);overflow:hidden}
 svg#plan{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none}
 .hint{position:absolute;left:12px;bottom:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;font-size:.78rem;color:var(--ink-2);max-width:calc(100% - 24px);pointer-events:none}
 .zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px}
-.zoom button{width:32px;height:32px;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;cursor:pointer;font-family:var(--f-mono)}
+.zoom button{width:34px;height:34px;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;cursor:pointer;font-family:var(--f-mono)}
 .legend{position:absolute;right:12px;top:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;font-size:.74rem;display:grid;grid-template-columns:auto auto;gap:3px 12px;pointer-events:none}
 .legend span{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .sw{width:10px;height:10px;border-radius:2px;display:inline-block;flex:none}
 
-aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overflow:auto;padding:16px;min-width:0}
+aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overflow:auto;min-width:0;min-height:0}
 .inspector h2,.pad h2{font-family:var(--f-display);font-stretch:80%;font-weight:700;font-size:1.05rem;letter-spacing:.03em;text-transform:uppercase;margin:0 0 10px}
 .inspector h3{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:18px 0 8px;font-weight:600}
 .field{display:grid;gap:4px;margin-bottom:10px}
@@ -114,13 +142,17 @@ aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overfl
 .qr svg{display:block;width:120px;height:120px}
 
 /* 3d */
-.three-wrap{position:relative;height:100%;min-height:520px;display:flex;flex-direction:column}
-#three{flex:1;position:relative;min-height:420px}
+.three-wrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+#three{flex:1;position:relative;min-height:0;overflow:hidden}
+#three canvas{position:absolute;inset:0}
 #three canvas{display:block;width:100%;height:100%}
 .three-info{position:absolute;left:12px;top:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:8px 12px;font-size:.82rem;max-width:calc(100% - 24px)}
 
 /* capture */
-.cap-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+.cap-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;grid-template-areas:"intro side" "frames side";gap:0 24px;align-items:start}
+.cap-intro{grid-area:intro;min-width:0}
+#capSide{grid-area:side;position:sticky;top:76px}
+#frames{grid-area:frames;min-width:0}
 .drop{border:2px dashed var(--rule);border-radius:10px;padding:26px 18px;text-align:center;background:var(--sheet);cursor:pointer}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .drop strong{font-family:var(--f-display);font-stretch:85%;font-size:1.1rem;letter-spacing:.02em}
@@ -158,13 +190,87 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
 .cov{display:flex;justify-content:space-between;gap:8px;align-items:center;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-size:.82rem}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--sheet);padding:9px 16px;border-radius:8px;font-size:.85rem;z-index:20;max-width:calc(100% - 32px)}
 
+/* tablet & phone: the inspector becomes a bottom sheet that peeks above the plan */
 @media (max-width:860px){
-  .plan-wrap{grid-template-columns:minmax(0,1fr);height:auto}
-  .svgbox{min-height:58vh}
-  aside.inspector{border-left:0;border-top:1px solid var(--rule)}
-  .cap-grid{grid-template-columns:minmax(0,1fr)}
+  .plan-wrap{grid-template-columns:minmax(0,1fr)}
+  .canvas-col{padding-bottom:var(--peek)}
+  aside.inspector{position:fixed;left:0;right:0;bottom:var(--navh);z-index:6;max-height:min(74dvh,640px);display:flex;flex-direction:column;overflow:hidden;
+    border:1px solid var(--rule);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:0 -6px 24px rgb(0 0 0 / .12);
+    transform:translateY(calc(100% - var(--peek)));transition:transform .22s ease;
+    padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  aside.inspector.open{transform:none}
+  .sheet-handle{display:flex;flex:none;align-items:center;gap:10px;height:var(--peek);width:100%;border:0;background:none;cursor:pointer;padding:6px 16px 0;position:relative;text-align:left;font-size:.9rem}
+  .sheet-handle::before{content:"";position:absolute;top:6px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--rule)}
+  .sheet-handle .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheet-handle .lbl b{font-family:var(--f-mono);font-weight:500;margin-right:6px}
+  .sheet-handle .chev{font-size:.78rem;color:var(--ink-2);display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .sheet-handle .chev svg{transition:transform .2s}
+  aside.inspector.open .sheet-handle .chev svg{transform:rotate(180deg)}
+  .insp-body{overflow:auto;flex:1;padding-top:4px;border-top:1px solid var(--rule);overscroll-behavior:contain}
+  .cap-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"intro" "side" "frames"}
+  #capSide{position:static;margin-top:14px}
   .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
   .legend{display:none}
+}
+/* phone: tabs move to a bottom bar, toolbars stay on one scrollable row, tables become cards */
+@media (max-width:720px){
+  :root{--navh:calc(58px + env(safe-area-inset-bottom,0px))}
+  body{padding-bottom:var(--navh)}
+  .brand{padding-block:10px}
+  .brand h1{font-size:1.05rem}
+  header.bar{z-index:8}
+  .brand .tag{display:none}
+  .sync{font-size:.72rem;white-space:nowrap}
+  .banner .more{display:none}
+  .me button{padding:2px 8px;font-size:.74rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-top{flex-wrap:nowrap;column-gap:10px}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:7;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;
+    background:var(--sheet);border-top:1px solid var(--rule);padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+  nav.tabs button{flex-direction:column;justify-content:center;gap:3px;height:58px;padding:0 2px;border-bottom:0;border-top:2px solid transparent;
+    font-family:var(--f-body);font-stretch:100%;font-size:.68rem;font-weight:500;letter-spacing:0;text-transform:none}
+  nav.tabs button[aria-selected="true"]{border-top-color:var(--accent);color:var(--accent)}
+  nav.tabs svg{display:block;width:22px;height:22px}
+  nav.tabs .count{position:absolute;top:5px;left:calc(50% + 6px);margin:0;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 5px;font-size:.6rem;line-height:15px;min-width:15px;text-align:center}
+  .banner{font-size:.8rem;padding-block:6px}
+  .banner .msg{flex-basis:100%}
+  .banner.solo .msg{flex-basis:0}
+  .toolbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-block:8px}
+  .toolbar::-webkit-scrollbar{display:none}
+  .toolbar > *{flex:none}
+  .toolbar .sep,.floors .lbl{display:none}
+  .toolbar .grow{flex:1 0 0}
+  .menu .pop{position:fixed;left:12px;right:12px;top:auto;bottom:calc(var(--navh) + 12px);min-width:0}
+  .hint{max-width:calc(100% - 70px)!important;font-size:.74rem}
+  .zoom button{width:40px;height:40px}
+  .three-info{font-size:.76rem}
+  .toast{bottom:calc(var(--navh) + var(--peek) + 12px)}
+  .pad{padding-block:16px 32px}
+  .stages{flex-direction:column}
+  .stage{flex:none;min-width:0;border-right:0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+  .stage:last-child{border-bottom:0}
+  .stage b{margin:0}
+  .stage .small{grid-column:1/-1}
+  .tiles{gap:8px}
+  .tile .n{font-size:1.6rem}
+  .frames{grid-template-columns:repeat(2,minmax(0,1fr))}
+  table.cards{min-width:0}
+  table.cards thead{display:none}
+  table.cards tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--rule)}
+  table.cards tr:last-child{border-bottom:0}
+  table.cards td{border:0;padding:0;text-align:left!important;min-width:0}
+  table.cards td[data-l]::before{content:attr(data-l);display:block;font-family:var(--f-body);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:1px}
+  table.cards td.wide{grid-column:1/-1}
+  table.cards td.first{order:-1}
+  table.cards td.none{display:none}
+}
+/* touch screens: bigger targets, and 16px inputs so iOS doesn't zoom on focus */
+@media (pointer:coarse){
+  input,select,textarea{font-size:16px!important}
+  .btn{min-height:40px}
+  .btn.sm{min-height:36px;padding-inline:12px}
+  .chip{min-height:36px;min-width:40px;padding-inline:12px}
+  .seg button{min-height:36px;padding-inline:12px}
+  .roomlist button{padding-block:8px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -172,18 +278,18 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
 <header class="bar">
   <div class="bar-top">
     <div class="brand"><h1>APU Campus Outline</h1><span class="tag" id="blockTag">Block B</span></div>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" id="tab-plan" aria-selected="true" data-tab="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 12h9M12 3v13M16 12h5"/></svg><span>Floor plan</span></button>
+      <button role="tab" id="tab-3d" aria-selected="false" data-tab="3d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg><span>3D outline</span></button>
+      <button role="tab" id="tab-capture" aria-selected="false" data-tab="capture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Contribute</span></button>
+      <button role="tab" id="tab-sessions" aria-selected="false" data-tab="sessions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>Sessions</span><span class="count" id="sessCount"></span></button>
+      <button role="tab" id="tab-history" aria-selected="false" data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>History</span><span class="count" id="histCount"></span></button>
+    </nav>
     <div class="bar-right">
       <span class="sync" id="sync" data-s="local"><i></i><span>Connecting…</span></span>
       <span class="me" id="me" hidden></span>
     </div>
   </div>
-  <nav class="tabs" role="tablist" aria-label="Views">
-    <button role="tab" id="tab-plan" aria-selected="true" data-tab="plan">Floor plan</button>
-    <button role="tab" id="tab-3d" aria-selected="false" data-tab="3d">3D outline</button>
-    <button role="tab" id="tab-capture" aria-selected="false" data-tab="capture">Contribute</button>
-    <button role="tab" id="tab-sessions" aria-selected="false" data-tab="sessions">Sessions<span class="count" id="sessCount"></span></button>
-    <button role="tab" id="tab-history" aria-selected="false" data-tab="history">History<span class="count" id="histCount"></span></button>
-  </nav>
 </header>
 <div class="banner" id="banner" hidden></div>
 
@@ -200,19 +306,22 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
             <button data-mode="draw" aria-pressed="false">Draw room</button>
             <button data-mode="door" aria-pressed="false">Doors</button>
           </div>
-          <div class="seg" id="overlay" aria-label="Colour by">
-            <button data-ov="type" aria-pressed="true">Room type</button>
-            <button data-ov="coverage" aria-pressed="false">Coverage</button>
-          </div>
         </div>
         <div class="svgbox" id="svgbox">
           <svg id="plan" aria-label="Floor plan editor"></svg>
+          <div class="seg ovl" id="overlay" aria-label="Colour by">
+            <button data-ov="type" aria-pressed="true">Room type</button>
+            <button data-ov="coverage" aria-pressed="false">Coverage</button>
+          </div>
           <div class="legend" id="legend"></div>
           <div class="hint" id="hint"></div>
           <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Fit plan" style="font-size:.7rem">FIT</button></div>
         </div>
       </div>
-      <aside class="inspector" id="inspector"></aside>
+      <aside class="inspector" id="insp" aria-label="Details">
+        <button type="button" class="sheet-handle" id="sheetHandle" aria-expanded="false" aria-controls="inspector"><span class="lbl" id="sheetLabel"></span><span class="chev"><span id="sheetCue">Details</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></span></button>
+        <div class="insp-body" id="inspector"></div>
+      </aside>
     </div>
   </section>
 
@@ -224,13 +333,18 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
           <button data-scope="all" aria-pressed="true">All floors</button>
           <button data-scope="one" aria-pressed="false">Current floor</button>
         </div>
-        <span class="sep"></span>
-        <button class="btn sm" id="exGeo">Export GeoJSON</button>
-        <button class="btn sm" id="exGlb">Export GLB (zip)</button>
-        <button class="btn sm" id="exJson">Export plan JSON</button>
-        <span class="small muted" id="exNote"></span>
+        <span class="grow"></span>
+        <details class="menu" id="exMenu">
+          <summary class="btn sm">Export <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+          <div class="pop">
+            <button id="exGlb">3D model (GLB)<small>Zip with the GLB and a GeoJSON copy</small></button>
+            <button id="exGeo">GeoJSON outline<small>Room polygons with their properties</small></button>
+            <button id="exJson">Plan JSON<small>The raw plan, for backup or import</small></button>
+            <span class="small muted" id="exNote" style="padding:0 10px"></span>
+          </div>
+        </details>
       </div>
-      <div id="three"><div class="three-info" id="threeInfo">Drag to orbit · scroll to zoom · click a room</div></div>
+      <div id="three"><div class="three-info" id="threeInfo"></div></div>
     </div>
   </section>
 
@@ -238,17 +352,17 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
   <section class="view" id="view-capture" hidden>
     <div class="pad">
       <div class="cap-grid">
-        <div style="min-width:0">
+        <div class="cap-intro">
           <h2>Contribute a capture session</h2>
-          <p class="muted small" style="margin-top:-4px;max-width:62ch">Walk one room or corridor slowly and take overlapping photos (about one every step, 60–80% overlap). Quality checks run in your browser. <b>Your photos never leave this device</b>: only the scores, the room tag and the frame count are uploaded.</p>
+          <p class="muted small lead" style="max-width:62ch">Walk one room or corridor slowly, taking a photo about every step so each overlaps the last. Checks run in your browser. <b>Your photos never leave this device</b>; only the scores, room tag and frame count are uploaded.</p>
           <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add photos">
-            <strong>Drop photos here or tap to choose</strong>
-            <div class="small muted">JPEG or PNG · a door marker QR in any frame fills in the room tag</div>
+            <strong id="dropTitle">Drop photos here or click to choose</strong>
+            <div class="small muted">JPEG or PNG · a door marker QR in any photo fills in the room tag</div>
             <input type="file" id="fileIn" accept="image/*" multiple hidden>
           </div>
-          <div class="frames" id="frames"></div>
         </div>
         <div class="card" id="capSide"></div>
+        <div class="frames" id="frames"></div>
       </div>
     </div>
   </section>
@@ -434,26 +548,29 @@ function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; cle
 function setSync(s,text){ const el=$("#sync"); el.dataset.s=s; el.lastElementChild.textContent=text; }
 
 /* ---------- banner ---------- */
+function bannerHTML(msg,acts="",dismiss=""){ $("#banner").classList.toggle("solo",!acts&&!!dismiss); return `<span class="msg">${msg}</span>${acts||dismiss?`<span class="acts">${acts}${dismiss?`<button class="x" id="bnX" aria-label="Dismiss">×</button>`:""}</span>`:""}`; }
 function renderBanner(){
   const b=$("#banner");
   if (S.conflict) return conflictBanner(b);
-  if (S.readOnly && S.api){ b.hidden=false; b.innerHTML=`<b>View only.</b> <span>This deployment needs an edit key to change the plan or submit sessions.</span><button class="btn sm" id="keyBtn">Enter edit key</button>`; $("#keyBtn").onclick=openProfile; return; }
-  if (S.readOnly){ b.hidden=false; b.innerHTML=`<b>View only.</b> <span>You can look around, but your sharing level doesn't allow edits or new sessions.</span>`; return; }
+  if (S.readOnly && S.api){ b.hidden=false; b.innerHTML=bannerHTML(`<b>View only.</b> This deployment needs an edit key to make changes.`,`<button class="btn sm" id="keyBtn">Enter edit key</button>`); $("#keyBtn").onclick=openProfile; return; }
+  if (S.readOnly){ b.hidden=false; b.innerHTML=bannerHTML(`<b>View only.</b> Your sharing level doesn't allow edits or new sessions.`); return; }
   if (S.example && S.loaded){
     b.hidden=false;
-    b.innerHTML=`<b>Example layout.</b> <span>No one has saved a plan yet. This sample of Block B, Levels 3–4 isn't saved until you edit it.${S.serverNote?" No database is connected yet, so edits stay in this browser.":""}</span>
-      <button class="btn sm" id="keepEx">Use this example</button><button class="btn sm" id="blankEx">Start blank</button>`;
+    b.innerHTML=bannerHTML(`<b>Example layout.</b> <span class="more">A sample of Block B, Levels 3–4.</span> Nothing is saved until you edit it.${S.serverNote?` <span class="more">No database yet, so edits stay in this browser.</span>`:""}`,
+      `<button class="btn sm primary" id="keepEx">Use this example</button><button class="btn sm" id="blankEx">Start blank</button>`);
     $("#keepEx").onclick=()=>{ S.example=false; scheduleSave("Started from the example layout",0); renderAll(); };
     $("#blankEx").onclick=()=>{ S.plan={block:"B",floors:[{level:1,name:"Level 1"}],rooms:[],rev:0}; S.floor=1; S.sel=null; S.example=false; scheduleSave("Started a blank plan",0); fit(); renderAll(); };
     return;
   }
-  if (!S.db && !S.api && S.loaded){ b.hidden=false;
-    b.innerHTML = S.serverNote==="unreachable" ? `<b>Database unreachable.</b> <span>The server can't connect to its Postgres database, so changes are saved in this browser only. Check DATABASE_URL in the Vercel project settings.</span>`
-      : S.serverNote ? `<b>No database connected yet.</b> <span>Changes are saved in this browser only. Add a Postgres database to the Vercel project (Storage → Neon), then redeploy to share the plan.</span>`
-      : `<b>Standalone copy.</b> <span>Shared storage isn't available here, so the plan, history and sessions are saved in this browser only.</span>`;
+  if (!S.db && !S.api && S.loaded && !bannerGone()){ b.hidden=false;
+    b.innerHTML = bannerHTML(S.serverNote==="unreachable" ? `<b>Database unreachable.</b> Changes are saved in this browser only. Check DATABASE_URL in the Vercel project settings.`
+      : S.serverNote ? `<b>No database connected.</b> Changes are saved in this browser only.<span class="more"> Add a Postgres database in Vercel (Storage → Neon) and redeploy to share the plan.</span>`
+      : `<b>Standalone copy.</b> The plan, history and sessions are saved in this browser only.`, "", true);
+    $("#bnX").onclick=()=>{ try{ sessionStorage.setItem("apu-banner-x","1"); }catch(e){} S.bannerX=true; renderBanner(); };
     return; }
   b.hidden=true;
 }
+function bannerGone(){ if(S.bannerX) return true; try{ return sessionStorage.getItem("apu-banner-x")==="1"; }catch(e){ return false; } }
 
 /* ---------- tabs ---------- */
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
@@ -461,6 +578,8 @@ function setTab(t){
   S.tab=t;
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
   ["plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
+  document.body.classList.toggle("fill", t==="plan"||t==="3d");
+  $("#exMenu").open=false; window.scrollTo(0,0);
   if (t==="3d") { init3D(); build3D(); resize3D(); }
   if (t==="plan") renderPlan();
   if (t==="sessions") renderSessions();
@@ -553,11 +672,21 @@ function renderPlan(){
 }
 function inwardNormal(r,e){ const [a,b]=edgeOf(r.poly,e), dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1, s=signed(r.poly)>0?1:-1; return [-dy/L*s, dx/L*s]; }
 
+const TOUCH = matchMedia("(pointer:coarse)").matches;
+let hintKey="";
 function renderHint(){
-  const h={select:S.readOnly?"Click a room to see its details. Drag the background to pan.":"Click a room to edit it · drag corner handles to reshape · drag background to pan",
-    draw:S.draft.length?"Click to add corners (right angles snap; hold Shift for free angles) · click the first corner or press Enter to close · Esc cancels":"Click to place the first corner. Points snap to a 0.5 m grid.",
-    door:"Click on a wall to add a 0.9 m door · click a door swing to remove it"}[S.mode];
-  $("#hint").textContent=h;
+  const n=S.draft.length, tap=TOUCH?"Tap":"Click";
+  const h={select:S.readOnly?`${tap} a room to see its details. Drag to pan${TOUCH?", pinch to zoom":""}.`
+      :TOUCH?"Tap a room to edit it · drag to pan · pinch to zoom":"Click a room to edit it · drag corner handles to reshape · drag to pan",
+    draw:n?(TOUCH?`${n} corner${n===1?"":"s"} · tap to add more, or tap the first corner to close`:"Click to add corners (right angles snap; Shift for free angles) · click the first corner or press Enter to close")
+      :`${tap} to place the first corner. Points snap to a 0.5 m grid.`,
+    door:`${tap} a wall to add a 0.9 m door · ${tap.toLowerCase()} a door to remove it`}[S.mode];
+  const acts = S.mode==="draw" && n ? `<span class="acts"><button class="btn sm" data-d="undo">Undo</button><button class="btn sm primary" data-d="done" ${n<3?"disabled":""}>Finish room</button><button class="btn sm" data-d="cancel">Cancel</button></span>` : "";
+  const key=h+acts; if (key===hintKey) return; hintKey=key;
+  const el=$("#hint"); el.innerHTML=`<span>${esc(h)}</span>${acts}`;
+  el.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{ const d=b.dataset.d;
+    if (d==="undo") S.draft.pop(); if (d==="cancel") S.draft=[]; S.cursor=null;
+    if (d==="done" && S.draft.length>=3) return closeDraft(); renderPlan(); });
 }
 function renderLegend(){
   const l=$("#legend");
@@ -566,16 +695,52 @@ function renderLegend(){
   l.hidden = !l.innerHTML;
 }
 
-/* pointer interaction */
-let pan=null;
+/* pointer interaction: a tap (press and release without moving) selects, draws or places a door;
+   dragging with one finger or the mouse pans; two fingers pinch-zoom. Corner handles drag straight away. */
+let press=null, pinch=null; const ptrs=new Map();
+function svgOff(x,y){ const r=svg.getBoundingClientRect(); return [x-r.left-r.width/2, y-r.top-r.height/2]; }
+function pinchState(){ const [a,b]=[...ptrs.values()]; return {d:Math.hypot(a.x-b.x,a.y-b.y)||1, m:svgOff((a.x+b.x)/2,(a.y+b.y)/2)}; }
+function endDrag(){ if(!S.drag) return; const d=S.drag; S.drag=null; if(d.moved) edit("Reshaped "+roomByK(d.k).id); }
 svg.addEventListener("pointerdown",ev=>{
-  const pt=toWorld(ev), t=ev.target;
-  if (S.mode==="select"){
-    if (t.dataset.h!==undefined && S.sel){ S.drag={i:+t.dataset.h,k:S.sel,moved:false}; svg.setPointerCapture(ev.pointerId); return; }
-    const k=t.dataset.k || hitRoom(pt);
-    if (k){ S.sel=k; renderPlan(); return; }
-    S.sel=null; pan={x:ev.clientX,y:ev.clientY,cx:S.view.cx,cy:S.view.cy,moved:false}; svg.setPointerCapture(ev.pointerId); renderPlan(); return;
+  if (ev.button>0) return;
+  ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY}); try{ svg.setPointerCapture(ev.pointerId); }catch(e){}
+  if (ptrs.size===2){ endDrag(); press=null; const p=pinchState(), s=S.view.scale;
+    pinch={d:p.d,s,w:[S.view.cx+p.m[0]/s,S.view.cy+p.m[1]/s]}; if(S.mode==="draw"){ S.cursor=null; renderPlan(); } return; }
+  if (ptrs.size>2) return;
+  const t=ev.target;
+  if (S.mode==="select" && t.dataset.h!==undefined && S.sel && !S.readOnly){ S.drag={i:+t.dataset.h,k:S.sel,moved:false}; return; }
+  press={x:ev.clientX,y:ev.clientY,cx:S.view.cx,cy:S.view.cy,target:t,moved:false};
+  if (ev.pointerType!=="mouse") hover(ev);
+});
+svg.addEventListener("pointermove",ev=>{
+  if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  if (pinch){ if(ptrs.size<2) return; const p=pinchState(), s=Math.max(3,Math.min(160,pinch.s*p.d/pinch.d));
+    S.view={cx:pinch.w[0]-p.m[0]/s, cy:pinch.w[1]-p.m[1]/s, scale:s}; renderPlan(); return; }
+  if (S.drag){ const pt=toWorld(ev), r=roomByK(S.drag.k); r.poly[S.drag.i]=[snap(pt[0],VSNAP),snap(pt[1],VSNAP)]; S.drag.moved=true; renderPlan(); return; }
+  if (press){
+    if (!press.moved && Math.hypot(ev.clientX-press.x,ev.clientY-press.y)>(ev.pointerType==="mouse"?4:8)){ press.moved=true; S.cursor=null; S.hoverEdge=null; }
+    if (press.moved){ const s=S.view.scale; S.view.cx=press.cx-(ev.clientX-press.x)/s; S.view.cy=press.cy-(ev.clientY-press.y)/s; renderPlan(); return; }
   }
+  if (ev.pointerType==="mouse" || press) hover(ev);
+});
+function hover(ev){
+  const pt=toWorld(ev);
+  if (S.mode==="draw" && !S.readOnly){ S.cursor=drawPoint(pt,ev.shiftKey); renderPlan(); }
+  else if (S.mode==="door"){ const he=nearestEdge(pt); if(JSON.stringify(he)!==JSON.stringify(S.hoverEdge)){ S.hoverEdge=he; renderPlan(); } }
+}
+function pointerEnd(ev){
+  ptrs.delete(ev.pointerId);
+  if (pinch){ if(!ptrs.size) pinch=null; press=null; return; }   // the finger left over after a pinch does nothing
+  if (S.drag){ endDrag(); return; }
+  const p=press; press=null;
+  if (p && !p.moved && ev.type==="pointerup") tapAt(ev,p.target);
+  if (ev.pointerType!=="mouse" && (S.cursor||S.hoverEdge)){ S.cursor=null; S.hoverEdge=null; renderPlan(); }
+}
+svg.addEventListener("pointerup",pointerEnd);
+svg.addEventListener("pointercancel",pointerEnd);
+function tapAt(ev,t){
+  const pt=toWorld(ev);
+  if (S.mode==="select"){ const k=t.dataset.k||hitRoom(pt)||null; if(k!==S.sel){ S.sel=k; S.sheetScroll=true; } renderPlan(); return; }
   if (S.readOnly) return;
   if (S.mode==="draw"){
     const p=drawPoint(pt,ev.shiftKey);
@@ -584,25 +749,19 @@ svg.addEventListener("pointerdown",ev=>{
     S.draft.push(p); renderPlan(); return;
   }
   if (S.mode==="door"){
-    if (t.dataset.door){ const [k,di]=t.dataset.door.split(":"); const r=roomByK(k); r.doors.splice(+di,1); edit("Removed a door from "+r.id); return; }
+    const hit=t.dataset.door ? t.dataset.door.split(":") : nearestDoor(pt,TOUCH?.6:.35);
+    if (hit){ const r=roomByK(hit[0]); r.doors.splice(+hit[1],1); edit("Removed a door from "+r.id); return; }
     const he=nearestEdge(pt); if(!he) return;
     const r=roomByK(he.k), L=dist(...edgeOf(r.poly,he.e)); if (L<DOOR_W+.1){ toast("That wall is too short for a door."); return; }
     const half=DOOR_W/2/L; r.doors.push({e:he.e,t:Math.max(half,Math.min(1-half,he.t)),w:DOOR_W}); edit("Added a door to "+r.id);
   }
-});
-svg.addEventListener("pointermove",ev=>{
-  const pt=toWorld(ev);
-  if (S.drag){ const r=roomByK(S.drag.k); r.poly[S.drag.i]=[snap(pt[0],VSNAP),snap(pt[1],VSNAP)]; S.drag.moved=true; renderPlan(); return; }
-  if (pan){ const s=S.view.scale; S.view.cx=pan.cx-(ev.clientX-pan.x)/s; S.view.cy=pan.cy-(ev.clientY-pan.y)/s; pan.moved=true; renderPlan(); return; }
-  if (S.mode==="draw"){ S.cursor=drawPoint(pt,ev.shiftKey); renderPlan(); }
-  else if (S.mode==="door"){ const he=nearestEdge(pt); if(JSON.stringify(he)!==JSON.stringify(S.hoverEdge)){ S.hoverEdge=he; renderPlan(); } }
-});
-svg.addEventListener("pointerup",()=>{ if(S.drag){ const d=S.drag; S.drag=null; if(d.moved) edit("Reshaped "+roomByK(d.k).id); } pan=null; });
-svg.addEventListener("pointerleave",()=>{ if(S.mode==="draw"){S.cursor=null;renderPlan();} });
+}
+function nearestDoor(pt,max){ let best=null,bd=max; floorRooms(S.floor).forEach(r=>r.doors.forEach((d,i)=>{ const c=doorCenter(r,d), dd=dist(pt,c); if(dd<bd){ bd=dd; best=[r.k,i]; } })); return best; }
+svg.addEventListener("pointerleave",ev=>{ if(ev.pointerType==="mouse" && S.mode==="draw" && S.cursor){S.cursor=null;renderPlan();} });
 svg.addEventListener("dblclick",()=>{ if(S.mode==="draw" && S.draft.length>=3) closeDraft(); });
 window.addEventListener("keydown",ev=>{
   if (S.tab!=="plan" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)) return;
-  if (ev.key==="Escape"){ S.draft=[]; S.sel=null; renderPlan(); }
+  if (ev.key==="Escape"){ S.draft=[]; S.sel=null; setSheet(false); renderPlan(); }
   if (ev.key==="Enter" && S.mode==="draw" && S.draft.length>=3) closeDraft();
   if (ev.key==="Delete" && S.sel && !S.readOnly){ deleteRoom(S.sel); }
 });
@@ -623,9 +782,14 @@ function uniqueId(id){ let x=id,i=2; while(S.plan.rooms.some(r=>r.id===x)) x=id+
 function deleteRoom(k){ const r=roomByK(k); if(!r) return; S.plan.rooms=S.plan.rooms.filter(x=>x.k!==k); S.sel=null; edit("Deleted room "+r.id); }
 
 /* ---------- inspector ---------- */
-let delArm=false;
+let delArm=false, lastInsp=null;
+function setSheet(open){ S.sheet=open; $("#insp").classList.toggle("open",open); $("#sheetHandle").setAttribute("aria-expanded",String(open)); $("#sheetCue").textContent=open?"Close":"Details"; }
+$("#sheetHandle").onclick=()=>setSheet(!S.sheet);
 function renderInspector(){
   const el=$("#inspector"), r=S.sel&&roomByK(S.sel), cov=coverage();
+  const key=(r?r.k:"floor")+S.floor; if (key!==lastInsp){ lastInsp=key; el.scrollTop=0; }
+  if (r) $("#sheetLabel").innerHTML=`<b>${esc(r.id)}</b>${esc(r.name||TYPES[r.type]?.label||"")}`;
+  else { const n=floorRooms(S.floor).length, fl=S.plan.floors.find(f=>f.level===S.floor); $("#sheetLabel").innerHTML=`<b>L${S.floor}</b>${esc(fl?.name||"")} · ${n} room${n===1?"":"s"}`; }
   if (!r){
     const rs=floorRooms(S.floor).slice().sort((a,b)=>a.id.localeCompare(b.id)), fl=S.plan.floors.find(f=>f.level===S.floor);
     const tot=rs.reduce((s,r)=>s+area(r.poly),0), scanned=rs.filter(r=>cov[r.id]>0).length;
@@ -763,7 +927,7 @@ function init3D(){
 }
 function resize3D(){ if(!T) return; const w=T.host.clientWidth,h=T.host.clientHeight; if(!w||!h) return; T.renderer.setSize(w,h,false); T.cam.aspect=w/h; T.cam.updateProjectionMatrix(); }
 function showInfo3D(r){ const cov=r?coverage()[r.id]||0:0;
-  $("#threeInfo").innerHTML=r?`<b class="mono">${esc(r.id)}</b> · ${esc(r.name||TYPES[r.type].label)}<br><span class="muted small">${TYPES[r.type].label} · L${r.floor} · ${fmtArea(area(r.poly))} · ${r.doors.length} door${r.doors.length===1?"":"s"} · ${COV_LABEL[covLevel(cov)]}</span>`:"Drag to orbit · scroll to zoom · click a room"; }
+  $("#threeInfo").innerHTML=r?`<b class="mono">${esc(r.id)}</b> · ${esc(r.name||TYPES[r.type].label)}<br><span class="muted small">${TYPES[r.type].label} · L${r.floor} · ${fmtArea(area(r.poly))} · ${r.doors.length} door${r.doors.length===1?"":"s"} · ${COV_LABEL[covLevel(cov)]}</span>`:(TOUCH?"Drag to orbit · pinch to zoom · tap a room":"Drag to orbit · scroll to zoom · click a room"); }
 function build3D(){
   if (!T) return;
   T.scene.background=new THREE.Color(css("--paper"));
@@ -861,6 +1025,8 @@ function geojson(){
       area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0,...stairProps(r)},
       geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(([x,y])=>[+x.toFixed(3),+y.toFixed(3)])]}}))},null,2);
 }
+$("#exMenu").querySelectorAll(".pop button").forEach(b=>b.addEventListener("click",()=>$("#exMenu").open=false));
+document.addEventListener("pointerdown",e=>{ const m=$("#exMenu"); if(m.open && !m.contains(e.target)) m.open=false; });
 $("#exGeo").onclick=()=>saveFile(`apu-block-${S.plan.block}-outline.geojson.json`,geojson());
 $("#exJson").onclick=()=>saveFile(`apu-block-${S.plan.block}-plan.json`,JSON.stringify({...planBody(),rev:S.plan.rev},null,2));
 $("#exGlb").onclick=()=>{
@@ -876,6 +1042,7 @@ $("#exGlb").onclick=()=>{
 
 /* ---------- capture & quality checks ---------- */
 const drop=$("#drop"), fileIn=$("#fileIn");
+if (TOUCH) $("#dropTitle").textContent="Tap to take or choose photos";
 drop.onclick=()=>fileIn.click(); drop.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fileIn.click(); } };
 drop.ondragover=e=>{ e.preventDefault(); drop.classList.add("over"); }; drop.ondragleave=()=>drop.classList.remove("over");
 drop.ondrop=e=>{ e.preventDefault(); drop.classList.remove("over"); addFiles([...e.dataTransfer.files]); };
@@ -949,7 +1116,7 @@ function renderCapture(){
       ${sm.reasons.length?`<ul class="checks" style="margin-top:10px">${sm.reasons.map(r=>`<li><span>•</span><span>${esc(r)}</span></li>`).join("")}</ul>`:""}`
     :`<h3 style="font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:14px 0 8px">Each photo is checked for</h3>
       <ul class="checks"><li><span>•</span><span>Blur <span class="mono">Laplacian variance ≥ ${QC.sharp}</span></span></li><li><span>•</span><span>Exposure <span class="mono">mean ${QC.dark}–${QC.bright}</span></span></li>
-      <li><span>•</span><span>Blank wall <span class="mono">edge pixels ≥ ${QC.texture*100}%</span></span></li><li><span>•</span><span>Overlap with the previous frame <span class="mono">NCC ≥ ${QC.overlap}</span></span></li>
+      <li><span>•</span><span>Blank wall <span class="mono">edge pixels ≥ ${+(QC.texture*100).toFixed(1)}%</span></span></li><li><span>•</span><span>Overlap with the previous frame <span class="mono">NCC ≥ ${QC.overlap}</span></span></li>
       <li><span>•</span><span>Session size <span class="mono">≥ ${QC.minFrames} usable, ${QC.goodFrames}+ preferred</span></span></li></ul>`}
     <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cSubmit" ${canSubmit?"":"disabled"}>Submit session</button>${fr.length?`<button class="btn" id="cClear">Clear photos</button>`:""}</div>
@@ -1000,7 +1167,7 @@ async function renderSessions(){
       <div class="tile"><div class="n">${covered}<span class="muted" style="font-size:1rem"> / ${rooms.length}</span></div><div class="l">Rooms with at least one scan</div></div>
       <div class="tile"><div class="n">${ss.length-acc.length}</div><div class="l">Sessions rejected by quality checks</div></div>
     </div>
-    <h3 class="small muted" style="text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px">Pipeline</h3>
+    <h3 class="sec">Pipeline</h3>
     <div class="stages">
       <div class="stage"><b>Capture</b><span class="pill ok">Live</span><div class="small muted">Photos and door markers, in this app</div></div>
       <div class="stage"><b>Privacy</b><span class="pill ok">Live</span><div class="small muted">Photos stay on the device; only scores upload</div></div>
@@ -1009,15 +1176,15 @@ async function renderSessions(){
       <div class="stage"><b>3DGS + geometry</b><span class="pill idle">No worker</span><div class="small muted">2DGS/PGSR, TSDF, RANSAC planes</div></div>
       <div class="stage"><b>Rooms + review</b><span class="pill ok">Live</span><div class="small muted">Floor plan editor and History</div></div>
     </div>
-    <h3 class="small muted" style="text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px">Coverage by room · scan these next</h3>
+    <h3 class="sec">Coverage by room · scan these next</h3>
     ${rooms.length?`<div class="cov-grid" style="margin-bottom:24px">${rooms.slice().sort((a,b)=>(cov[a.id]||0)-(cov[b.id]||0)||a.id.localeCompare(b.id)).map(r=>{const n=cov[r.id]||0;
       return `<div class="cov"><span><span class="mono">${esc(r.id)}</span><br><span class="small muted">${esc(r.name||TYPES[r.type]?.label)}</span></span><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${n} scan${n===1?"":"s"}</span></div>`;}).join("")}</div>`:`<p class="muted">Draw rooms on the floor plan to track coverage.</p>`}
-    <h3 class="small muted" style="text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px">All sessions</h3>
-    <div class="tbl-wrap">${ss.length?`<table><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Reconstruction</th></tr></thead><tbody>
+    <h3 class="sec">All sessions</h3>
+    <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Reconstruction</th></tr></thead><tbody>
       ${ss.map(s=>{ const [c,l]=VERDICT[s.verdict]||["idle",s.verdict]; const known=rooms.some(r=>r.id===s.room);
-        return `<tr><td>${esc(ago(s.at))}</td><td>${who(s.by)}</td><td class="mono">${esc(s.room)}${s.marker?` <span class="pill idle">marker</span>`:""}${known?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">Block ${esc(s.block)} · L${esc(s.floor)}</span></td>
-        <td><span class="pill ${c}">${l}</span></td><td class="num">${s.frames}</td><td class="num">${s.usable}</td><td class="num">${s.gaps}</td>
-        <td class="small">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td><span class="pill idle">${s.verdict==="rejected"?"Skipped":"Queued"}</span></td></tr>`;}).join("")}
+        return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${esc(s.room)}${s.marker?` <span class="pill idle">marker</span>`:""}${known?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">Block ${esc(s.block)} · L${esc(s.floor)}</span></td>
+        <td data-l="Verdict"><span class="pill ${c}">${l}</span></td><td class="num" data-l="Frames">${s.frames}</td><td class="num" data-l="Usable">${s.usable}</td><td class="num" data-l="Gaps">${s.gaps}</td>
+        <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Reconstruction"><span class="pill idle">${s.verdict==="rejected"?"Skipped":"Queued"}</span></td></tr>`;}).join("")}
       </tbody></table>`:`<div class="empty">No sessions yet. Open <b>Contribute</b> to check and submit your first set of photos.</div>`}</div>`;
 }
 
@@ -1026,10 +1193,10 @@ async function renderHistory(){
   if (S.tab!=="history") return;
   await resolve(S.versions.map(v=>v.by));
   const vs=S.versions;
-  $("#historyPad").innerHTML=`<h2>Plan history</h2><p class="muted small" style="margin-top:-4px">Every saved change is kept here (latest ${S.maxVersions}). Restoring adds a new version, so nothing is lost.</p>
-    <div class="tbl-wrap">${vs.length?`<table><thead><tr><th>Version</th><th>Change</th><th>By</th><th>When</th><th style="text-align:right">Rooms</th><th></th></tr></thead><tbody>
-    ${vs.map((v,i)=>`<tr><td class="mono">r${v.rev}${i===0?` <span class="pill ok">current</span>`:""}</td><td>${esc(v.note)}</td><td>${who(v.by)}</td><td>${esc(ago(v.at))}</td><td class="num">${v.plan?.rooms?.length??v.rooms??0}</td>
-      <td style="text-align:right">${i===0||S.readOnly?"":`<button class="btn sm" data-rev="${v.rev}">${restoreArm===v.rev?"Confirm restore":"Restore"}</button>`}</td></tr>`).join("")}
+  $("#historyPad").innerHTML=`<h2>Plan history</h2><p class="muted small lead">Every saved change is kept here (latest ${S.maxVersions}). Restoring adds a new version, so nothing is lost.</p>
+    <div class="tbl-wrap">${vs.length?`<table class="cards"><thead><tr><th>Version</th><th>Change</th><th>By</th><th>When</th><th style="text-align:right">Rooms</th><th></th></tr></thead><tbody>
+    ${vs.map((v,i)=>`<tr><td class="mono" data-l="Version">r${v.rev}${i===0?` <span class="pill ok">current</span>`:""}</td><td class="wide first">${esc(v.note)}</td><td data-l="By">${who(v.by)}</td><td data-l="When">${esc(ago(v.at))}</td><td class="num" data-l="Rooms">${v.plan?.rooms?.length??v.rooms??0}</td>
+      <td style="text-align:right" class="${i===0||S.readOnly?"none":""}">${i===0||S.readOnly?"":`<button class="btn sm" data-rev="${v.rev}">${restoreArm===v.rev?"Confirm restore":"Restore"}</button>`}</td></tr>`).join("")}
     </tbody></table>`:`<div class="empty">No saved versions yet. Your first edit on the floor plan creates one.</div>`}</div>`;
   $("#historyPad").querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>restore(S.versions.find(v=>v.rev===+b.dataset.rev)));
 }
@@ -1143,8 +1310,8 @@ async function commitApi(note){
 function conflictBanner(b){
   const C=S.conflict, t=C.theirs, who=esc(t?.by||"Another contributor"), list=C.clash.slice(0,4).map(esc).join(", ")+(C.clash.length>4?` and ${C.clash.length-4} more`:"");
   b.hidden=false;
-  b.innerHTML=`<b>Edit clash.</b> <span>${C.merged?`You and ${who} both changed ${list}. Your change isn't saved yet.`:`${who} saved r${t?.rev??"?"} while you were editing, so your change isn't saved yet.`}</span>
-    <button class="btn sm" id="cfMine">${C.merged?"Keep my version of those":"Keep my version"}</button><button class="btn sm" id="cfTheirs">Load theirs</button>`;
+  b.innerHTML=bannerHTML(`<b>Edit clash.</b> ${C.merged?`You and ${who} both changed ${list}. Your change isn't saved yet.`:`${who} saved r${t?.rev??"?"} while you were editing, so your change isn't saved yet.`}`,
+    `<button class="btn sm primary" id="cfMine">${C.merged?"Keep my version of those":"Keep my version"}</button><button class="btn sm" id="cfTheirs">Load theirs</button>`);
   $("#cfMine").onclick=()=>{ S.conflict=null; if(C.merged) applyMerged(C.merged,t); else S.plan.rev=t?.rev||0; renderBanner(); commitApi(C.note); };
   $("#cfTheirs").onclick=()=>{ S.conflict=null; if(t) adoptPlan(t); setSync("saved","Saved"); renderAll(); fit(); toast(`Loaded r${t?.rev}. Your unsaved change was discarded.`); };
 }

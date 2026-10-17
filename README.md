@@ -16,6 +16,8 @@ A web app for mapping a building as a labelled 3D outline (rooms, walls, doors, 
 | **Sessions** | Shows who scanned what, whether it passed, and which rooms still need scanning. |
 | **History** | Every edit is saved as a version that can be restored. |
 
+**On phones** the tabs move to a bottom bar, room details open in a pull-up sheet, and the plan supports tap to draw, drag to pan and pinch to zoom.
+
 Several people can edit at once. Edits to different rooms merge automatically; if two people change the same room, the app asks whose version to keep.
 
 ### Stairwells
