@@ -1,12 +1,9 @@
 // API tests. The database tests need a throwaway Postgres:
 //   TEST_DATABASE_URL=postgres://user:pass@localhost/apu_test npm test
-// They wipe the plan, versions, sessions and photos tables. Photos go to a temporary folder.
+// They wipe the plan, versions, sessions and photos tables.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import * as V from "../lib/validate.js";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 const room = (over = {}) => ({ k: "a1", id: "B-03-01", name: "Lab", type: "lab", floor: 3, height: 3.2,
   poly: [[0, 0], [4, 0], [4, 3], [0, 3]], doors: [{ e: 0, t: 0.5, w: 0.9 }], ...over });
@@ -57,9 +54,6 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
   after(closeDb);
   await query("SELECT 1");
   await query("TRUNCATE plan, versions, sessions, photos RESTART IDENTITY");
-  const photoDir = await mkdtemp(join(tmpdir(), "photos-"));
-  process.env.LOCAL_PHOTO_DIR = photoDir;
-  after(() => rm(photoDir, { recursive: true, force: true }));
   const api = name => import(`../api/${name}.js`);
   const call = async (name, method, body, headers = {}) => {
     const req = new Request(`http://x/api/${name}`, { method, headers: { "content-type": "application/json", ...headers },
@@ -154,12 +148,12 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.equal((await (await api("photos")).GET(new Request("http://x/api/photos?id=12345"))).status, 404);
     const none = await call("sessions", "POST", { block: "B", floor: 3, room: "B-03-02", verdict: "thin", frames: 9, usable: 9, gaps: 0 });
     assert.equal((await up(`session=${none.body._id}&i=0&w=4&h=3`)).status, 409, "session reserved no photos");
-    delete process.env.LOCAL_PHOTO_DIR;
+    process.env.PHOTO_UPLOAD = "off";
     try {
       assert.equal((await up(`session=${id}&i=0&w=4&h=3`)).status, 503, "no photo store");
       const off = await call("sessions", "POST", { block: "B", floor: 3, room: "B-03-02", verdict: "thin", frames: 9, usable: 9, gaps: 0, photos: 3 });
       assert.equal(off.body.photoSlots, 0, "no slots without a photo store");
-    } finally { process.env.LOCAL_PHOTO_DIR = photoDir; }
+    } finally { delete process.env.PHOTO_UPLOAD; }
   });
 
   await t.test("edit key", async () => {

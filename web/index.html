@@ -1230,7 +1230,7 @@ async function renderSessions(){
     <div class="stages">
       <div class="stage"><b>Capture</b><span class="pill ok">Live</span><div class="small muted">Photos and door markers, in this app</div></div>
       <div class="stage"><b>Quality check</b><span class="pill ok">Live</span><div class="small muted">Blur, exposure, blank wall, overlap</div></div>
-      <div class="stage"><b>Photo storage</b>${S.photoStore?`<span class="pill ok">Live</span><div class="small muted">Opt-in upload of usable photos, private storage</div>`:`<span class="pill idle">Not set up</span><div class="small muted">${S.api?"Connect a Vercel Blob store to turn on":"Needs the server version of the app"}</div>`}</div>
+      <div class="stage"><b>Photo storage</b>${S.photoStore?`<span class="pill ok">Live</span><div class="small muted">Opt-in upload of usable photos, kept in the database</div>`:`<span class="pill idle">Off</span><div class="small muted">${S.api?"Turned off on this deployment (PHOTO_UPLOAD=off)":"Needs the server version of the app"}</div>`}</div>
       <div class="stage"><b>Registration</b><span class="pill idle">No worker</span><div class="small muted">hloc + markers + pose graph</div></div>
       <div class="stage"><b>3DGS + geometry</b><span class="pill idle">No worker</span><div class="small muted">2DGS/PGSR, TSDF, RANSAC planes</div></div>
       <div class="stage"><b>Rooms + review</b><span class="pill ok">Live</span><div class="small muted">Floor plan editor and History</div></div>
