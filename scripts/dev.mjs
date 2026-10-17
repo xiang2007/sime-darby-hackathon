@@ -5,7 +5,9 @@ import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const PORT = +process.env.PORT || 3000;
-const ROUTES = ["health", "state", "plan", "versions", "sessions"];
+const ROUTES = ["health", "state", "plan", "versions", "sessions", "photos"];
+// Without a Blob store, keep uploaded photos in a local folder.
+if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) process.env.LOCAL_PHOTO_DIR ||= ".data/photos";
 execSync("sh scripts/build-vercel.sh", { stdio: "inherit" });
 
 createServer(async (req, res) => {

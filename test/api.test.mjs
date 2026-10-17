@@ -1,9 +1,12 @@
 // API tests. The database tests need a throwaway Postgres:
 //   TEST_DATABASE_URL=postgres://user:pass@localhost/apu_test npm test
-// They wipe the plan, versions and sessions tables.
+// They wipe the plan, versions, sessions and photos tables. Photos go to a temporary folder.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import * as V from "../lib/validate.js";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const room = (over = {}) => ({ k: "a1", id: "B-03-01", name: "Lab", type: "lab", floor: 3, height: 3.2,
   poly: [[0, 0], [4, 0], [4, 3], [0, 3]], doors: [{ e: 0, t: 0.5, w: 0.9 }], ...over });
@@ -34,13 +37,29 @@ test("session validation", () => {
   assert.throws(() => V.session({ block: "B", floor: 3, room: "", verdict: "thin", frames: 1, usable: 1, gaps: 0 }), V.Invalid);
 });
 
+test("photo validation", () => {
+  assert.equal(V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 12, usable: 10, gaps: 0, photos: 10 }).photos, 10);
+  assert.equal(V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 12, usable: 10, gaps: 0 }).photos, 0);
+  assert.throws(() => V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 5, usable: 5, gaps: 0, photos: 6 }), V.Invalid);
+  assert.throws(() => V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 999, usable: 5, gaps: 0, photos: 201 }), V.Invalid);
+  assert.deepEqual(V.photoParams("http://x/api/photos?session=4&i=0&w=2048&h=1536"), { session: 4, i: 0, w: 2048, h: 1536 });
+  assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=200&w=1&h=1"), V.Invalid);
+  assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=-1&w=1&h=1"), V.Invalid);
+  assert.throws(() => V.photoParams("http://x/api/photos?session=x&i=0&w=1&h=1"), V.Invalid);
+  assert.equal(V.isJpeg(new Uint8Array([0xff, 0xd8, 0xff, 0xe0])), true);
+  assert.equal(V.isJpeg(new Uint8Array([0x89, 0x50, 0x4e, 0x47])), false);
+});
+
 const DB = process.env.TEST_DATABASE_URL;
 test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, async t => {
   process.env.DATABASE_URL = DB;
   const { query, closeDb } = await import("../lib/db.js");
   after(closeDb);
   await query("SELECT 1");
-  await query("TRUNCATE plan, versions, sessions RESTART IDENTITY");
+  await query("TRUNCATE plan, versions, sessions, photos RESTART IDENTITY");
+  const photoDir = await mkdtemp(join(tmpdir(), "photos-"));
+  process.env.LOCAL_PHOTO_DIR = photoDir;
+  after(() => rm(photoDir, { recursive: true, force: true }));
   const api = name => import(`../api/${name}.js`);
   const call = async (name, method, body, headers = {}) => {
     const req = new Request(`http://x/api/${name}`, { method, headers: { "content-type": "application/json", ...headers },
@@ -108,6 +127,41 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.equal(s1.body.sessions[0].by, "Ana");
   });
 
+  await t.test("photos: reserve, upload, list, fetch", async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
+    const up = (q, body = jpeg, headers = {}) => api("photos").then(m => m.POST(new Request(`http://x/api/photos?${q}`,
+      { method: "POST", headers: { "content-type": "image/jpeg", ...headers }, body })));
+    assert.equal((await call("health", "GET")).body.photos, true);
+    const s = await call("sessions", "POST", { by: "Ana", block: "B", floor: 3, room: "B-03-02", verdict: "accepted", frames: 20, usable: 18, gaps: 0, photos: 2 });
+    assert.equal(s.body.photoSlots, 2);
+    const id = s.body._id;
+    const etag = (await call("state", "GET")).etag;
+    assert.equal((await up(`session=${id}&i=0&w=4&h=3`)).status, 201);
+    assert.equal((await up(`session=${id}&i=0&w=4&h=3`)).status, 409, "same slot twice");
+    assert.equal((await up(`session=${id}&i=2&w=4&h=3`)).status, 409, "beyond the reserved slots");
+    assert.equal((await up(`session=99999&i=0&w=4&h=3`)).status, 404);
+    assert.equal((await up(`session=${id}&i=1&w=4&h=3`, new Uint8Array([1, 2, 3, 4]))).status, 400, "not a JPEG");
+    assert.equal((await up(`session=${id}&i=1&w=4&h=3`)).status, 201);
+    const st = await call("state", "GET", undefined, { "if-none-match": etag });
+    assert.equal(st.status, 200, "ETag changes when photos arrive");
+    assert.equal(st.body.sessions.find(x => x._id === id).photos, 2);
+    const list = await call(`photos?session=${id}`, "GET");
+    assert.deepEqual(list.body.photos.map(p => [p.i, p.w, p.h, p.bytes]), [[0, 4, 3, 10], [1, 4, 3, 10]]);
+    const res = await (await api("photos")).GET(new Request(`http://x/api/photos?id=${list.body.photos[0].id}`));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "image/jpeg");
+    assert.deepEqual(new Uint8Array(await res.arrayBuffer()), jpeg);
+    assert.equal((await (await api("photos")).GET(new Request("http://x/api/photos?id=12345"))).status, 404);
+    const none = await call("sessions", "POST", { block: "B", floor: 3, room: "B-03-02", verdict: "thin", frames: 9, usable: 9, gaps: 0 });
+    assert.equal((await up(`session=${none.body._id}&i=0&w=4&h=3`)).status, 409, "session reserved no photos");
+    delete process.env.LOCAL_PHOTO_DIR;
+    try {
+      assert.equal((await up(`session=${id}&i=0&w=4&h=3`)).status, 503, "no photo store");
+      const off = await call("sessions", "POST", { block: "B", floor: 3, room: "B-03-02", verdict: "thin", frames: 9, usable: 9, gaps: 0, photos: 3 });
+      assert.equal(off.body.photoSlots, 0, "no slots without a photo store");
+    } finally { process.env.LOCAL_PHOTO_DIR = photoDir; }
+  });
+
   await t.test("edit key", async () => {
     process.env.EDIT_KEY = "open sesame";
     try {
@@ -117,6 +171,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
       assert.equal(s.status, 401);
       const yes = await call("plan", "PUT", { plan: plan(), baseRev: 4 }, { "x-edit-key": "open sesame" });
       assert.equal(yes.status, 200);
+      assert.equal((await call("photos?session=1", "GET")).status, 401, "photos need the key too");
       const h = await call("health", "GET", undefined, { "x-edit-key": "wrong" });
       assert.equal(h.body.editKey, true); assert.equal(h.body.keyOk, false);
     } finally { delete process.env.EDIT_KEY; }

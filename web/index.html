@@ -167,6 +167,17 @@ aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overfl
 .checks li{display:grid;grid-template-columns:auto 1fr;gap:8px}
 .checks .mono{color:var(--ink-2);font-size:.76rem}
 .consent{display:flex;gap:8px;align-items:flex-start;font-size:.82rem;margin:10px 0}
+.progress{height:6px;border-radius:3px;background:var(--rule);overflow:hidden;margin:10px 0 4px}
+.progress i{display:block;height:100%;background:var(--accent,#2f6fdf);transition:width .2s}
+dialog.gallery{width:min(980px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:0;display:none;flex-direction:column}
+dialog.gallery[open]{display:flex}
+dialog.gallery .g-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--rule)}
+dialog.gallery .g-head h2{margin:0;font-size:1rem;flex:1 1 12ch}
+dialog.gallery .g-grid{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 16px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-auto-rows:max-content;align-content:start;gap:8px}
+dialog.gallery .g-grid a{display:block;background:var(--rule);border-radius:6px;overflow:hidden}
+dialog.gallery .g-grid a:empty,dialog.gallery .g-grid img{aspect-ratio:4/3}
+dialog.gallery .g-grid img{width:100%;height:auto;object-fit:cover;display:block}
+@media (max-width:720px){ dialog.gallery .g-head h2{flex-basis:100%} }
 
 /* sessions */
 .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
@@ -354,7 +365,7 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
       <div class="cap-grid">
         <div class="cap-intro">
           <h2>Contribute a capture session</h2>
-          <p class="muted small lead" style="max-width:62ch">Walk one room or corridor slowly, taking a photo about every step so each overlaps the last. Checks run in your browser. <b>Your photos never leave this device</b>; only the scores, room tag and frame count are uploaded.</p>
+          <p class="muted small lead" style="max-width:62ch">Walk one room or corridor slowly, taking a photo about every step so each overlaps the last. Checks run in your browser. <b>Your photos stay on this device</b> unless you choose to upload them for 3D reconstruction.</p>
           <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add photos">
             <strong id="dropTitle">Drop photos here or click to choose</strong>
             <div class="small muted">JPEG or PNG · a door marker QR in any photo fills in the room tag</div>
@@ -383,6 +394,11 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
     <p class="warn" id="profErr" hidden></p>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" type="button" id="profCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
   </form>
+</dialog>
+
+<dialog class="sheet gallery" id="gallery" aria-labelledby="galTitle">
+  <div class="g-head"><h2 id="galTitle">Photos</h2><button class="btn sm" id="galZip" disabled>Download all (.zip)</button><button class="btn sm" id="galClose">Close</button></div>
+  <div class="g-grid" id="galGrid"></div>
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -449,7 +465,7 @@ const S = {
   api: false, etag: null, conflict: null, editKey: false, failedNote: "", serverNote: null, maxVersions: MAX_VERSIONS,
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
   view: {cx: 20, cy: 9.5, scale: 18},
-  capture: {frames: [], block: "B", floor: 3, room: "", consent: false, busy: false}
+  capture: {frames: [], block: "B", floor: 3, room: "", consent: false, share: false, busy: false, upload: null}
 };
 
 /* ---------- geometry ---------- */
@@ -1052,7 +1068,7 @@ async function addFiles(files){
   files=files.filter(f=>f.type.startsWith("image/")).sort((a,b)=>(a.lastModified-b.lastModified)||a.name.localeCompare(b.name));
   if (!files.length) return;
   S.capture.busy=true; renderCapture();
-  for (const f of files){ try{ S.capture.frames.push(await analyze(f)); }catch(e){ S.capture.frames.push({name:f.name,error:"Couldn't read this image (HEIC isn't supported in most browsers)",reasons:["unreadable"]}); } renderCapture(); }
+  for (const f of files){ try{ const fr=await analyze(f); fr.file=f; S.capture.frames.push(fr); }catch(e){ S.capture.frames.push({name:f.name,error:"Couldn't read this image (HEIC isn't supported in most browsers)",reasons:["unreadable"]}); } renderCapture(); }
   scoreOverlap(); S.capture.busy=false; renderCapture();
 }
 async function analyze(file){
@@ -1107,7 +1123,7 @@ function renderCapture(){
       <div>${f.reasons.length?f.reasons.map(r=>`<span class="pill bad">${esc(r)}</span>`).join(" "):`<span class="pill ok">usable</span>`}${f.overlap!=null&&f.overlap<QC.overlap?` <span class="pill warn">gap</span>`:""}${f.qr?` <span class="pill idle" title="${esc(f.qr)}">marker</span>`:""}</div>
     </div></div>`).join("");
   const sm=summary(), knownRooms=S.plan.rooms.map(r=>r.id).sort(), [cls,lab]=VERDICT[sm.verdict];
-  const canSubmit = fr.length && !C.busy && C.consent && C.room && !S.readOnly;
+  const canSubmit = fr.length && !C.busy && !C.upload && C.consent && C.room && !S.readOnly;
   $("#capSide").innerHTML=`<h2>Session</h2>
     <div class="row2"><div class="field"><label for="cBlock">Block</label><input id="cBlock" value="${esc(C.block)}" maxlength="8"></div>
     <div class="field"><label for="cFloor">Floor</label><input id="cFloor" type="number" value="${C.floor}" min="0" max="60"></div></div>
@@ -1118,29 +1134,72 @@ function renderCapture(){
       <ul class="checks"><li><span>•</span><span>Blur <span class="mono">Laplacian variance ≥ ${QC.sharp}</span></span></li><li><span>•</span><span>Exposure <span class="mono">mean ${QC.dark}–${QC.bright}</span></span></li>
       <li><span>•</span><span>Blank wall <span class="mono">edge pixels ≥ ${+(QC.texture*100).toFixed(1)}%</span></span></li><li><span>•</span><span>Overlap with the previous frame <span class="mono">NCC ≥ ${QC.overlap}</span></span></li>
       <li><span>•</span><span>Session size <span class="mono">≥ ${QC.minFrames} usable, ${QC.goodFrames}+ preferred</span></span></li></ul>`}
-    <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cSubmit" ${canSubmit?"":"disabled"}>Submit session</button>${fr.length?`<button class="btn" id="cClear">Clear photos</button>`:""}</div>
-    <p class="small muted" style="margin-bottom:0">${S.readOnly?"Your sharing level doesn't allow submitting sessions.":!C.room&&fr.length?"Add a room tag to submit.":!C.consent&&fr.length?"Tick the permission box to submit.":"Uploads only the scores, tag and counts. Photos stay here."}</p>
+    <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""} ${C.upload?"disabled":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
+    ${canShare()?`<label class="consent"><input type="checkbox" id="cShare" ${C.share?"checked":""} ${C.upload?"disabled":""}><span>Also upload the ${shareFrames().length||""} usable photo${shareFrames().length===1?"":"s"} for 3D reconstruction. They're resized to ${PHOTO_MAX}px and location data is removed.</span></label>`:""}
+    ${C.upload?`<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${C.upload.total}" aria-valuenow="${C.upload.done}"><i style="width:${C.upload.total?100*C.upload.done/C.upload.total:0}%"></i></div>
+      <p class="small" style="margin:0 0 10px">Uploading photo ${Math.min(C.upload.done+1,C.upload.total)} of ${C.upload.total}… keep this page open.</p>`:""}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cSubmit" ${canSubmit?"":"disabled"}>${C.share&&canShare()&&shareFrames().length?"Submit and upload photos":"Submit session"}</button>${fr.length&&!C.upload?`<button class="btn" id="cClear">Clear photos</button>`:""}</div>
+    <p class="small muted" style="margin-bottom:0">${S.readOnly?"Your sharing level doesn't allow submitting sessions.":!C.room&&fr.length?"Add a room tag to submit.":!C.consent&&fr.length?"Tick the permission box to submit.":C.share&&canShare()?"Uploads the scores, tag, counts and the usable photos.":"Uploads only the scores, tag and counts. Photos stay here."}</p>
     <p class="small muted" style="margin-bottom:0;border-top:1px solid var(--rule);padding-top:10px">Phone AR poses (ARKit/ARCore) need the native capture app. This web intake checks photo quality and coverage only.</p>`;
   $("#cBlock").onchange=e=>{C.block=e.target.value.trim().toUpperCase();};
   $("#cFloor").onchange=e=>{C.floor=+e.target.value||0;};
-  $("#cRoom").oninput=e=>{C.room=e.target.value.trim(); C.fromMarker=false; $("#cSubmit").disabled=!(fr.length&&!C.busy&&C.consent&&C.room&&!S.readOnly);};
+  $("#cRoom").oninput=e=>{C.room=e.target.value.trim(); C.fromMarker=false; $("#cSubmit").disabled=!(fr.length&&!C.busy&&!C.upload&&C.consent&&C.room&&!S.readOnly);};
   $("#cRoom").onchange=()=>renderCapture();
   $("#cConsent").onchange=e=>{C.consent=e.target.checked; renderCapture();};
+  const sh=$("#cShare"); if(sh) sh.onchange=e=>{C.share=e.target.checked; renderCapture();};
   const cl=$("#cClear"); if(cl) cl.onclick=()=>{ C.frames=[]; C.fromMarker=false; renderCapture(); };
   $("#cSubmit").onclick=submitSession;
 }
+/* Photo upload (only on the server backend with photo storage, and only when the contributor opts in). */
+const PHOTO_MAX=2048, PHOTO_LIMIT=200, PHOTO_BYTES=3_900_000;
+const canShare=()=>S.api && S.photoStore && !S.readOnly;
+const shareFrames=()=>S.capture.frames.filter(f=>f.file && !f.error && !f.reasons.length).slice(0,PHOTO_LIMIT);
+async function photoJpeg(file){
+  const bmp=await createImageBitmap(file), s=Math.min(1,PHOTO_MAX/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas"); c.width=Math.round(bmp.width*s); c.height=Math.round(bmp.height*s);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height); bmp.close?.();
+  // Re-encoding drops EXIF, including GPS location.
+  for (const q of [.88,.75,.6]){ const b=await new Promise(r=>c.toBlob(r,"image/jpeg",q)); if(b && b.size<=PHOTO_BYTES) return {blob:b,w:c.width,h:c.height}; }
+  throw new Error("Photo is too large to upload");
+}
+async function uploadPhotos(sessionId, frames){
+  const C=S.capture, hdr=apiHeaders(); hdr["content-type"]="image/jpeg";
+  C.upload={done:0,total:frames.length,failed:0}; renderCapture();
+  for (let i=0;i<frames.length;i++){
+    let ok=false;
+    for (let attempt=0;attempt<2&&!ok;attempt++){
+      try{
+        const {blob,w,h}=await photoJpeg(frames[i].file);
+        const res=await fetch(`/api/photos?session=${encodeURIComponent(sessionId)}&i=${i}&w=${w}&h=${h}`,{method:"POST",headers:hdr,body:blob,cache:"no-store"});
+        ok=res.ok || res.status===409;   // 409: already stored on an earlier attempt
+        if (!ok && res.status<500 && res.status!==429) break;
+      }catch(e){}
+    }
+    if (!ok) C.upload.failed++;
+    C.upload.done=i+1; renderCapture();
+  }
+  const failed=C.upload.failed; C.upload=null; return failed;
+}
+const warnLeave=e=>{ e.preventDefault(); e.returnValue=""; };
+
 async function submitSession(){
-  const C=S.capture, sm=summary();
+  const C=S.capture, sm=summary(), share=C.share && canShare() ? shareFrames() : [];
   const doc={at:Date.now(),by:S.meId,block:C.block,floor:C.floor,room:C.room,frames:sm.total,usable:sm.ok,gaps:sm.jumps,verdict:sm.verdict,
-    reasons:sm.reasons,tally:sm.tally,marker:!!C.fromMarker,
+    reasons:sm.reasons,tally:sm.tally,marker:!!C.fromMarker,photos:share.length,
     medians:{sharp:+median(C.frames.filter(f=>f.sharp!=null).map(f=>f.sharp)).toFixed(1),bright:+median(C.frames.filter(f=>f.bright!=null).map(f=>f.bright)).toFixed(1)}};
   $("#cSubmit").disabled=true;
   try{
-    if (S.api){ const res=await apiSend("POST","/api/sessions",{...doc,by:S.meId||""}); if(!res.ok) throw await apiError(res); poll(true); }
-    else if (S.db){ await S.db.collection("sessions").add(doc); } else { S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
-    C.frames=[]; C.consent=false; C.fromMarker=false;
-    toast(sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":"Session submitted. Thanks!");
+    let failed=0;
+    if (S.api){ const res=await apiSend("POST","/api/sessions",{...doc,by:S.meId||""}); if(!res.ok) throw await apiError(res);
+      const saved=await res.json(); poll(true);
+      if (share.length && saved.photoSlots){
+        addEventListener("beforeunload",warnLeave);
+        try{ failed=await uploadPhotos(saved._id,share.slice(0,saved.photoSlots)); } finally{ removeEventListener("beforeunload",warnLeave); }
+        poll(true);
+      } }
+    else if (S.db){ delete doc.photos; await S.db.collection("sessions").add(doc); } else { delete doc.photos; S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
+    C.frames=[]; C.consent=false; C.share=false; C.fromMarker=false;
+    toast(failed?`Session submitted, but ${failed} of ${share.length} photos didn't upload.`:sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":share.length?`Session and ${share.length} photos submitted. Thanks!`:"Session submitted. Thanks!");
     if(!S.db && !S.api){ updateCounts(); }
     setTab("sessions");
   }catch(e){ handleWriteError(e); renderCapture(); }
@@ -1170,8 +1229,8 @@ async function renderSessions(){
     <h3 class="sec">Pipeline</h3>
     <div class="stages">
       <div class="stage"><b>Capture</b><span class="pill ok">Live</span><div class="small muted">Photos and door markers, in this app</div></div>
-      <div class="stage"><b>Privacy</b><span class="pill ok">Live</span><div class="small muted">Photos stay on the device; only scores upload</div></div>
       <div class="stage"><b>Quality check</b><span class="pill ok">Live</span><div class="small muted">Blur, exposure, blank wall, overlap</div></div>
+      <div class="stage"><b>Photo storage</b>${S.photoStore?`<span class="pill ok">Live</span><div class="small muted">Opt-in upload of usable photos, private storage</div>`:`<span class="pill idle">Not set up</span><div class="small muted">${S.api?"Connect a Vercel Blob store to turn on":"Needs the server version of the app"}</div>`}</div>
       <div class="stage"><b>Registration</b><span class="pill idle">No worker</span><div class="small muted">hloc + markers + pose graph</div></div>
       <div class="stage"><b>3DGS + geometry</b><span class="pill idle">No worker</span><div class="small muted">2DGS/PGSR, TSDF, RANSAC planes</div></div>
       <div class="stage"><b>Rooms + review</b><span class="pill ok">Live</span><div class="small muted">Floor plan editor and History</div></div>
@@ -1180,13 +1239,56 @@ async function renderSessions(){
     ${rooms.length?`<div class="cov-grid" style="margin-bottom:24px">${rooms.slice().sort((a,b)=>(cov[a.id]||0)-(cov[b.id]||0)||a.id.localeCompare(b.id)).map(r=>{const n=cov[r.id]||0;
       return `<div class="cov"><span><span class="mono">${esc(r.id)}</span><br><span class="small muted">${esc(r.name||TYPES[r.type]?.label)}</span></span><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${n} scan${n===1?"":"s"}</span></div>`;}).join("")}</div>`:`<p class="muted">Draw rooms on the floor plan to track coverage.</p>`}
     <h3 class="sec">All sessions</h3>
-    <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Reconstruction</th></tr></thead><tbody>
+    <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Photos</th></tr></thead><tbody>
       ${ss.map(s=>{ const [c,l]=VERDICT[s.verdict]||["idle",s.verdict]; const known=rooms.some(r=>r.id===s.room);
         return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${esc(s.room)}${s.marker?` <span class="pill idle">marker</span>`:""}${known?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">Block ${esc(s.block)} · L${esc(s.floor)}</span></td>
         <td data-l="Verdict"><span class="pill ${c}">${l}</span></td><td class="num" data-l="Frames">${s.frames}</td><td class="num" data-l="Usable">${s.usable}</td><td class="num" data-l="Gaps">${s.gaps}</td>
-        <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Reconstruction"><span class="pill idle">${s.verdict==="rejected"?"Skipped":"Queued"}</span></td></tr>`;}).join("")}
+        <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Photos">${s.photos?`<button class="btn sm" data-gal="${esc(s._id)}" data-room="${esc(s.room)}">View ${s.photos}</button>`:`<span class="muted small">${s.photoSlots&&Date.now()-s.at<2*3600e3?"Uploading…":"Kept on phone"}</span>`}</td></tr>`;}).join("")}
       </tbody></table>`:`<div class="empty">No sessions yet. Open <b>Contribute</b> to check and submit your first set of photos.</div>`}</div>`;
 }
+
+/* ---------- photo viewer ---------- */
+const gal={urls:[],session:null,room:"",photos:[],gen:0};
+function photoGet(id){ const h=apiHeaders(); delete h["content-type"]; return fetch("/api/photos?id="+encodeURIComponent(id),{headers:h}); }
+function closeGallery(){ gal.gen++; gal.urls.forEach(u=>URL.revokeObjectURL(u)); gal.urls=[]; $("#galGrid").innerHTML=""; const d=$("#gallery"); if(d.open) d.close(); }
+async function openGallery(session,room){
+  closeGallery(); const gen=gal.gen, d=$("#gallery");
+  Object.assign(gal,{session,room,photos:[]});
+  $("#galTitle").textContent=`Photos · ${room}`; $("#galZip").disabled=true;
+  $("#galGrid").innerHTML=`<p class="muted small">Loading…</p>`;
+  if (d.showModal) d.showModal(); else d.setAttribute("open","");
+  const h=apiHeaders(); delete h["content-type"];
+  const res=await fetch("/api/photos?session="+encodeURIComponent(session),{headers:h,cache:"no-store"}).catch(()=>null);
+  if (gen!==gal.gen) return;
+  if (!res || !res.ok){ $("#galGrid").innerHTML=`<p class="warn small">${res?.status===401?"You need the edit key to see photos.":"Couldn't load the photos."}</p>`; return; }
+  gal.photos=(await res.json()).photos||[];
+  if (!gal.photos.length){ $("#galGrid").innerHTML=`<p class="muted small">No photos were uploaded for this session.</p>`; return; }
+  $("#galTitle").textContent=`${gal.photos.length} photo${gal.photos.length===1?"":"s"} · ${room}`;
+  $("#galGrid").innerHTML=gal.photos.map(p=>`<a id="gp${esc(p.id)}" target="_blank" rel="noopener" aria-label="Photo ${p.i+1}, ${p.w}×${p.h}"></a>`).join("");
+  $("#galZip").disabled=false;
+  for (const p of gal.photos){
+    const r=await photoGet(p.id).catch(()=>null); if (gen!==gal.gen) return;
+    const a=$("#gp"+p.id); if(!a) continue;
+    if (!r || !r.ok){ a.innerHTML=`<span class="small warn" style="padding:8px;display:block">Missing</span>`; continue; }
+    const u=URL.createObjectURL(await r.blob()); if (gen!==gal.gen){ URL.revokeObjectURL(u); return; }
+    gal.urls.push(u); a.href=u; a.innerHTML=`<img src="${u}" alt="" loading="lazy">`;
+  }
+}
+$("#galClose").onclick=closeGallery;
+$("#gallery").addEventListener("close",()=>{ if(gal.urls.length) closeGallery(); });
+$("#galZip").onclick=async()=>{
+  if (typeof fflate==="undefined"){ toast("The zip library didn't load."); return; }
+  const b=$("#galZip"), gen=gal.gen, files={}; b.disabled=true;
+  try{
+    for (let k=0;k<gal.photos.length;k++){ const p=gal.photos[k]; b.textContent=`Zipping ${k+1}/${gal.photos.length}…`;
+      const r=await photoGet(p.id); if(!r.ok) continue; files[`${String(p.i).padStart(3,"0")}.jpg`]=[new Uint8Array(await r.arrayBuffer()),{level:0}]; }
+    if (gen!==gal.gen) return;
+    files["session.json"]=fflate.strToU8(JSON.stringify({session:gal.session,room:gal.room,photos:gal.photos},null,2));
+    saveFile(`session-${gal.session}-${gal.room}.zip`.replace(/[^\w.-]+/g,"_"),new Blob([fflate.zipSync(files)]));
+  }catch(e){ toast("Couldn't build the zip."); }
+  finally{ b.textContent="Download all (.zip)"; b.disabled=false; }
+};
+$("#sessionsPad").addEventListener("click",e=>{ const b=e.target.closest("[data-gal]"); if(b) openGallery(b.dataset.gal,b.dataset.room); });
 
 /* ---------- history view ---------- */
 async function renderHistory(){
@@ -1237,7 +1339,7 @@ const apiSend=(method,path,body)=>fetch(path,{method,headers:apiHeaders(),body:b
 async function apiError(res){ const d=await res.json().catch(()=>({})); return Object.assign(new Error(d.message||"Request failed"),{api:true,status:res.status}); }
 
 async function connectApi(h){
-  S.api=true; S.meId=lsGet(NAME_KEY)||null; S.editKey=!!h.editKey; S.maxVersions=200;
+  S.api=true; S.meId=lsGet(NAME_KEY)||null; S.editKey=!!h.editKey; S.maxVersions=200; S.photoStore=!!h.photos;
   if (h.editKey && !h.keyOk) S.readOnly=true;
   renderMe(); setSync("saving","Loading shared plan…");
   await poll(true);
