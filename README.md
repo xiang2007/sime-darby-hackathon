@@ -1,6 +1,6 @@
-# Crowdsourced 3D Building Outline
+# UCampass(PIC)
 
-A web app for mapping a building as a labelled 3D outline (rooms, walls, doors, floors and stairwells) from photos contributed by ordinary phones. The example target is the APU campus, starting with one block.
+UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D outline (rooms, walls, doors, floors and stairwells) from photos contributed by ordinary phones. The example target is the APU campus, starting with one block.
 
 **Live:** deployed on Vercel from this repo. It also runs as a [claude.ai artifact](https://claude.ai/artifact/EWr8GzRBKErHG9igFdL71C).
 
@@ -15,6 +15,8 @@ A web app for mapping a building as a labelled 3D outline (rooms, walls, doors, 
 | **Contribute** | Checks photos for blur, exposure, blank walls and overlap, and reads door QR codes. Photos stay on the phone; only the scores are uploaded. |
 | **Sessions** | Shows who scanned what, whether it passed, and which rooms still need scanning. |
 | **History** | Every edit is saved as a version that can be restored. |
+
+**On phones** the tabs move to a bottom bar, room details open in a pull-up sheet, and the plan supports tap to draw, drag to pan and pinch to zoom.
 
 Several people can edit at once. Edits to different rooms merge automatically; if two people change the same room, the app asks whose version to keep.
 

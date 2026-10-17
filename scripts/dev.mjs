@@ -24,4 +24,4 @@ createServer(async (req, res) => {
   const out = await fn(new Request(url, { method: req.method, headers: req.headers, body }));
   res.writeHead(out.status, Object.fromEntries(out.headers));
   res.end(Buffer.from(await out.arrayBuffer()));
-}).listen(PORT, () => console.log(`APU Campus Outline on http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`UCampass(PIC) on http://localhost:${PORT}`));
