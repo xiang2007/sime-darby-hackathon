@@ -31,7 +31,10 @@ test("session validation", () => {
   assert.equal(s.author, "Ana");
   assert.deepEqual(s.detail.tally, { blurry: 2 });
   assert.throws(() => V.session({ ...s, verdict: "great" }), V.Invalid);
-  assert.throws(() => V.session({ block: "B", floor: 3, room: "", verdict: "thin", frames: 1, usable: 1, gaps: 0 }), V.Invalid);
+  // A session can start anywhere: block and room tag are optional.
+  const free = V.session({ floor: 3, verdict: "thin", frames: 1, usable: 1, gaps: 0 });
+  assert.equal(free.room, "");
+  assert.equal(free.block, "");
 });
 
 test("photo validation", () => {
