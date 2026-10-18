@@ -16,6 +16,14 @@ test("plan validation keeps known fields and drops the rest", () => {
   assert.deepEqual(p.rooms[0].stair, { kind: "switchback", dir: 2, mirror: true });
 });
 
+test("plan validation keeps the map placement", () => {
+  const p = V.plan({ ...plan(), geo: { x: 20, y: 9.5, lat: 3.05531234567, lng: 101.70061234567, rot: 12.345, extra: 1 } });
+  assert.deepEqual(p.geo, { x: 20, y: 9.5, lat: 3.0553123, lng: 101.7006123, rot: 12.35 });
+  assert.throws(() => V.plan({ ...plan(), geo: { x: 0, y: 0, lat: 3, lng: 101, rot: 200 } }), V.Invalid);
+  assert.throws(() => V.plan({ ...plan(), geo: { x: 0, y: 0, lat: "3", lng: 101, rot: 0 } }), V.Invalid);
+  assert.throws(() => V.plan({ ...plan(), geo: [1, 2] }), V.Invalid);
+});
+
 test("plan validation rejects bad input", () => {
   assert.throws(() => V.plan(plan([room({ type: "dungeon" })])), V.Invalid);
   assert.throws(() => V.plan(plan([room({ poly: [[0, 0], [1, 1]] })])), V.Invalid);

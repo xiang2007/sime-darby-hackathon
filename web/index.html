@@ -250,7 +250,7 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
   .banner .more{display:none}
   .me button{padding:2px 8px;font-size:.74rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .bar-top{flex-wrap:nowrap;column-gap:10px}
-  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:7;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:7;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;
     background:var(--sheet);border-top:1px solid var(--rule);padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
   nav.tabs button{flex-direction:column;justify-content:center;gap:3px;height:58px;padding:0 2px;border-bottom:0;border-top:2px solid transparent;
     font-family:var(--f-body);font-stretch:100%;font-size:.68rem;font-weight:500;letter-spacing:0;text-transform:none}
@@ -298,6 +298,20 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
   .seg button{min-height:36px;padding-inline:12px}
   .roomlist button{padding-block:8px}
 }
+/* directions */
+.chip.route{border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+.chip.route[aria-pressed="true"]{box-shadow:inset 0 -3px 0 var(--accent)}
+.go-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.go-row select{flex:1 1 160px;min-width:0;border:1px solid var(--rule);background:var(--paper);border-radius:6px;padding:6px 8px}
+.go-sum{font-size:.9rem;margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--rule)}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.steps button{width:100%;display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:start;text-align:left;border:0;background:none;padding:7px 6px;border-radius:6px;cursor:pointer;font-size:.86rem;line-height:1.4}
+.steps button:hover{background:var(--paper)}
+.steps button.off{opacity:.6}
+.steps .n{font-family:var(--f-mono);font-size:.7rem;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--sheet);display:grid;place-items:center;margin-top:1px}
+.steps .f{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2);margin-top:2px}
+dialog.mapdlg{width:min(760px,calc(100vw - 24px))}
+#mapBox{height:min(56vh,460px);border:1px solid var(--rule);border-radius:8px;margin:10px 0;background:var(--paper)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -306,6 +320,7 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
     <div class="brand"><h1>UCampass(PIC)</h1><span class="tag" id="blockTag">Block B</span></div>
     <nav class="tabs" role="tablist" aria-label="Views">
       <button role="tab" id="tab-plan" aria-selected="true" data-tab="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 12h9M12 3v13M16 12h5"/></svg><span>Floor plan</span></button>
+      <button role="tab" id="tab-nav" aria-selected="false" data-tab="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 20l7-4 7 4z"/></svg><span>Directions</span></button>
       <button role="tab" id="tab-3d" aria-selected="false" data-tab="3d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 7.5v9L12 21l9-4.5v-9z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg><span>3D outline</span></button>
       <button role="tab" id="tab-capture" aria-selected="false" data-tab="capture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Contribute</span></button>
       <button role="tab" id="tab-sessions" aria-selected="false" data-tab="sessions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>Sessions</span><span class="count" id="sessCount"></span></button>
@@ -422,6 +437,14 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
 <dialog class="sheet gallery" id="gallery" aria-labelledby="galTitle">
   <div class="g-head"><h2 id="galTitle">Photos</h2><button class="btn sm" id="galZip" disabled>Download all (.zip)</button><button class="btn sm" id="galClose">Close</button></div>
   <div class="g-grid" id="galGrid"></div>
+</dialog>
+
+<dialog class="sheet mapdlg" id="mapDlg" aria-labelledby="mapTitle">
+  <h2 id="mapTitle">Place the block on the map</h2>
+  <p class="small muted" style="margin:0">Drag the map until the outline sits on the building, then turn it to match. Zoom right in to line up the walls.</p>
+  <div id="mapBox"></div>
+  <div class="field"><label for="mapRot">Turn the plan <span class="mono" id="mapRotV">0°</span></label><input type="range" id="mapRot" min="-180" max="180" step="0.5" value="0"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn" type="button" id="mapHere" style="margin-right:auto">Go to my location</button><button class="btn" type="button" id="mapCancel">Cancel</button><button class="btn primary" type="button" id="mapSave">Save position</button></div>
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -616,8 +639,12 @@ function bannerGone(){ if(S.bannerX) return true; try{ return sessionStorage.get
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function setTab(t){
   if (t!=="capture"){ stopLive(); stopGeo(); }
+  if (t!=="nav") stopNavGps();
+  const wasNav=S.nav; S.nav=t==="nav"; if (S.nav){ S.sel=null; S.draft=[]; if(S.mode!=="select") setMode("select"); }
+  if (t==="nav") t="plan";      // Directions reuses the floor plan canvas
   S.tab=t;
-  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===(S.nav?"nav":t))));
+  $("#modes").hidden=S.nav; $("#overlay").hidden=S.nav; if (wasNav!==S.nav) renderFloors();
   ["plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
   document.body.classList.toggle("fill", t==="plan"||t==="3d");
   $("#exMenu").open=false; window.scrollTo(0,0);
@@ -626,14 +653,15 @@ function setTab(t){
   if (t==="sessions") renderSessions();
   if (t==="history") renderHistory();
   if (t==="capture") renderCapture();
-  try{ localStorage.setItem("apu-tab",t); }catch(e){}
+  try{ localStorage.setItem("apu-tab",S.nav?"nav":t); }catch(e){}
 }
 
 /* ---------- floors toolbar ---------- */
 function renderFloors(){
   const fl=[...S.plan.floors].sort((a,b)=>a.level-b.level);
-  $("#floors").innerHTML=`<span class="lbl">Floor</span>`+fl.map(f=>`<button class="chip" data-f="${f.level}" aria-pressed="${f.level===S.floor}" title="${esc(f.name)}">L${f.level}</button>`).join("")
-    +(S.readOnly?"":`<button class="chip" id="addFloor" title="Add a floor">+</button>`);
+  const onRoute=S.nav?routeFloors():new Set();
+  $("#floors").innerHTML=`<span class="lbl">Floor</span>`+fl.map(f=>`<button class="chip${onRoute.has(f.level)?" route":""}" data-f="${f.level}" aria-pressed="${f.level===S.floor}" title="${esc(f.name)}${onRoute.has(f.level)?" · on your route":""}">L${f.level}</button>`).join("")
+    +(S.readOnly||S.nav?"":`<button class="chip" id="addFloor" title="Add a floor">+</button>`);
   $("#floors").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{ S.floor=+b.dataset.f; S.sel=null; S.draft=[]; renderAll(); fit(); });
   const af=$("#addFloor"); if(af) af.onclick=()=>{ const lv=Math.max(0,...S.plan.floors.map(f=>f.level))+1;
     S.plan.floors.push({level:lv,name:"Level "+lv}); S.floor=lv; S.sel=null; edit("Added floor L"+lv); };
@@ -676,7 +704,7 @@ function renderPlan(){
   rs.forEach(r=>{
     const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel;
     const unscanned=S.overlay==="coverage" && !(cov[r.id]>0);
-    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":roomFill(r,cov)}" fill-opacity="${S.overlay==="coverage"?.9:.28}" stroke="${sel?acc:ink}" stroke-width="${sel?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":roomFill(r,cov)}" fill-opacity="${S.overlay==="coverage"?.9:.28}" stroke="${sel||navMark(r)?acc:ink}" stroke-width="${sel||navMark(r)?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
     stairs+=stairSymbol(r,fs);
     const [cx,cy]=centroid(r.poly);
     if (S.view.scale>6){
@@ -691,9 +719,9 @@ function renderPlan(){
       const sweep = (( (p1[0]-p0[0])*n[1]-(p1[1]-p0[1])*n[0]) > 0) ? 0 : 1;
       doors+=`<path d="M${p0[0]},${p0[1]} L${e1[0]},${e1[1]} A${rad},${rad} 0 0 ${sweep} ${p1[0]},${p1[1]}" fill="none" stroke="${ink}" stroke-opacity=".55" stroke-width="1" vector-effect="non-scaling-stroke" data-door="${r.k}:${di}" pointer-events="${S.mode==="door"?"visibleStroke":"none"}"/>`;
     });
-    if (sel && S.mode==="select" && !S.readOnly) r.poly.forEach((p,i)=>handles+=`<rect data-h="${i}" x="${p[0]-6/S.view.scale}" y="${p[1]-6/S.view.scale}" width="${12/S.view.scale}" height="${12/S.view.scale}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke" style="cursor:move"/>`);
+    if (sel && S.mode==="select" && !S.readOnly && !S.nav) r.poly.forEach((p,i)=>handles+=`<rect data-h="${i}" x="${p[0]-6/S.view.scale}" y="${p[1]-6/S.view.scale}" width="${12/S.view.scale}" height="${12/S.view.scale}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke" style="cursor:move"/>`);
   });
-  let overlay=scanOverlay(fs);
+  let overlay=S.nav?navOverlay(fs):scanOverlay(fs);
   if (S.mode==="door" && S.hoverEdge){ const r=roomByK(S.hoverEdge.k); if(r){ const [a,b]=edgeOf(r.poly,S.hoverEdge.e); const c=lerp(a,b,S.hoverEdge.t);
     overlay+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${acc}" stroke-width="4" vector-effect="non-scaling-stroke" stroke-opacity=".6"/><circle cx="${c[0]}" cy="${c[1]}" r="${DOOR_W/2}" fill="${acc}" fill-opacity=".25" stroke="${acc}" vector-effect="non-scaling-stroke"/>`; } }
   if (S.mode==="draw" && S.draft.length){
@@ -717,7 +745,7 @@ const TOUCH = matchMedia("(pointer:coarse)").matches;
 let hintKey="";
 function renderHint(){
   const n=S.draft.length, tap=TOUCH?"Tap":"Click";
-  const h={select:S.readOnly?`${tap} a room to see its details. Drag to pan${TOUCH?", pinch to zoom":""}.`
+  const h=S.nav?navHint(tap):{select:S.readOnly?`${tap} a room to see its details. Drag to pan${TOUCH?", pinch to zoom":""}.`
       :TOUCH?"Tap a room to edit it · drag to pan · pinch to zoom":"Click a room to edit it · drag corner handles to reshape · drag to pan",
     draw:n?(TOUCH?`${n} corner${n===1?"":"s"} · tap to add more, or tap the first corner to close`:"Click to add corners (right angles snap; Shift for free angles) · click the first corner or press Enter to close")
       :`${tap} to place the first corner. Points snap to a 0.5 m grid.`,
@@ -781,6 +809,7 @@ svg.addEventListener("pointerup",pointerEnd);
 svg.addEventListener("pointercancel",pointerEnd);
 function tapAt(ev,t){
   const pt=toWorld(ev);
+  if (S.nav){ const k=t.dataset.k||hitRoom(pt); if(k) navPick(roomByK(k)); return; }
   if (S.mode==="select"){ const k=t.dataset.k||hitRoom(pt)||null; if(k!==S.sel){ S.sel=k; S.sheetScroll=true; } renderPlan(); return; }
   if (S.readOnly) return;
   if (S.mode==="draw"){
@@ -804,7 +833,7 @@ window.addEventListener("keydown",ev=>{
   if (S.tab!=="plan" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)) return;
   if (ev.key==="Escape"){ S.draft=[]; S.sel=null; setSheet(false); renderPlan(); }
   if (ev.key==="Enter" && S.mode==="draw" && S.draft.length>=3) closeDraft();
-  if (ev.key==="Delete" && S.sel && !S.readOnly){ deleteRoom(S.sel); }
+  if (ev.key==="Delete" && S.sel && !S.readOnly && !S.nav){ deleteRoom(S.sel); }
 });
 function hitRoom(pt){ const rs=floorRooms(S.floor).filter(r=>inside(pt,r.poly)); rs.sort((a,b)=>area(a.poly)-area(b.poly)); return rs[0]?.k; }
 function drawPoint(pt,free){ let p=[snap(pt[0],GRID),snap(pt[1],GRID)];
@@ -827,6 +856,7 @@ let delArm=false, lastInsp=null;
 function setSheet(open){ S.sheet=open; $("#insp").classList.toggle("open",open); $("#sheetHandle").setAttribute("aria-expanded",String(open)); $("#sheetCue").textContent=open?"Close":"Details"; }
 $("#sheetHandle").onclick=()=>setSheet(!S.sheet);
 function renderInspector(){
+  if (S.nav) return renderDirections();
   const el=$("#inspector"), r=S.sel&&roomByK(S.sel), cov=coverage();
   const key=(r?r.k:"floor")+S.floor; if (key!==lastInsp){ lastInsp=key; el.scrollTop=0; }
   if (r) $("#sheetLabel").innerHTML=`<b>${esc(r.id)}</b>${esc(r.name||TYPES[r.type]?.label||"")}`;
@@ -837,10 +867,16 @@ function renderInspector(){
     el.innerHTML=`<h2>${esc(fl?.name||"Level "+S.floor)}</h2>
       ${S.readOnly?"":`<div class="row2" style="margin-bottom:10px"><div class="field"><label for="blk">Block</label><input id="blk" value="${esc(S.plan.block||"")}" maxlength="8"></div><div class="field"><label for="flName">Floor name</label><input id="flName" value="${esc(fl?.name||"")}" maxlength="40"></div></div>`}
       <dl class="kv"><dt>Rooms</dt><dd>${rs.length}</dd><dt>Floor area</dt><dd>${fmtArea(tot)}</dd><dt>Doors</dt><dd>${rs.reduce((s,r)=>s+r.doors.length,0)}</dd><dt>Rooms with scans</dt><dd>${scanned} / ${rs.length}</dd></dl>
+      <h3>On the map</h3>
+      ${S.plan.geo?`<p class="small muted" style="margin:0 0 8px">Placed at ${S.plan.geo.lat.toFixed(5)}, ${S.plan.geo.lng.toFixed(5)}, turned ${S.plan.geo.rot}°. Directions can show GPS, and the GeoJSON export uses map coordinates.</p>`
+        :`<p class="small muted" style="margin:0 0 8px">Not placed yet. Place the block on a real map so Directions can show GPS and the GeoJSON export lines up with map data.</p>`}
+      ${S.readOnly?"":`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="mapPlace">${S.plan.geo?"Adjust on map":"Place on map"}</button>${S.plan.geo?`<button class="btn sm" id="mapClear">Remove</button>`:""}</div>`}
       <h3>Rooms on this floor</h3>
       ${rs.length?`<ul class="roomlist">${rs.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:`<p class="muted small">Nothing drawn yet.</p>`}
       ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
     el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
+    const mp=$("#mapPlace"); if(mp) mp.onclick=openMapDlg;
+    const mc=$("#mapClear"); if(mc) mc.onclick=()=>{ delete S.plan.geo; edit("Removed the block's map position"); };
     const blk=$("#blk"); if(blk) blk.onchange=()=>{ S.plan.block=blk.value.trim().toUpperCase(); edit("Renamed block to "+S.plan.block); };
     const fn=$("#flName"); if(fn) fn.onchange=()=>{ fl.name=fn.value.trim()||"Level "+S.floor; edit("Renamed L"+S.floor); };
     const df=$("#delFloor"); if(df) df.onclick=()=>{ if(!delArm){delArm=true;renderInspector();return;} delArm=false;
@@ -904,7 +940,7 @@ function markerSvgFile(r){ const inner=qrSvg(markerText(r)).replace(/^<svg[^>]*>
 /* ---------- edits, saving, versions ---------- */
 function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll();
   if (S.api && !S.meId && !S.askedName){ S.askedName=true; openProfile(); } }
-function planBody(){ return {block:S.plan.block, floors:S.plan.floors, rooms:S.plan.rooms}; }
+function planBody(){ return {block:S.plan.block, floors:S.plan.floors, rooms:S.plan.rooms, ...(S.plan.geo?{geo:S.plan.geo}:{})}; }
 function scheduleSave(note,delay=900){
   if (!S.pendingNote) S.pendingNote=note;
   else if (S.pendingNote!==note && !S.pendingNote.endsWith(" and more")) S.pendingNote+=" and more";
@@ -1070,14 +1106,17 @@ function gpsAnchor(){
   return {lat:+median(g.map(x=>x.lat)).toFixed(5),lng:+median(g.map(x=>x.lng)).toFixed(5),accuracy_m:Math.round(median(g.map(x=>x.acc))),sessions:g.length,
     note:"Approximate building position (WGS84) from GPS-tagged capture sessions. Indoor GPS is often off by 10–50 m."};
 }
+/* With the block placed on the map, coordinates are WGS84 [lng, lat] as GeoJSON expects; otherwise local metres. */
 function geojson(){
-  const anchor=gpsAnchor();
+  const g=S.plan.geo, anchor=g?null:gpsAnchor();
+  const pt=g?(p=>{ const [lat,lng]=toLatLng(p); return [+lng.toFixed(7),+lat.toFixed(7)]; }):(([x,y])=>[+x.toFixed(3),+y.toFixed(3)]);
   return JSON.stringify({type:"FeatureCollection",name:`APU Block ${S.plan.block} outline`,
-    crs_note:"Local building coordinates in metres (x east, y south of the block origin). Georeference before mixing with map data."+(anchor?" See anchor for a rough GPS position of the block.":""),
+    ...(g?{placement:{...g,note:"Placed on the map by hand: plan point (x, y) in metres sits at (lat, lng) and the plan is turned rot degrees clockwise."}}
+      :{crs_note:"Local building coordinates in metres (x east, y south of the block origin). Place the block on the map (Floor plan tab) to export real map coordinates."+(anchor?" See anchor for a rough GPS position of the block.":"")}),
     ...(anchor?{anchor}:{}),
     features:S.plan.rooms.map(r=>({type:"Feature",properties:{id:r.id,name:r.name,type:r.type,type_label:TYPES[r.type]?.label,block:S.plan.block,floor:r.floor,
       area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0,...stairProps(r)},
-      geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(([x,y])=>[+x.toFixed(3),+y.toFixed(3)])]}}))},null,2);
+      geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(pt)]}}))},null,2);
 }
 $("#exMenu").querySelectorAll(".pop button").forEach(b=>b.addEventListener("click",()=>$("#exMenu").open=false));
 document.addEventListener("pointerdown",e=>{ const m=$("#exMenu"); if(m.open && !m.contains(e.target)) m.open=false; });
@@ -1552,7 +1591,7 @@ function saveLocal(){ try{ localStorage.setItem(LOCAL_KEY,JSON.stringify({plan:S
 function loadLocal(){
   try{
     const d=JSON.parse(localStorage.getItem(LOCAL_KEY)||"null"); if(!d||!d.plan||!Array.isArray(d.plan.rooms)) return false;
-    S.plan=clone({block:d.plan.block||"B",floors:d.plan.floors||[],rooms:d.plan.rooms,rev:d.plan.rev||0});
+    S.plan=clone({block:d.plan.block||"B",floors:d.plan.floors||[],rooms:d.plan.rooms,geo:d.plan.geo,rev:d.plan.rev||0});
     S.versions=Array.isArray(d.versions)?d.versions:[]; S.sessions=Array.isArray(d.sessions)?d.sessions:[]; S.example=false;
     if (!S.plan.floors.length) S.plan.floors=[{level:1,name:"Level 1"}];
     if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
@@ -1619,10 +1658,12 @@ function mergePlans(base,mine,theirs){
   }
   const field=f=>!same(base[f],mine[f])?mine[f]:theirs[f];
   if (!same(base.block,mine.block) && !same(base.block,theirs.block) && !same(mine.block,theirs.block)) clash.push("block name");
-  return {plan:{block:field("block"),floors:field("floors"),rooms},clash};
+  if (!same(base.geo,mine.geo) && !same(base.geo,theirs.geo) && !same(mine.geo,theirs.geo)) clash.push("map position");
+  const geo=field("geo");
+  return {plan:{block:field("block"),floors:field("floors"),rooms,...(geo?{geo}:{})},clash};
 }
 function applyMerged(plan,theirs){
-  S.plan={...clone(plan),rev:theirs.rev}; S.base=clone({block:theirs.block,floors:theirs.floors,rooms:theirs.rooms});
+  S.plan={...clone(plan),rev:theirs.rev}; S.base=clone({block:theirs.block,floors:theirs.floors,rooms:theirs.rooms,geo:theirs.geo});
   if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
   if (S.sel && !roomByK(S.sel)) S.sel=null;
   renderAll();
@@ -1678,6 +1719,280 @@ $("#profForm").onsubmit=async e=>{
   if (S.failedNote && !S.readOnly){ const n=S.failedNote; S.failedNote=""; scheduleSave(n,0); }
 };
 
+/* ---------- directions: routes between rooms through doors, stairs and lifts ----------
+   A door joins its room to whichever room on the same floor has a wall within 0.3 m of it. Inside a room the route
+   goes in straight lines between doors, bending round inside corners. Stairwells drawn in the same place on
+   consecutive floors join those floors; stairwells set to "Lift" are the only links kept for step-free routes. */
+const WALK_MPS=1.25, DOOR_GAP=.3, APPROACH=.45, CORNER=.55, STAIR_COST=15, LIFT_COST=20, THROUGH=4;
+const CIRCULATION=new Set(["corridor","lobby","stairs"]);   // other rooms cost THROUGH times more to walk across
+S.go={from:null, to:null, fromDoor:false, stepFree:false, route:null, gps:null, gpsOn:false, want:null};
+
+function segDist(p,ed){ return dist(p,lerp(ed[0],ed[1],projT(p,ed))); }
+function roomPoint(r){ const c=centroid(r.poly); if(inside(c,r.poly)) return c;
+  const p=r.poly; for(let i=1;i<p.length-1;i++){ const q=centroid([p[0],p[i],p[i+1]]); if(inside(q,p)) return q; }
+  return c; }
+function clearPath(a,b,poly){ for(let i=1;i<12;i++) if(!inside(lerp(a,b,i/12),poly)) return false; return true; }
+const roomName = r => r ? (r.name || TYPES[r.type]?.label || r.id) : "";
+const floorName = lv => S.plan.floors.find(f=>f.level===lv)?.name || "Level "+lv;
+
+function navGraph(stepFree){
+  const N=[], adj=[], rooms=S.plan.rooms, inRoom=new Map(rooms.map(r=>[r.k,[]])), center=new Map(), doors=[];
+  const add=(p,f,info)=>{ N.push({p,f,...info}); adj.push([]); return N.length-1; };
+  const link=(a,b,w,e={})=>{ adj[a].push({to:b,w,...e}); adj[b].push({to:a,w,...e}); };
+  rooms.forEach(r=>{ const i=add(roomPoint(r),r.floor,{room:r.k,center:true}); center.set(r.k,i); inRoom.get(r.k).push(i); });
+  rooms.forEach(r=>r.doors.forEach(d=>{
+    const c=doorCenter(r,d); let o=null, bd=DOOR_GAP;
+    rooms.forEach(x=>{ if(x===r || x.floor!==r.floor) return; x.poly.forEach((_,e)=>{ const dd=segDist(c,edgeOf(x.poly,e)); if(dd<bd){ bd=dd; o=x; } }); });
+    if (!o){ doors.push({a:r.k,b:null,c}); return; }        // a door to the outside: a way in, kept for campus routes later
+    if (doors.some(x=>x.b && dist(x.c,c)<.6 && ((x.a===r.k&&x.b===o.k)||(x.a===o.k&&x.b===r.k)))) return;   // both rooms drew the same door
+    const n=inwardNormal(r,d.e), pa=[c[0]+n[0]*APPROACH,c[1]+n[1]*APPROACH], pb=[c[0]-n[0]*APPROACH,c[1]-n[1]*APPROACH];
+    const dn=add(c,r.floor,{door:true,a:r.k,b:o.k}), ia=add(inside(pa,r.poly)?pa:c,r.floor,{room:r.k}), ib=add(inside(pb,o.poly)?pb:c,r.floor,{room:o.k});
+    link(ia,dn,dist(N[ia].p,c)); link(dn,ib,dist(c,N[ib].p));
+    inRoom.get(r.k).push(ia); inRoom.get(o.k).push(ib); doors.push({a:r.k,b:o.k,c,node:dn});
+  }));
+  rooms.forEach(r=>{ const p=r.poly, s=Math.sign(signed(p))||1;   // inside corners of L-shaped rooms
+    p.forEach((v,i)=>{ const j=(i+p.length-1)%p.length, a=p[j], b=p[(i+1)%p.length];
+      if (((v[0]-a[0])*(b[1]-v[1])-(v[1]-a[1])*(b[0]-v[0]))*s>=0) return;
+      const n1=inwardNormal(r,j), n2=inwardNormal(r,i), m=[n1[0]+n2[0],n1[1]+n2[1]], L=Math.hypot(m[0],m[1])||1, q=[v[0]+m[0]/L*CORNER,v[1]+m[1]/L*CORNER];
+      if (inside(q,p)) inRoom.get(r.k).push(add(q,r.floor,{room:r.k,corner:true})); }); });
+  inRoom.forEach((ids,k)=>{ const r=roomByK(k);
+    for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){ const a=N[ids[i]].p, b=N[ids[j]].p; if(clearPath(a,b,r.poly)) link(ids[i],ids[j],dist(a,b),{room:k}); } });
+  rooms.filter(r=>r.type==="stairs").forEach(r=>{
+    const nl=nextLevel(r.floor); if(nl==null) return;
+    const kind=stairOf(r).kind==="lift"?"lift":"stairs"; if (stepFree && kind!=="lift") return;
+    rooms.filter(o=>o.type==="stairs" && o.floor===nl && (inside(roomPoint(o),r.poly)||inside(roomPoint(r),o.poly))).forEach(o=>
+      link(center.get(r.k),center.get(o.k),kind==="lift"?LIFT_COST+2*(nl-r.floor):STAIR_COST*(nl-r.floor),{via:kind})); });
+  return {N,adj,center,doors};
+}
+
+function navRoute(from,to,opt){
+  const G=navGraph(opt.stepFree), D=new Float64Array(G.N.length).fill(Infinity), prev=new Int32Array(G.N.length).fill(-1), via=[], done=new Uint8Array(G.N.length);
+  let start=G.center.get(from.k);
+  if (opt.fromDoor){ const d=G.doors.find(d=>d.node!=null && (d.a===from.k||d.b===from.k)); if(d) start=d.node; }
+  const goal=G.center.get(to.k); D[start]=0;
+  for(;;){ let u=-1, best=Infinity; for(let i=0;i<D.length;i++) if(!done[i] && D[i]<best){ best=D[i]; u=i; }
+    if (u<0 || u===goal) break; done[u]=1;
+    for (const e of G.adj[u]){ const r=e.room&&roomByK(e.room), pen=r && r.k!==from.k && r.k!==to.k && !CIRCULATION.has(r.type)?THROUGH:1, nd=D[u]+e.w*pen;
+      if (nd<D[e.to]){ D[e.to]=nd; prev[e.to]=u; via[e.to]=e; } } }
+  if (!Number.isFinite(D[goal])) return null;
+  const path=[]; for(let v=goal; v>=0; v=prev[v]) path.unshift(v);
+  return describeRoute(G,path,via,from,to,opt);
+}
+
+const heading=(a,b)=>Math.atan2(b[1]-a[1],b[0]-a[0]);
+// y points south on the plan, so a clockwise turn on screen is a right turn
+function turnOf(h1,h2){ const d=((h2-h1)*180/Math.PI+540)%360-180; return Math.abs(d)<30?"straight":Math.abs(d)>150?"back":d>0?"right":"left"; }
+const pathLen=pts=>{ let s=0; for(let i=1;i<pts.length;i++) s+=dist(pts[i-1],pts[i]); return s; };
+const metres=d=>d<10?`${Math.max(1,Math.round(d))} m`:`${Math.round(d/5)*5} m`;
+
+/* Turn the node path into legs (one per room walked through, or a ride between floors) and spoken-style steps. */
+function describeRoute(G,path,via,from,to,opt){
+  const P=i=>G.N[path[i]], legs=[]; let leg={k:P(0).room||null,f:P(0).f,pts:[P(0).p]};
+  for (let i=1;i<path.length;i++){ const n=P(i), e=via[path[i]];
+    if (e.via){ legs.push(leg); legs.push({move:e.via,from:P(i-1).f,to:n.f}); leg={k:n.room,f:n.f,pts:[n.p]}; continue; }
+    if (n.door){ leg.pts.push(n.p); legs.push(leg); leg={k:null,f:n.f,pts:[n.p]}; continue; }
+    if (leg.k==null) leg.k=n.room;
+    leg.pts.push(n.p);
+  }
+  legs.push(leg);
+  const lines=[]; legs.forEach(l=>{ if(l.move) return; const last=lines[lines.length-1];
+    if (last && last.f===l.f) last.pts.push(...l.pts.slice(1)); else lines.push({f:l.f,pts:l.pts.slice()}); });
+  const steps=[], B=r=>`<b>${esc(roomName(r))}</b>`, say=(html,f,at)=>steps.push({html,f,at});
+  let total=0, changes=0;
+  for (let i=0;i<legs.length;i++){
+    const l=legs[i], r=l.k&&roomByK(l.k), next=legs[i+1], pts=l.pts;
+    if (l.move){ let j=i; while(legs[j+2]?.move===l.move && legs[j+1].pts.length===1) j+=2;
+      const end=legs[j], up=end.to>l.from, n=Math.abs(S.plan.floors.filter(f=>f.level>Math.min(l.from,end.to)&&f.level<=Math.max(l.from,end.to)).length);
+      say(`Take the ${l.move} ${up?"up":"down"}${n>1?` ${n} floors`:""} to <b>${esc(floorName(end.to))}</b>.`, end.to, legs[j+1]?.pts[0]);
+      changes++; i=j; continue; }
+    const d=pathLen(pts); total+=d;
+    if (next && next.move) continue;          // the door into the stairwell was the last step
+    if (l.k===to.k && i===legs.length-1){ if(!legs[i-1] || legs[i-1].move) say(`You've arrived at ${B(r)}.`, l.f, pts[pts.length-1]); continue; }
+    const leavesBy=next&&!next.move, nextRoom=leavesBy&&legs[i+1]&&roomByK(legs[i+1].k);
+    if (i===0 && !opt.fromDoor){
+      say(`Leave ${B(r)} through the door${d>5?`, ${metres(d)} away`:""}.`, l.f, pts[0]);
+      continue;
+    } else if (i===0 || (legs[i-1] && !legs[i-1].move)){
+      // walked in through a door at pts[0]: which way to turn, how far, any corners, then the door out
+      const inner=pts.slice(1, leavesBy?-1:undefined), first=inner.length>1?turnOf(heading(pts[0],pts[1]),heading(inner[0],inner[1])):"straight";
+      const runs=[]; let run=0;
+      for (let j=1;j<inner.length;j++){ run+=dist(inner[j-1],inner[j]);
+        if (j<inner.length-1){ const t=turnOf(heading(inner[j-1],inner[j]),heading(inner[j],inner[j+1])); if(t!=="straight"){ runs.push({d:run,t,at:inner[j]}); run=0; } } }
+      runs.push({d:run});
+      const lead = i===0 ? `Start at the door of <b>${esc(roomName(from))}</b> and walk` : first==="straight" ? `Go straight into ${B(r)} and walk` : first==="back" ? `Turn around in ${B(r)} and walk` : `Turn ${first} into ${B(r)} and walk`;
+      say(runs[0].d<1.5?lead.replace(/ and walk$/,"."):`${lead} ${metres(runs[0].d)}${i===0?` through ${B(r)}`:""}.`, l.f, pts[0]);
+      for (let j=0;j<runs.length-1;j++){ const nx=runs[j+1]; say(nx.d<1.5?`Turn ${runs[j].t}.`:`Turn ${runs[j].t} and walk ${metres(nx.d)}.`, l.f, runs[j].at); }
+    } else if (legs[i-1]?.move){
+      say(`Leave the ${legs[i-1].move==="lift"?"lift":"stairwell"}.`, l.f, pts[0]);
+      continue;
+    }
+    if (leavesBy && pts.length>=3){
+      const side=turnOf(heading(pts[pts.length-3],pts[pts.length-2]),heading(pts[pts.length-2],pts[pts.length-1]));
+      const where=side==="straight"?"ahead":side==="back"?"behind you":`on your ${side}`;
+      const isEnd=legs[i+1].k===to.k && i+1===legs.length-1;
+      say(isEnd?`${B(nextRoom)} is ${where}. You've arrived.`:`Go through the door ${where} into ${B(nextRoom)}.`, l.f, pts[pts.length-1]);
+    }
+  }
+  const secs=total/WALK_MPS+changes*30;
+  return {lines,steps,total,changes,mins:Math.max(1,Math.round(secs/60)),from:from.k,to:to.k};
+}
+
+function navUpdate(){
+  const g=S.go, a=g.from&&roomByK(g.from), b=g.to&&roomByK(g.to);
+  g.route=null; g.msg="";
+  if (a && b){
+    if (a===b) g.msg="You're already there.";
+    else { g.route=navRoute(a,b,g);
+      if (!g.route) g.msg=g.stepFree?"No step-free route found. A lift (a Stairs / lift room set to Lift) needs to link these floors.":"No route found. Check that each room has a door onto a corridor or lobby, and that stairwells are drawn in the same place on each floor."; }
+  }
+}
+const routeFloors=()=>new Set(S.go.route?S.go.route.lines.map(l=>l.f):[]);
+const navMark=r=>S.nav && (r.k===S.go.from || r.k===S.go.to);
+function navHint(tap){
+  if (!S.go.from) return `${tap} the room you're in, or scan a door marker. Drag to pan${TOUCH?", pinch to zoom":""}.`;
+  if (!S.go.to) return `${tap} the room you want to go to.`;
+  const r=S.go.route, other=r&&[...routeFloors()].filter(f=>f!==S.floor);
+  return r ? (r.lines.some(l=>l.f===S.floor) ? (other.length?`Your route continues on ${other.map(f=>"L"+f).join(", ")}.`:`${tap} another room to change where you're going.`) : `Your route is on ${other.map(f=>"L"+f).join(", ")}.`) : S.go.msg;
+}
+function navPick(r){ const g=S.go;
+  if (!g.from){ g.from=r.k; g.fromDoor=false; } else if (r.k!==g.from) g.to=r.k; else return;
+  navUpdate(); if (g.route) toast(`${metres(g.route.total)} · about ${g.route.mins} min`); renderFloors(); renderPlan(); }
+
+function navOverlay(fs){
+  const R=S.go.route, acc=css("--accent"), sheet=css("--sheet"), ink=css("--ink"); let o="";
+  if (R){
+    R.lines.filter(l=>l.f===S.floor).forEach(l=>{ const pts=l.pts.map(p=>p.join(",")).join(" ");
+      o+=`<polyline points="${pts}" fill="none" stroke="${sheet}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`
+        +`<polyline points="${pts}" fill="none" stroke="${acc}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`; });
+    const first=R.lines[0], last=R.lines[R.lines.length-1], dot=(p,fill,r)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${r/S.view.scale}" fill="${fill}" stroke="${sheet}" stroke-width="2.5" vector-effect="non-scaling-stroke"/>`;
+    if (first.f===S.floor) o+=dot(first.pts[0],ink,7);
+    if (last.f===S.floor) o+=dot(last.pts[last.pts.length-1],acc,9);
+    R.lines.forEach((l,i)=>{ if(l.f!==S.floor) return; const tag=(q,txt)=>`<g pointer-events="none"><rect x="${q[0]-fs*1.3}" y="${q[1]-fs*1.9}" width="${fs*2.6}" height="${fs*1.2}" rx="${fs*.3}" fill="${ink}"/><text x="${q[0]}" y="${q[1]-fs*1.05}" text-anchor="middle" font-family="${css("--f-mono")}" font-size="${fs*.75}" fill="${sheet}">${txt}</text></g>`;
+      if (R.lines[i+1]){ const nf=R.lines[i+1].f; o+=tag(l.pts[l.pts.length-1],(nf>l.f?"↑ L":"↓ L")+nf); } });
+  }
+  const g=S.go.gps, geo=S.plan.geo;
+  if (S.go.gpsOn && g && geo){ const p=fromLatLng(g.lat,g.lng);
+    o+=`<circle cx="${p[0]}" cy="${p[1]}" r="${Math.max(g.acc,1)}" fill="#2f6fd6" fill-opacity=".12" stroke="#2f6fd6" stroke-opacity=".5" vector-effect="non-scaling-stroke"/><circle cx="${p[0]}" cy="${p[1]}" r="${6/S.view.scale}" fill="#2f6fd6" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>`; }
+  return o;
+}
+
+let navKey="";
+function renderDirections(){
+  const el=$("#inspector"), g=S.go;
+  if (g.want && (S.loaded || !S.example)){ const f=S.plan.rooms.find(r=>r.id===g.want.from), t=S.plan.rooms.find(r=>r.id===g.want.to); if(f||t){ if(f) g.from=f.k; if(t) g.to=t.k; g.want=null; navUpdate(); renderFloors(); } }
+  if (g.from && !roomByK(g.from)) g.from=null; if (g.to && !roomByK(g.to)) g.to=null;
+  if (g.rev!==S.plan.rev){ g.rev=S.plan.rev; navUpdate(); }     // the plan changed under us: route again
+  const R=g.route, to=g.to&&roomByK(g.to);
+  $("#sheetLabel").innerHTML=`<b>Directions</b>${to?`to ${esc(roomName(to))}${R?` · ${metres(R.total)}`:""}`:"Pick a room"}`;
+  const key=JSON.stringify([g.from,g.to,g.fromDoor,g.stepFree,g.msg,R&&R.steps.map(s=>s.html),S.plan.rev,S.plan.rooms.length,!!S.plan.geo,g.gpsOn,g.gps&&g.gps.acc,S.floor]);
+  if (key===navKey) return; navKey=key;
+  const fl=[...S.plan.floors].sort((a,b)=>a.level-b.level);
+  const opts=sel=>`<option value="">Choose a room…</option>`+fl.map(f=>{ const rs=floorRooms(f.level).slice().sort((a,b)=>roomName(a).localeCompare(roomName(b)));
+    return rs.length?`<optgroup label="${esc(f.name||"Level "+f.level)}">${rs.map(r=>`<option value="${r.k}" ${r.k===sel?"selected":""}>${esc(roomName(r))} · ${esc(r.id)}</option>`).join("")}</optgroup>`:""; }).join("");
+  const centre=S.plan.geo&&blockCentre();
+  el.innerHTML=`<h2>Directions</h2>
+    <div class="field"><label for="goFrom">From${g.fromDoor?" (door marker)":""}</label><div class="go-row"><select id="goFrom">${opts(g.from)}</select><button class="btn sm" id="goScan" title="Take a photo of a door marker">Scan marker</button></div></div>
+    <input type="file" id="goScanIn" accept="image/*" capture="environment" hidden>
+    <div class="field"><label for="goTo">To</label><select id="goTo">${opts(g.to)}</select></div>
+    <div class="go-row" style="margin-bottom:6px"><button class="btn sm" id="goSwap" ${g.from&&g.to?"":"disabled"}>Swap</button><label class="consent" style="margin:0"><input type="checkbox" id="goStep" ${g.stepFree?"checked":""}><span>Step-free (lifts only)</span></label></div>
+    ${R?`<div class="go-sum"><b>${metres(R.total)}</b> · about ${R.mins} min${R.changes?` · ${R.changes} floor change${R.changes>1?"s":""}`:""}</div>
+      <ol class="steps">${R.steps.map((s,i)=>`<li><button data-i="${i}" ${s.f===S.floor?"":`class="off"`}><span class="n">${i+1}</span><span>${s.html}</span><span class="f">L${s.f}</span></button></li>`).join("")}</ol>`
+      :g.msg?`<p class="warn">${esc(g.msg)}</p>`:`<p class="small muted">Pick where you are and where you're going, or tap rooms on the plan.</p>`}
+    <h3>Your position</h3>
+    ${S.plan.geo?`<label class="consent"><input type="checkbox" id="goGps" ${g.gpsOn?"checked":""}><span>Show my GPS position on the plan${g.gpsOn&&g.gps?` (±${Math.round(g.gps.acc)} m)`:""}. Indoors it's usually only accurate to 10–50 m, so scan a door marker to be sure where you are.</span></label>
+      <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&amp;destination=${centre[0].toFixed(6)},${centre[1].toFixed(6)}">Get to Block ${esc(S.plan.block)} in Google Maps</a>`
+      :`<p class="small muted">Scan the door marker next to you to start from there. GPS can be shown here once the block is placed on the map (Floor plan tab, no room selected).</p>`}`;
+  $("#goFrom").onchange=e=>{ g.from=e.target.value||null; g.fromDoor=false; navUpdate(); renderFloors(); renderPlan(); };
+  $("#goTo").onchange=e=>{ g.to=e.target.value||null; navUpdate(); if(g.route && !routeFloors().has(S.floor)){ S.floor=g.route.lines[0].f; fit(); } renderFloors(); renderPlan(); };
+  $("#goSwap").onclick=()=>{ [g.from,g.to]=[g.to,g.from]; g.fromDoor=false; navUpdate(); renderFloors(); renderPlan(); };
+  $("#goStep").onchange=e=>{ g.stepFree=e.target.checked; navUpdate(); renderFloors(); renderPlan(); };
+  $("#goScan").onclick=()=>$("#goScanIn").click();
+  $("#goScanIn").onchange=e=>{ const f=e.target.files[0]; e.target.value=""; if(f) scanDoorPhoto(f); };
+  const gp=$("#goGps"); if(gp) gp.onchange=e=>{ if(e.target.checked) startNavGps(); else { stopNavGps(); renderPlan(); } };
+  el.querySelectorAll(".steps [data-i]").forEach(b=>b.onclick=()=>{ const s=R.steps[+b.dataset.i]; if(s.f!==S.floor){ S.floor=s.f; renderFloors(); }
+    if (s.at){ S.view.cx=s.at[0]; S.view.cy=s.at[1]; S.view.scale=Math.max(S.view.scale,18); } if(TOUCH) setSheet(false); renderPlan(); });
+}
+
+/* Read a door marker from a photo: the room it names becomes the start, at its door. */
+async function scanDoorPhoto(file){
+  if (typeof jsQR!=="function"){ toast("The marker reader didn't load. Pick the room from the list instead."); return; }
+  try{
+    const bmp=await createImageBitmap(file), k=Math.min(1,1600/Math.max(bmp.width,bmp.height)), w=Math.round(bmp.width*k), h=Math.round(bmp.height*k);
+    const c=document.createElement("canvas"); c.width=w; c.height=h; const x=c.getContext("2d",{willReadFrequently:true}); x.drawImage(bmp,0,0,w,h);
+    const q=jsQR(x.getImageData(0,0,w,h).data,w,h), m=q&&parseMarker(q.data);
+    if (!m){ toast("No door marker found. Get closer so the code fills more of the photo."); return; }
+    const r=S.plan.rooms.find(r=>r.id===m.room);
+    if (!r){ toast(`Marker ${m.room} isn't on this plan.`); return; }
+    S.go.from=r.k; S.go.fromDoor=true; S.floor=r.floor; navUpdate(); renderFloors(); fit();
+    toast(`You're at the door of ${roomName(r)}.`);
+  }catch(e){ toast("Couldn't read that photo."); }
+}
+
+/* ---------- placing the block on a real map ----------
+   plan.geo = {x, y, lat, lng, rot}: plan point (x, y) sits at (lat, lng), and the plan is turned rot degrees clockwise.
+   Plan x runs east and y south before turning. Metres per degree use a flat-earth approximation, fine across a campus. */
+const M_PER_DEG=111320, DEFAULT_LL=[3.0553,101.7007];   // APU campus, Bukit Jalil
+function toLatLng(p,g=S.plan.geo){ const t=g.rot*Math.PI/180, e0=p[0]-g.x, n0=-(p[1]-g.y);
+  const e=e0*Math.cos(t)+n0*Math.sin(t), n=-e0*Math.sin(t)+n0*Math.cos(t);
+  return [g.lat+n/M_PER_DEG, g.lng+e/(M_PER_DEG*Math.cos(g.lat*Math.PI/180))]; }
+function fromLatLng(lat,lng,g=S.plan.geo){ const t=g.rot*Math.PI/180, n=(lat-g.lat)*M_PER_DEG, e=(lng-g.lng)*M_PER_DEG*Math.cos(g.lat*Math.PI/180);
+  const e0=e*Math.cos(t)-n*Math.sin(t), n0=e*Math.sin(t)+n*Math.cos(t); return [g.x+e0, g.y-n0]; }
+function planCentre(){ const pts=S.plan.rooms.flatMap(r=>r.poly); if(!pts.length) return [0,0]; const b=bbox(pts); return [(b[0]+b[2])/2,(b[1]+b[3])/2]; }
+const blockCentre=()=>toLatLng(planCentre());
+
+let navWatch=null;
+function startNavGps(){
+  if (!navigator.geolocation){ S.go.gpsOn=false; toast("This browser can't share your location."); renderPlan(); return; }
+  S.go.gpsOn=true; renderPlan();
+  navWatch=navigator.geolocation.watchPosition(p=>{ S.go.gps={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}; renderPlan(); },
+    ()=>{ stopNavGps(); toast("Location is blocked or unavailable."); renderPlan(); },{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+}
+function stopNavGps(){ if(navWatch!=null){ navigator.geolocation.clearWatch(navWatch); navWatch=null; } S.go.gpsOn=false; S.go.gps=null; }
+
+let leafletP=null, MAP=null;
+function loadLeaflet(){
+  if (window.L && window.L.map) return Promise.resolve();
+  if (!leafletP) leafletP=new Promise((res,rej)=>{
+    const l=document.createElement("link"); l.rel="stylesheet"; l.href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(l);
+    const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"; s.onload=res; s.onerror=()=>{ leafletP=null; rej(new Error("leaflet")); }; document.head.appendChild(s); });
+  return leafletP;
+}
+function mapGeo(){ const c=MAP.map.getCenter(); return {x:MAP.c[0],y:MAP.c[1],lat:c.lat,lng:c.lng,rot:MAP.rot}; }
+function drawMapOutline(){
+  const Lf=window.L, g=mapGeo(), rs=floorRooms(S.floor).length?floorRooms(S.floor):S.plan.rooms;
+  MAP.layer.clearLayers();
+  rs.forEach(r=>Lf.polygon(r.poly.map(p=>toLatLng(p,g)),{color:css("--accent"),weight:2,fillOpacity:.15,interactive:false}).addTo(MAP.layer));
+  $("#mapRotV").textContent=`${MAP.rot.toFixed(1)}°`;
+}
+async function openMapDlg(){
+  const d=$("#mapDlg"); if(!d.showModal || S.readOnly) return;
+  if (!S.plan.rooms.length){ toast("Draw some rooms first."); return; }
+  try{ await loadLeaflet(); }catch(e){ toast("Couldn't load the map. Check your connection and try again."); return; }
+  const Lf=window.L, g=S.plan.geo, a=gpsAnchor(), c=planCentre();
+  const start=g?toLatLng(c):a?[a.lat,a.lng]:DEFAULT_LL;
+  $("#mapTitle").textContent=`Place Block ${S.plan.block||""} on the map`;
+  d.showModal();
+  if (!MAP){
+    const map=Lf.map("mapBox",{zoomControl:true,attributionControl:true,maxZoom:21});
+    Lf.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:21,maxNativeZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+    MAP={map,layer:Lf.layerGroup().addTo(map),c,rot:0};
+    map.on("move",drawMapOutline);
+  }
+  MAP.c=c; MAP.rot=g?g.rot:0; $("#mapRot").value=MAP.rot;
+  MAP.map.invalidateSize(); MAP.map.setView(start,19); drawMapOutline();
+}
+$("#mapRot").oninput=e=>{ if(!MAP) return; MAP.rot=+e.target.value; drawMapOutline(); };
+$("#mapCancel").onclick=()=>$("#mapDlg").close();
+$("#mapHere").onclick=()=>{ if(!navigator.geolocation||!MAP){ toast("This browser can't share your location."); return; }
+  navigator.geolocation.getCurrentPosition(p=>MAP.map.setView([p.coords.latitude,p.coords.longitude],19),()=>toast("Location is blocked or unavailable."),{enableHighAccuracy:true,timeout:15000}); };
+$("#mapSave").onclick=()=>{ if(!MAP) return; const g=mapGeo();
+  S.plan.geo={x:+g.x.toFixed(3),y:+g.y.toFixed(3),lat:+g.lat.toFixed(7),lng:+g.lng.toFixed(7),rot:+g.rot.toFixed(2)};
+  $("#mapDlg").close(); edit("Placed the block on the map"); toast("Block placed. The GeoJSON export now uses map coordinates."); };
+
+// Links like ?from=B-03-01&to=B-04-02 open Directions with those rooms
+(function(){ try{ const q=new URLSearchParams(location.search), f=q.get("from"), t=q.get("to");
+  if (f||t){ S.go.want={from:f,to:t}; S.tab="nav"; try{ localStorage.setItem("apu-tab","nav"); }catch(e){} } }catch(e){} })();
+
 /* ---------- boot ---------- */
 try{ const t=localStorage.getItem("apu-tab"); if(t) S.tab=t; }catch(e){}
 setTab(S.tab); renderAll(); requestAnimationFrame(fit);
@@ -1719,7 +2034,7 @@ async function connectArtifact(c){
   }, ()=>{});
 }
 function adoptPlan(d){
-  S.plan=clone({block:d.block,floors:d.floors||[],rooms:d.rooms||[],rev:d.rev||0}); S.example=false;
+  S.plan=clone({block:d.block,floors:d.floors||[],rooms:d.rooms||[],geo:d.geo,rev:d.rev||0}); S.example=false;
   if (!S.plan.floors.length) S.plan.floors=[{level:1,name:"Level 1"}];
   if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0].level;
   if (S.sel && !roomByK(S.sel)) S.sel=null;
