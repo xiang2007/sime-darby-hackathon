@@ -8,6 +8,8 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 
 ## What's new
 
+- **Live camera.** On **Contribute**, tap **Live camera**, keep it open and walk slowly. The app keeps a photo whenever the view is sharp, not a blank wall, and has moved on from the last one, takes a few shots of any door marker it reads, and stops at 80 photos. The photos then go through the usual checks and upload.
+- **Optional GPS tag.** A session can be tagged with the phone's GPS position. It links to a map from **Sessions**, and the GeoJSON export gets a rough `anchor` position for the block. Indoor GPS is usually only accurate to 10–50 m, so it places the building, not the rooms; room shapes still come from the photos. Uploaded photos never carry location.
 - **Measure rooms from photos.** A worker program on your own laptop turns uploaded photos into a measured room outline and ceiling height, using the door marker for scale. Compare it with the drawn room on the Floor plan tab and apply it in one click. [How to run it](#measuring-rooms-from-photos)
 - **Photos saved in the database.** Contributors can choose to upload their photos. They're stored in the same Neon database as the plan, with GPS and other hidden data removed. View them or download a zip from Sessions.
 - **Works on phones.** Bottom tab bar, pull-up room details, and touch drawing, panning and zooming.

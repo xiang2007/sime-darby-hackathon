@@ -169,6 +169,19 @@ aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overfl
 .checks li{display:grid;grid-template-columns:auto 1fr;gap:8px}
 .checks .mono{color:var(--ink-2);font-size:.76rem}
 .consent{display:flex;gap:8px;align-items:flex-start;font-size:.82rem;margin:10px 0}
+.live-start{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.live{position:fixed;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;color:#fff}
+.live[hidden]{display:none}
+.live video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}
+.live .hud{position:absolute;left:0;right:0;top:0;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;background:linear-gradient(rgb(0 0 0 / .7),transparent);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;font-size:.95rem}
+.live .hud b{font-family:var(--f-display);font-stretch:85%;letter-spacing:.02em;font-size:1.15rem}
+.live .bar{position:absolute;left:0;right:0;bottom:0;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgb(0 0 0 / .75));display:flex;gap:12px;align-items:center;justify-content:space-between}
+.live .bar .small{color:#ddd}
+.live .flash{position:absolute;inset:0;border:6px solid #3ccf7a;pointer-events:none;opacity:0;transition:opacity .35s}
+.live .flash.on{opacity:1;transition:none}
+.live .thumbs{display:flex;gap:4px;overflow:hidden;max-width:55vw}
+.live .thumbs img{height:44px;width:auto;border-radius:4px;border:1px solid rgb(255 255 255 / .5)}
+.geo-line{font-size:.8rem;margin:-4px 0 10px 26px}
 .progress{height:6px;border-radius:3px;background:var(--rule);overflow:hidden;margin:10px 0 4px}
 .progress i{display:block;height:100%;background:var(--accent,#2f6fdf);transition:width .2s}
 dialog.gallery{width:min(980px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:0;display:none;flex-direction:column}
@@ -201,7 +214,7 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
 .empty{padding:28px;text-align:center;color:var(--ink-2)}
 .cov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
 .cov{display:flex;justify-content:space-between;gap:8px;align-items:center;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-size:.82rem}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--sheet);padding:9px 16px;border-radius:8px;font-size:.85rem;z-index:20;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--sheet);padding:9px 16px;border-radius:8px;font-size:.85rem;z-index:40;max-width:calc(100% - 32px)}
 
 /* tablet & phone: the inspector becomes a bottom sheet that peeks above the plan */
 @media (max-width:860px){
@@ -367,18 +380,26 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
       <div class="cap-grid">
         <div class="cap-intro">
           <h2>Contribute a capture session</h2>
-          <p class="muted small lead" style="max-width:62ch">Walk one room or corridor slowly, taking a photo about every step so each overlaps the last. Checks run in your browser. <b>Your photos stay on this device</b> unless you choose to upload them for 3D reconstruction.</p>
+          <p class="muted small lead" style="max-width:62ch">Walk one room or corridor slowly, taking a photo about every step so each overlaps the last, or use the live camera and let the app take the photos for you. Checks run in your browser. <b>Your photos stay on this device</b> unless you choose to upload them for 3D reconstruction.</p>
           <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add photos">
             <strong id="dropTitle">Drop photos here or click to choose</strong>
             <div class="small muted">JPEG or PNG · a door marker QR in any photo fills in the room tag</div>
             <input type="file" id="fileIn" accept="image/*" multiple hidden>
           </div>
+          <div class="live-start"><button class="btn primary" id="liveBtn">Live camera</button><span class="small muted">Keep the camera open and walk slowly. A photo is kept whenever the view is sharp and has moved on from the last one.</span></div>
         </div>
         <div class="card" id="capSide"></div>
         <div class="frames" id="frames"></div>
       </div>
     </div>
   </section>
+
+  <div class="live" id="live" hidden role="dialog" aria-label="Live capture">
+    <video id="liveVid" playsinline muted autoplay></video>
+    <div class="flash" id="liveFlash"></div>
+    <div class="hud"><div><b id="liveHint">Starting camera…</b><div class="small" id="liveSub"></div></div><div class="mono" id="liveCount" style="text-align:right"></div></div>
+    <div class="bar"><div class="thumbs" id="liveThumbs"></div><button class="btn primary" id="liveStop">Done</button></div>
+  </div>
 
   <!-- SESSIONS -->
   <section class="view" id="view-sessions" hidden><div class="pad" id="sessionsPad"></div></section>
@@ -468,7 +489,7 @@ const S = {
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
   worker: null, scanView: null, scanCache: {},
   view: {cx: 20, cy: 9.5, scale: 18},
-  capture: {frames: [], block: null, floor: null, room: "", consent: false, share: false, busy: false, upload: null}
+  capture: {frames: [], block: null, floor: null, room: "", consent: false, share: false, busy: false, upload: null, geoOn: false, geo: null}
 };
 
 /* ---------- geometry ---------- */
@@ -594,6 +615,7 @@ function bannerGone(){ if(S.bannerX) return true; try{ return sessionStorage.get
 /* ---------- tabs ---------- */
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function setTab(t){
+  if (t!=="capture"){ stopLive(); stopGeo(); }
   S.tab=t;
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
   ["plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
@@ -1041,9 +1063,18 @@ function stairProps(r){ const L=stairLayout(r); if(!L) return {};
   const p={stair_kind:L.kind,connects_to_floor:L.up?L.nl:null};
   if (L.kind!=="lift" && L.up) Object.assign(p,{risers:L.n,riser_m:+L.h.toFixed(3),tread_m:+L.tread.toFixed(3),flight_width_m:+L.fw.toFixed(2)});
   return p; }
+/* Rough position of the block from GPS-tagged sessions: the median of fixes better than 100 m. */
+function gpsAnchor(){
+  const g=S.sessions.filter(s=>s.geo && s.geo.acc<=100 && (!s.block || s.block===S.plan.block)).map(s=>s.geo);
+  if (!g.length) return null;
+  return {lat:+median(g.map(x=>x.lat)).toFixed(5),lng:+median(g.map(x=>x.lng)).toFixed(5),accuracy_m:Math.round(median(g.map(x=>x.acc))),sessions:g.length,
+    note:"Approximate building position (WGS84) from GPS-tagged capture sessions. Indoor GPS is often off by 10–50 m."};
+}
 function geojson(){
+  const anchor=gpsAnchor();
   return JSON.stringify({type:"FeatureCollection",name:`APU Block ${S.plan.block} outline`,
-    crs_note:"Local building coordinates in metres (x east, y south of the block origin). Georeference before mixing with map data.",
+    crs_note:"Local building coordinates in metres (x east, y south of the block origin). Georeference before mixing with map data."+(anchor?" See anchor for a rough GPS position of the block.":""),
+    ...(anchor?{anchor}:{}),
     features:S.plan.rooms.map(r=>({type:"Feature",properties:{id:r.id,name:r.name,type:r.type,type_label:TYPES[r.type]?.label,block:S.plan.block,floor:r.floor,
       area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0,...stairProps(r)},
       geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(([x,y])=>[+x.toFixed(3),+y.toFixed(3)])]}}))},null,2);
@@ -1079,7 +1110,12 @@ async function addFiles(files){
   scoreOverlap(); S.capture.busy=false; renderCapture();
 }
 async function analyze(file){
-  const bmp=await createImageBitmap(file), W=bmp.width, H=bmp.height, s=Math.min(1,640/Math.max(W,H)), w=Math.round(W*s), h=Math.round(H*s);
+  const bmp=await createImageBitmap(file);
+  try{ return {name:file.name,...checkImage(bmp,bmp.width,bmp.height)}; } finally{ bmp.close?.(); }
+}
+/* The quality checks for one image. src is anything canvas can draw: a decoded photo or a live video frame. */
+function checkImage(bmp,W,H){
+  const s=Math.min(1,640/Math.max(W,H)), w=Math.round(W*s), h=Math.round(H*s);
   const c=document.createElement("canvas"); c.width=w; c.height=h; const ctx=c.getContext("2d",{willReadFrequently:true}); ctx.drawImage(bmp,0,0,w,h);
   const img=ctx.getImageData(0,0,w,h), d=img.data, g=new Float32Array(w*h);
   let sum=0; for(let i=0;i<w*h;i++){ const v=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2]; g[i]=v; sum+=v; }
@@ -1092,11 +1128,100 @@ async function analyze(file){
   const td=tx.getImageData(0,0,32,24).data, thumb=new Float32Array(768); for(let i=0;i<768;i++) thumb[i]=.299*td[i*4]+.587*td[i*4+1]+.114*td[i*4+2];
   let qr=null; if (typeof jsQR==="function"){ const r=jsQR(d,w,h,{inversionAttempts:"dontInvert"}); if(r) qr=r.data; }
   const tURL=document.createElement("canvas"); tURL.width=240; tURL.height=Math.round(240*H/W); tURL.getContext("2d").drawImage(bmp,0,0,tURL.width,tURL.height);
-  bmp.close?.();
   const reasons=[]; if (sharp<QC.sharp) reasons.push("blurry"); if (bright<QC.dark) reasons.push("too dark"); if (bright>QC.bright) reasons.push("overexposed");
   if (texture<QC.texture) reasons.push("blank wall"); if (Math.min(W,H)<QC.minSide) reasons.push("too small");
-  return {name:file.name,W,H,sharp,bright,texture,thumb,qr,preview:tURL.toDataURL("image/jpeg",.7),reasons};
+  return {W,H,sharp,bright,texture,thumb,qr,preview:tURL.toDataURL("image/jpeg",.7),reasons};
 }
+
+/* ---------- live capture: the camera stays open and good frames are kept automatically ---------- */
+// moved: a frame is kept once it matches the last kept one less than this (NCC), so photos overlap but aren't repeats.
+const LIVE={every:400, moved:.8, max:80, markerShots:3, markerGap:1500};
+let live=null;
+async function startLive(){
+  if (live) return;
+  if (S.readOnly){ toast("Your sharing level doesn't allow new sessions."); return; }
+  if (!navigator.mediaDevices?.getUserMedia){ toast("This browser can't open the camera here. Add photos instead."); return; }
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}}); }
+  catch(e){ toast(e?.name==="NotAllowedError"?"Camera access was blocked. Allow it for this site, or add photos instead.":"Couldn't open the camera. Add photos instead."); return; }
+  const v=$("#liveVid"); v.srcObject=stream;
+  live={stream,timer:null,last:null,markers:0,lastMarker:0,kept:0,busy:false,started:Date.now()};
+  $("#live").hidden=false; $("#liveThumbs").innerHTML=""; liveHud("Starting camera…");
+  try{ await v.play(); }catch(e){}
+  if (S.capture.geoOn) startGeo();
+  live.timer=setInterval(liveTick,LIVE.every);
+}
+function stopLive(){
+  if (!live) return;
+  clearInterval(live.timer); live.stream.getTracks().forEach(t=>t.stop());
+  const n=live.kept; live=null;
+  $("#liveVid").srcObject=null; $("#live").hidden=true;
+  scoreOverlap(); renderCapture();
+  if (n) toast(`${n} photo${n===1?"":"s"} kept from the live camera.`);
+}
+function liveHud(hint){
+  $("#liveHint").textContent=hint;
+  const C=S.capture, ok=C.frames.filter(f=>!f.reasons.length).length;
+  $("#liveCount").innerHTML=`${live?.kept||0} kept<br><span class="small">${ok} usable · aim for ${QC.goodFrames}–40</span>`;
+  const g=C.geoOn?(C.geo?`GPS ±${Math.round(C.geo.acc)} m`:"Finding GPS…"):"";
+  $("#liveSub").textContent=[C.room?`Room ${C.room}`:"",g].filter(Boolean).join(" · ");
+}
+async function liveTick(){
+  const v=$("#liveVid");
+  if (!live || live.busy || v.readyState<2 || !v.videoWidth) return;
+  live.busy=true;
+  try{
+    const W=v.videoWidth, H=v.videoHeight, fr=checkImage(v,W,H), mk=parseMarker(fr.qr), now=Date.now();
+    const match=live.last?ncc(live.last,fr.thumb):null;
+    const markerShot=mk && live.markers<LIVE.markerShots && now-live.lastMarker>LIVE.markerGap && !fr.reasons.includes("blurry");
+    let hint=null;
+    if (!markerShot){
+      if (fr.reasons.includes("too dark")) hint="Too dark. Turn a light on";
+      else if (fr.reasons.includes("overexposed")) hint="Too bright. Turn away from the window";
+      else if (fr.reasons.includes("blurry")) hint="Hold steady";
+      else if (fr.reasons.includes("blank wall")) hint="Aim at a corner, door or furniture";
+      else if (match!=null && match>=LIVE.moved) hint="Keep walking slowly";
+    }
+    if (hint){ liveHud(hint); return; }
+    // Keep this frame at full camera resolution so it can be uploaded for 3D measuring.
+    const c=document.createElement("canvas"); c.width=W; c.height=H; c.getContext("2d").drawImage(v,0,0,W,H);
+    const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.9));
+    if (!live || !blob) return;
+    live.kept++; live.last=fr.thumb;
+    if (mk){ live.markers++; live.lastMarker=now; }
+    fr.name=`live-${String(live.kept).padStart(3,"0")}.jpg`; fr.file=blob;
+    S.capture.frames.push(fr); scoreOverlap();
+    navigator.vibrate?.(25);
+    const fl=$("#liveFlash"); fl.classList.add("on"); requestAnimationFrame(()=>requestAnimationFrame(()=>fl.classList.remove("on")));
+    const th=$("#liveThumbs"); th.insertAdjacentHTML("afterbegin",`<img src="${fr.preview}" alt="">`); while(th.children.length>6) th.lastChild.remove();
+    liveHud(mk?`Door marker ${mk.room} read`:match!=null&&match<QC.overlap?"Kept. Slow down a little":"Kept");
+    if (live.kept>=LIVE.max){ stopLive(); toast(`Stopped at ${LIVE.max} photos. Submit this session, then start another for the next room.`); }
+  }catch(e){ console.warn(e); }
+  finally{ if(live) live.busy=false; }
+}
+$("#liveBtn").onclick=startLive;
+$("#liveStop").onclick=stopLive;
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) stopLive(); });
+
+/* ---------- optional GPS tag: places the session (and so the building) on a map ---------- */
+let geoWatch=null;
+function startGeo(){
+  const C=S.capture;
+  if (geoWatch!=null) return;
+  if (!navigator.geolocation){ C.geoOn=false; toast("This browser can't share your location."); renderCapture(); return; }
+  geoWatch=navigator.geolocation.watchPosition(p=>{
+      const g={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy};
+      // Keep the most accurate fix seen during the session.
+      if (!C.geo || g.acc<=C.geo.acc) C.geo=g;
+      if (live) liveHud($("#liveHint").textContent); else renderGeoLine();
+    },e=>{ stopGeo(); C.geoOn=false; C.geo=null; renderCapture();
+      toast(e.code===1?"Location access was blocked, so this session won't be tagged.":"Couldn't get a GPS fix. This session won't be tagged."); },
+    {enableHighAccuracy:true,maximumAge:15000,timeout:30000});
+}
+function stopGeo(){ if(geoWatch!=null){ navigator.geolocation.clearWatch(geoWatch); geoWatch=null; } }
+function geoText(g){ return `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)} · ±${Math.round(g.acc)} m`; }
+function renderGeoLine(){ const el=$("#cGeoLine"); if(el) el.textContent=S.capture.geo?geoText(S.capture.geo):"Finding your location…"; }
+const mapLink=g=>`https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lng}#map=19/${g.lat}/${g.lng}`;
 function ncc(a,b){ let ma=0,mb=0; for(let i=0;i<a.length;i++){ma+=a[i];mb+=b[i];} ma/=a.length; mb/=b.length;
   let n=0,da=0,db=0; for(let i=0;i<a.length;i++){ const x=a[i]-ma,y=b[i]-mb; n+=x*y; da+=x*x; db+=y*y; } return n/Math.sqrt(da*db||1); }
 function scoreOverlap(){ const fr=S.capture.frames.filter(f=>f.thumb); for(let i=0;i<fr.length;i++) fr[i].overlap=i?ncc(fr[i-1].thumb,fr[i].thumb):null; applyQR(); }
@@ -1124,6 +1249,7 @@ function renderCapture(){
   // No fixed starting place: block and floor follow what's open on the floor plan until the contributor changes them.
   if (C.block==null) C.block=S.plan.block||"";
   if (C.floor==null) C.floor=S.floor;
+  if (C.geoOn) startGeo();
   $("#frames").innerHTML=fr.map(f=>f.error?`<div class="frame rej"><div class="m"><b>${esc(f.name)}</b><span class="warn">${esc(f.error)}</span></div></div>`:
     `<div class="frame ${f.reasons.length?"rej":""}"><img src="${f.preview}" alt="${esc(f.name)}"><div class="m">
       <div class="r"><span class="muted">Sharpness</span><span class="mono">${f.sharp.toFixed(0)}</span></div>
@@ -1145,19 +1271,22 @@ function renderCapture(){
       <li><span>•</span><span>Blank wall <span class="mono">edge pixels ≥ ${+(QC.texture*100).toFixed(1)}%</span></span></li><li><span>•</span><span>Overlap with the previous frame <span class="mono">NCC ≥ ${QC.overlap}</span></span></li>
       <li><span>•</span><span>Session size <span class="mono">≥ ${QC.minFrames} usable, ${QC.goodFrames}+ preferred</span></span></li></ul>`}
     <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""} ${C.upload?"disabled":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
+    <label class="consent"><input type="checkbox" id="cGeo" ${C.geoOn?"checked":""} ${C.upload?"disabled":""}><span>Tag this session with my GPS location, to place the building on a map. Indoors it's usually only accurate to 10–50 m. Photos never carry it.</span></label>
+    ${C.geoOn?`<div class="geo-line muted mono" id="cGeoLine">${C.geo?esc(geoText(C.geo)):"Finding your location…"}</div>`:""}
     ${canShare()?`<label class="consent"><input type="checkbox" id="cShare" ${C.share?"checked":""} ${C.upload?"disabled":""}><span>Also upload the ${shareFrames().length||""} usable photo${shareFrames().length===1?"":"s"} so the room can be measured in 3D. They're resized to ${PHOTO_MAX}px and location data is removed.</span></label>
       ${C.share?`<div class="tipbox small"><b>For accurate measurements</b><ul><li>Start anywhere in the room. If there's a door marker, take 2–3 close photos of it from different angles: its printed size sets the scale.</li><li>Walk along the walls and turn slowly at corners, so photos overlap across each corner.</li><li>Add a few photos tilted up at the ceiling and down at the floor.</li></ul></div>`:""}`:""}
     ${C.upload?`<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${C.upload.total}" aria-valuenow="${C.upload.done}"><i style="width:${C.upload.total?100*C.upload.done/C.upload.total:0}%"></i></div>
       <p class="small" style="margin:0 0 10px">Uploading photo ${Math.min(C.upload.done+1,C.upload.total)} of ${C.upload.total}… keep this page open.</p>`:""}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cSubmit" ${canSubmit?"":"disabled"}>${C.share&&canShare()&&shareFrames().length?"Submit and upload photos":"Submit session"}</button>${fr.length&&!C.upload?`<button class="btn" id="cClear">Clear photos</button>`:""}</div>
     <p class="small muted" style="margin-bottom:0">${S.readOnly?"Your sharing level doesn't allow submitting sessions.":!C.consent&&fr.length?"Tick the permission box to submit.":C.share&&canShare()?"Uploads the scores, tag, counts and the usable photos.":"Uploads only the scores, tag and counts. Photos stay here."}</p>
-    <p class="small muted" style="margin-bottom:0;border-top:1px solid var(--rule);padding-top:10px">Phone AR poses (ARKit/ARCore) need the native capture app. This web intake checks photo quality and coverage only.</p>`;
+    <p class="small muted" style="margin-bottom:0;border-top:1px solid var(--rule);padding-top:10px">Room shapes come from the photos, not GPS: GPS indoors is too rough to trace walls. Phone AR poses (ARKit/ARCore) need the native capture app.</p>`;
   $("#cBlock").onchange=e=>{C.block=e.target.value.trim().toUpperCase();};
   $("#cFloor").onchange=e=>{C.floor=+e.target.value||0;};
   $("#cRoom").oninput=e=>{C.room=e.target.value.trim(); C.fromMarker=false; $("#cSubmit").disabled=!(fr.length&&!C.busy&&!C.upload&&C.consent&&!S.readOnly);};
   $("#cRoom").onchange=()=>renderCapture();
   $("#cConsent").onchange=e=>{C.consent=e.target.checked; renderCapture();};
   const sh=$("#cShare"); if(sh) sh.onchange=e=>{C.share=e.target.checked; renderCapture();};
+  $("#cGeo").onchange=e=>{ C.geoOn=e.target.checked; if(C.geoOn) startGeo(); else { stopGeo(); C.geo=null; } renderCapture(); };
   const cl=$("#cClear"); if(cl) cl.onclick=()=>{ C.frames=[]; C.fromMarker=false; renderCapture(); };
   $("#cSubmit").onclick=submitSession;
 }
@@ -1198,6 +1327,7 @@ async function submitSession(){
   const C=S.capture, sm=summary(), share=C.share && canShare() ? shareFrames() : [];
   const doc={at:Date.now(),by:S.meId,block:C.block,floor:C.floor,room:C.room,frames:sm.total,usable:sm.ok,gaps:sm.jumps,verdict:sm.verdict,
     reasons:sm.reasons,tally:sm.tally,marker:!!C.fromMarker,photos:share.length,
+    ...(C.geoOn&&C.geo?{geo:{lat:C.geo.lat,lng:C.geo.lng,acc:C.geo.acc}}:{}),
     medians:{sharp:+median(C.frames.filter(f=>f.sharp!=null).map(f=>f.sharp)).toFixed(1),bright:+median(C.frames.filter(f=>f.bright!=null).map(f=>f.bright)).toFixed(1)}};
   $("#cSubmit").disabled=true;
   try{
@@ -1210,7 +1340,7 @@ async function submitSession(){
         poll(true);
       } }
     else if (S.db){ delete doc.photos; await S.db.collection("sessions").add(doc); } else { delete doc.photos; S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
-    C.frames=[]; C.consent=false; C.share=false; C.fromMarker=false;
+    C.frames=[]; C.consent=false; C.share=false; C.fromMarker=false; C.geoOn=false; C.geo=null; stopGeo();
     toast(failed?`Session submitted, but ${failed} of ${share.length} photos didn't upload.`:sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":share.length?`Session and ${share.length} photos submitted. Thanks!`:"Session submitted. Thanks!");
     if(!S.db && !S.api){ updateCounts(); }
     setTab("sessions");
@@ -1252,7 +1382,7 @@ async function renderSessions(){
     <h3 class="sec">All sessions</h3>
     <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Photos</th><th>3D measurement</th></tr></thead><tbody>
       ${ss.map(s=>{ const [c,l]=VERDICT[s.verdict]||["idle",s.verdict]; const known=rooms.some(r=>r.id===s.room);
-        return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${s.room?esc(s.room):`<span class="muted">No room tag</span>`}${s.marker?` <span class="pill idle">marker</span>`:""}${known||!s.room?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">${s.block?`Block ${esc(s.block)} · `:""}L${esc(s.floor)}</span></td>
+        return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${s.room?esc(s.room):`<span class="muted">No room tag</span>`}${s.marker?` <span class="pill idle">marker</span>`:""}${known||!s.room?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">${s.block?`Block ${esc(s.block)} · `:""}L${esc(s.floor)}${s.geo?` · <a href="${esc(mapLink(s.geo))}" target="_blank" rel="noopener" title="${esc(geoText(s.geo))}">GPS ±${esc(s.geo.acc)} m</a>`:""}</span></td>
         <td data-l="Verdict"><span class="pill ${c}">${l}</span></td><td class="num" data-l="Frames">${s.frames}</td><td class="num" data-l="Usable">${s.usable}</td><td class="num" data-l="Gaps">${s.gaps}</td>
         <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Photos">${s.photos?`<button class="btn sm" data-gal="${esc(s._id)}" data-room="${esc(s.room)}">View ${s.photos}</button>`:`<span class="muted small">${s.photoSlots&&Date.now()-s.at<2*3600e3?"Uploading…":"Kept on phone"}</span>`}</td><td data-l="3D measurement" class="${!s.recon&&!(s.photos>=MIN_RECON&&s.verdict!=="rejected")?"none":"wide"}">${reconCell(s)}</td></tr>`;}).join("")}
       </tbody></table>`:`<div class="empty">No sessions yet. Open <b>Contribute</b> to check and submit your first set of photos.</div>`}</div>`;

@@ -35,6 +35,11 @@ test("session validation", () => {
   const free = V.session({ floor: 3, verdict: "thin", frames: 1, usable: 1, gaps: 0 });
   assert.equal(free.room, "");
   assert.equal(free.block, "");
+  assert.equal(free.detail.geo, undefined, "no location unless the contributor opts in");
+  const g = V.session({ floor: 3, verdict: "thin", frames: 1, usable: 1, gaps: 0, geo: { lat: 3.0553123, lng: 101.7006789, acc: 23.6 } });
+  assert.deepEqual(g.detail.geo, { lat: 3.05531, lng: 101.70068, acc: 24 });
+  assert.throws(() => V.session({ floor: 3, verdict: "thin", frames: 1, usable: 1, gaps: 0, geo: { lat: 91, lng: 0, acc: 5 } }), V.Invalid);
+  assert.throws(() => V.session({ floor: 3, verdict: "thin", frames: 1, usable: 1, gaps: 0, geo: { lat: "3", lng: 0, acc: 5 } }), V.Invalid);
 });
 
 test("photo validation", () => {
@@ -122,6 +127,10 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.equal(s1.status, 200);
     assert.equal(s1.body.sessions[0].room, "B-03-01");
     assert.equal(s1.body.sessions[0].by, "Ana");
+    assert.equal(s1.body.sessions[0].geo, null);
+    const tagged = await call("sessions", "POST", { block: "B", floor: 3, verdict: "thin", frames: 9, usable: 9, gaps: 0, geo: { lat: 3.0553, lng: 101.7007, acc: 30 } });
+    assert.equal(tagged.status, 201);
+    assert.deepEqual(tagged.body.geo, { lat: 3.0553, lng: 101.7007, acc: 30 });
   });
 
   await t.test("photos: reserve, upload, list, fetch", async () => {
