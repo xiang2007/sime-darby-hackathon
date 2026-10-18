@@ -13,6 +13,9 @@ shows up on the Floor plan tab, where someone can compare it with the drawn room
 
   Offline, on a zip saved from Sessions → View → Download all:
     python worker.py --photos session-42-B-03-02.zip [--plan plan.json] [--room B-03-02]
+
+  Offline, on a walk-through video (needs ffmpeg; frames are picked the way the app picks photos):
+    python worker.py --video walk.mp4 [--fps 2] [--max-frames 80] [--plan plan.json] [--room B-03-02]
 """
 from __future__ import annotations
 
@@ -31,6 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from floorplan import ReconError, measure, prepare_images, run_sfm  # noqa: E402
+from video import VideoError, extract_frames  # noqa: E402
 
 VERSION = "1"
 
@@ -100,8 +104,7 @@ def summary(r):
     return s
 
 
-def run_offline(args):
-    src = Path(args.photos)
+def load_photos(src: Path):
     files, meta = [], {}
     if src.is_dir():
         files = [(p.name, p.read_bytes()) for p in sorted(src.glob("*.jpg"))]
@@ -114,6 +117,17 @@ def run_offline(args):
                     files.append((Path(n).name, z.read(n)))
                 elif n == "session.json":
                     meta = json.loads(z.read(n))
+    return files, meta
+
+
+def run_offline(args):
+    files, meta = [], {}
+    if args.video:
+        files, _ = extract_frames(args.video, fps=args.fps, max_frames=args.max_frames, ffmpeg=args.ffmpeg, log=log)
+        if len(files) < 8:
+            raise VideoError(f"Only {len(files)} usable frames; at least 8 are needed. Film more slowly and steadily, with better light.")
+    else:
+        files, meta = load_photos(Path(args.photos))
     plan = json.loads(Path(args.plan).read_text()) if args.plan else None
     if plan and "plan" in plan and "rooms" not in plan:
         plan = plan["plan"]
@@ -179,14 +193,21 @@ def main():
     ap.add_argument("--session", help="process this session even if it was done before")
     ap.add_argument("--once", action="store_true", help="process at most one session, then stop")
     ap.add_argument("--photos", help="offline: a zip or folder of photos")
+    ap.add_argument("--video", help="offline: a walk-through video; frames are extracted with ffmpeg")
+    ap.add_argument("--fps", type=float, default=2.0, help="offline video: frames to extract per second (default 2)")
+    ap.add_argument("--max-frames", type=int, default=80, help="offline video: most frames to use (default 80, like Live camera)")
+    ap.add_argument("--ffmpeg", help="offline video: path to ffmpeg if it isn't on PATH")
     ap.add_argument("--plan", help="offline: the plan JSON exported from the Floor plan tab")
     ap.add_argument("--room", help="offline: the room ID (default: from session.json in the zip)")
     ap.add_argument("--out", help="offline: where to write the result (default result.json)")
     args = ap.parse_args()
-    if args.photos:
-        return run_offline(args)
+    if args.photos or args.video:
+        try:
+            return run_offline(args)
+        except VideoError as e:
+            sys.exit(str(e))
     if not args.server or not args.key:
-        ap.error("pass --server and --key, or --photos for offline use")
+        ap.error("pass --server and --key, or --photos / --video for offline use")
     run_server(args)
 
 

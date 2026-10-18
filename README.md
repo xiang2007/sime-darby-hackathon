@@ -64,7 +64,7 @@ api/             Vercel serverless functions
 lib/             database, validation and HTTP helpers
 scripts/         Vercel build and local dev server
 test/            API tests
-worker/          the 3D measuring worker, run on your own computer (Python)
+worker/          the 3D measuring worker, run on your own computer (Python); video.py picks frames from a video
 ```
 
 - **Front end:** a single HTML page using Three.js. It checks the server for changes every 4 seconds.
@@ -143,6 +143,7 @@ It checks for new sessions every 20 seconds and keeps running until you stop it 
 - `--once` measures one session, then stops.
 - `--session 42` measures session 42 again.
 - **Try again** on the Sessions tab re-queues a failed session.
+- Offline, on a walk-through video: `python worker.py --video walk.mp4 --plan plan.json`. Needs [ffmpeg](https://ffmpeg.org/download.html) on your PATH (or `--ffmpeg /path/to/ffmpeg`). It extracts `--fps` frames per second (default 2), drops frames the app would reject (blurry, too dark, overexposed, blank wall) and frames that repeat the last one, and keeps at most `--max-frames` (default 80, like Live camera), spread evenly. Film slowly at chest height, turn gently at corners and pause on door signs. Phone uploads still go through the app's in-browser capture, which sends only the kept photos instead of the whole video.
 - Offline, on a zip from **Sessions → View → Download all**: `python worker.py --photos session-42-B-03-02.zip --plan plan.json`. Here `plan.json` is the plan exported from the Floor plan tab. This writes `result.json` and `preview.png` (a top-down picture of the points, cameras and outline).
 
 **Tested accuracy.** The worker was tested on two rendered rooms of known size, not yet on real rooms.
