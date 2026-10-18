@@ -8,6 +8,8 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 
 ## What's new
 
+- **Directions.** The new **Directions** tab gives students a route from one room to another, across floors: a line on the floor plan plus steps like "Turn left into Main corridor and walk 10 m". Tap rooms on the plan or pick them from the lists, or **Scan marker** to start from the door marker you're standing at. **Step-free** keeps to lifts. Links like `/?from=B-03-01&to=B-04-02` open a route directly. [How routes are found](#directions)
+- **Place the block on a real map.** On **Floor plan** (no room selected), **Place on map** opens a map: drag it until the outline sits on the building and turn it to match. After that the GeoJSON export uses real map coordinates, Directions can show your GPS position on the plan (rough indoors, so markers are the reliable way to know where you are), and links to Google Maps for getting to the block.
 - **Live camera.** On **Contribute**, tap **Live camera**, keep it open and walk slowly. The app keeps a photo whenever the view is sharp, not a blank wall, and has moved on from the last one, takes a few shots of any door marker it reads, and stops at 80 photos. The photos then go through the usual checks and upload.
 - **Optional GPS tag.** A session can be tagged with the phone's GPS position. It links to a map from **Sessions**, and the GeoJSON export gets a rough `anchor` position for the block. Indoor GPS is usually only accurate to 10–50 m, so it places the building, not the rooms; room shapes still come from the photos. Uploaded photos never carry location.
 - **Measure rooms from photos.** A worker program on your own laptop turns uploaded photos into a measured room outline and ceiling height, using the door marker for scale. Compare it with the drawn room on the Floor plan tab and apply it in one click. [How to run it](#measuring-rooms-from-photos)
@@ -24,6 +26,7 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 | Tab | Purpose |
 |-----|---------|
 | **Floor plan** | Draw rooms on a 0.5 m grid, add doors, set each room's ID, type and height. Print QR markers for doors. Compare a room with its measurement from photos and apply it in one click. |
+| **Directions** | Route from any room to any other, including between floors by stairs or lift, with a line on the plan and step-by-step instructions. Start from a door marker by scanning it. |
 | **3D outline** | Turns the plan into a 3D model: walls with door openings, stacked floors and real stairs. Export as GLB, GeoJSON or JSON. |
 | **Contribute** | Checks photos for blur, exposure, blank walls and overlap, and reads door QR codes. Photos stay on the phone unless the contributor ticks **Also upload the photos**. Uploaded photos can be viewed and downloaded as a zip from **Sessions**. |
 | **Sessions** | Shows who scanned what, whether it passed, which rooms still need scanning, and each session's 3D measurement. |
@@ -32,6 +35,16 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 **On phones** the tabs move to a bottom bar, room details open in a pull-up sheet, and the plan supports tap to draw, drag to pan and pinch to zoom.
 
 Several people can edit at once. Edits to different rooms merge automatically; if two people change the same room, the app asks whose version to keep.
+
+### Directions
+
+Routes come straight from the floor plan, so a route only works if the plan is connected:
+
+- **Doors join rooms.** A door joins its room to the room on the other side of that wall (within 0.3 m). Draw corridors and lobbies as rooms, and put each room's door on the wall it shares with the corridor.
+- **Stairwells join floors.** A **Stairs / lift** room links to the stairwell drawn in the same place on the next floor up. Set it to **Lift** for it to count for step-free routes.
+- Routes prefer corridors, lobbies and stairs, and only cut through other rooms when that is much shorter. Inside a room the route goes in straight lines between doors and bends round inside corners.
+
+Indoor GPS is off by 10 to 50 m, which is the size of the whole block, so it can't say which room you're in. The door markers are the precise "you are here": scanning one starts the route at that door.
 
 ### Stairwells
 
