@@ -468,7 +468,7 @@ const S = {
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
   worker: null, scanView: null, scanCache: {},
   view: {cx: 20, cy: 9.5, scale: 18},
-  capture: {frames: [], block: "B", floor: 3, room: "", consent: false, share: false, busy: false, upload: null}
+  capture: {frames: [], block: null, floor: null, room: "", consent: false, share: false, busy: false, upload: null}
 };
 
 /* ---------- geometry ---------- */
@@ -1121,6 +1121,9 @@ const VERDICT={accepted:["ok","Accepted"],thin:["warn","Accepted, thin coverage"
 function renderCapture(){
   if (S.tab!=="capture") return;
   const C=S.capture, fr=C.frames;
+  // No fixed starting place: block and floor follow what's open on the floor plan until the contributor changes them.
+  if (C.block==null) C.block=S.plan.block||"";
+  if (C.floor==null) C.floor=S.floor;
   $("#frames").innerHTML=fr.map(f=>f.error?`<div class="frame rej"><div class="m"><b>${esc(f.name)}</b><span class="warn">${esc(f.error)}</span></div></div>`:
     `<div class="frame ${f.reasons.length?"rej":""}"><img src="${f.preview}" alt="${esc(f.name)}"><div class="m">
       <div class="r"><span class="muted">Sharpness</span><span class="mono">${f.sharp.toFixed(0)}</span></div>
@@ -1130,11 +1133,11 @@ function renderCapture(){
       <div>${f.reasons.length?f.reasons.map(r=>`<span class="pill bad">${esc(r)}</span>`).join(" "):`<span class="pill ok">usable</span>`}${f.overlap!=null&&f.overlap<QC.overlap?` <span class="pill warn">gap</span>`:""}${f.qr?` <span class="pill idle" title="${esc(f.qr)}">marker</span>`:""}</div>
     </div></div>`).join("");
   const sm=summary(), knownRooms=S.plan.rooms.map(r=>r.id).sort(), [cls,lab]=VERDICT[sm.verdict];
-  const canSubmit = fr.length && !C.busy && !C.upload && C.consent && C.room && !S.readOnly;
+  const canSubmit = fr.length && !C.busy && !C.upload && C.consent && !S.readOnly;
   $("#capSide").innerHTML=`<h2>Session</h2>
     <div class="row2"><div class="field"><label for="cBlock">Block</label><input id="cBlock" value="${esc(C.block)}" maxlength="8"></div>
     <div class="field"><label for="cFloor">Floor</label><input id="cFloor" type="number" value="${C.floor}" min="0" max="60"></div></div>
-    <div class="field"><label for="cRoom">Room tag${C.fromMarker?" (from marker)":""}</label><input id="cRoom" class="mono" list="roomIds" value="${esc(C.room)}" placeholder="e.g. B-03-02" maxlength="24"><datalist id="roomIds">${knownRooms.map(r=>`<option value="${esc(r)}">`).join("")}</datalist></div>
+    <div class="field"><label for="cRoom">Room tag${C.fromMarker?" (from marker)":" (optional)"}</label><input id="cRoom" class="mono" list="roomIds" value="${esc(C.room)}" placeholder="Leave blank if you're not sure" maxlength="24"><datalist id="roomIds">${knownRooms.map(r=>`<option value="${esc(r)}">`).join("")}</datalist></div>
     ${fr.length?`<dl class="kv"><dt>Frames</dt><dd>${sm.total}</dd><dt>Usable</dt><dd>${sm.ok}</dd><dt>Gaps</dt><dd>${sm.jumps}</dd><dt>Verdict</dt><dd><span class="pill ${cls}">${C.busy?"Checking…":lab}</span></dd></dl>
       ${sm.reasons.length?`<ul class="checks" style="margin-top:10px">${sm.reasons.map(r=>`<li><span>•</span><span>${esc(r)}</span></li>`).join("")}</ul>`:""}`
     :`<h3 style="font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:14px 0 8px">Each photo is checked for</h3>
@@ -1143,15 +1146,15 @@ function renderCapture(){
       <li><span>•</span><span>Session size <span class="mono">≥ ${QC.minFrames} usable, ${QC.goodFrames}+ preferred</span></span></li></ul>`}
     <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""} ${C.upload?"disabled":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
     ${canShare()?`<label class="consent"><input type="checkbox" id="cShare" ${C.share?"checked":""} ${C.upload?"disabled":""}><span>Also upload the ${shareFrames().length||""} usable photo${shareFrames().length===1?"":"s"} so the room can be measured in 3D. They're resized to ${PHOTO_MAX}px and location data is removed.</span></label>
-      ${C.share?`<div class="tipbox small"><b>For accurate measurements</b><ul><li>Take 2–3 close photos of the door marker from different angles. Its printed size sets the scale.</li><li>Walk along the walls and turn slowly at corners, so photos overlap across each corner.</li><li>Add a few photos tilted up at the ceiling and down at the floor.</li></ul></div>`:""}`:""}
+      ${C.share?`<div class="tipbox small"><b>For accurate measurements</b><ul><li>Start anywhere in the room. If there's a door marker, take 2–3 close photos of it from different angles: its printed size sets the scale.</li><li>Walk along the walls and turn slowly at corners, so photos overlap across each corner.</li><li>Add a few photos tilted up at the ceiling and down at the floor.</li></ul></div>`:""}`:""}
     ${C.upload?`<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${C.upload.total}" aria-valuenow="${C.upload.done}"><i style="width:${C.upload.total?100*C.upload.done/C.upload.total:0}%"></i></div>
       <p class="small" style="margin:0 0 10px">Uploading photo ${Math.min(C.upload.done+1,C.upload.total)} of ${C.upload.total}… keep this page open.</p>`:""}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cSubmit" ${canSubmit?"":"disabled"}>${C.share&&canShare()&&shareFrames().length?"Submit and upload photos":"Submit session"}</button>${fr.length&&!C.upload?`<button class="btn" id="cClear">Clear photos</button>`:""}</div>
-    <p class="small muted" style="margin-bottom:0">${S.readOnly?"Your sharing level doesn't allow submitting sessions.":!C.room&&fr.length?"Add a room tag to submit.":!C.consent&&fr.length?"Tick the permission box to submit.":C.share&&canShare()?"Uploads the scores, tag, counts and the usable photos.":"Uploads only the scores, tag and counts. Photos stay here."}</p>
+    <p class="small muted" style="margin-bottom:0">${S.readOnly?"Your sharing level doesn't allow submitting sessions.":!C.consent&&fr.length?"Tick the permission box to submit.":C.share&&canShare()?"Uploads the scores, tag, counts and the usable photos.":"Uploads only the scores, tag and counts. Photos stay here."}</p>
     <p class="small muted" style="margin-bottom:0;border-top:1px solid var(--rule);padding-top:10px">Phone AR poses (ARKit/ARCore) need the native capture app. This web intake checks photo quality and coverage only.</p>`;
   $("#cBlock").onchange=e=>{C.block=e.target.value.trim().toUpperCase();};
   $("#cFloor").onchange=e=>{C.floor=+e.target.value||0;};
-  $("#cRoom").oninput=e=>{C.room=e.target.value.trim(); C.fromMarker=false; $("#cSubmit").disabled=!(fr.length&&!C.busy&&!C.upload&&C.consent&&C.room&&!S.readOnly);};
+  $("#cRoom").oninput=e=>{C.room=e.target.value.trim(); C.fromMarker=false; $("#cSubmit").disabled=!(fr.length&&!C.busy&&!C.upload&&C.consent&&!S.readOnly);};
   $("#cRoom").onchange=()=>renderCapture();
   $("#cConsent").onchange=e=>{C.consent=e.target.checked; renderCapture();};
   const sh=$("#cShare"); if(sh) sh.onchange=e=>{C.share=e.target.checked; renderCapture();};
@@ -1249,7 +1252,7 @@ async function renderSessions(){
     <h3 class="sec">All sessions</h3>
     <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Photos</th><th>3D measurement</th></tr></thead><tbody>
       ${ss.map(s=>{ const [c,l]=VERDICT[s.verdict]||["idle",s.verdict]; const known=rooms.some(r=>r.id===s.room);
-        return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${esc(s.room)}${s.marker?` <span class="pill idle">marker</span>`:""}${known?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">Block ${esc(s.block)} · L${esc(s.floor)}</span></td>
+        return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${s.room?esc(s.room):`<span class="muted">No room tag</span>`}${s.marker?` <span class="pill idle">marker</span>`:""}${known||!s.room?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">${s.block?`Block ${esc(s.block)} · `:""}L${esc(s.floor)}</span></td>
         <td data-l="Verdict"><span class="pill ${c}">${l}</span></td><td class="num" data-l="Frames">${s.frames}</td><td class="num" data-l="Usable">${s.usable}</td><td class="num" data-l="Gaps">${s.gaps}</td>
         <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Photos">${s.photos?`<button class="btn sm" data-gal="${esc(s._id)}" data-room="${esc(s.room)}">View ${s.photos}</button>`:`<span class="muted small">${s.photoSlots&&Date.now()-s.at<2*3600e3?"Uploading…":"Kept on phone"}</span>`}</td><td data-l="3D measurement" class="${!s.recon&&!(s.photos>=MIN_RECON&&s.verdict!=="rejected")?"none":"wide"}">${reconCell(s)}</td></tr>`;}).join("")}
       </tbody></table>`:`<div class="empty">No sessions yet. Open <b>Contribute</b> to check and submit your first set of photos.</div>`}</div>`;
@@ -1332,10 +1335,11 @@ function addScanRoom(id){
   if (!S.plan.floors.some(f=>f.level===s.floor)) S.plan.floors.push({level:s.floor,name:"Level "+s.floor});
   const others=floorRooms(s.floor).flatMap(r=>r.poly), [px0,py0]=bbox(m.poly);
   const [ox,oy]=others.length?[bbox(others)[2]+1-px0,bbox(others)[1]-py0]:[-px0,-py0];
-  const k=uid(); S.plan.rooms.push({k,id:uniqueId(s.room),name:"",type:"other",floor:s.floor,height:m.height?Math.max(2.2,Math.min(12,+m.height.toFixed(2))):3.2,
+  const rid=uniqueId(s.room||`${S.plan.block||"X"}-${String(s.floor).padStart(2,"0")}-${String(floorRooms(s.floor).length+1).padStart(2,"0")}`);
+  const k=uid(); S.plan.rooms.push({k,id:rid,name:"",type:"other",floor:s.floor,height:m.height?Math.max(2.2,Math.min(12,+m.height.toFixed(2))):3.2,
     poly:m.poly.map(p=>[+(p[0]+ox).toFixed(2),+(p[1]+oy).toFixed(2)]),doors:[]});
-  S.floor=s.floor; S.sel=k; setTab("plan"); edit(`Added ${s.room} from measurements`); fit();
-  toast(`Added ${s.room}. Drag it into place and set its type.`);
+  S.floor=s.floor; S.sel=k; setTab("plan"); edit(`Added ${rid} from measurements`); fit();
+  toast(`Added ${rid}. Drag it into place and set its type.`);
 }
 async function retryScan(id,b){
   b.disabled=true;
@@ -1349,7 +1353,7 @@ function photoGet(id){ const h=apiHeaders(); delete h["content-type"]; return fe
 function closeGallery(){ gal.gen++; gal.urls.forEach(u=>URL.revokeObjectURL(u)); gal.urls=[]; $("#galGrid").innerHTML=""; const d=$("#gallery"); if(d.open) d.close(); }
 async function openGallery(session,room){
   closeGallery(); const gen=gal.gen, d=$("#gallery");
-  Object.assign(gal,{session,room,photos:[]});
+  room=room||"no-tag"; Object.assign(gal,{session,room,photos:[]});
   $("#galTitle").textContent=`Photos · ${room}`; $("#galZip").disabled=true;
   $("#galGrid").innerHTML=`<p class="muted small">Loading…</p>`;
   if (d.showModal) d.showModal(); else d.setAttribute("open","");
