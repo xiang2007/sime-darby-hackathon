@@ -54,7 +54,7 @@ nav.main button{display:flex;align-items:center;gap:6px;height:100%;background:n
 nav.main button:hover{color:var(--navy)}
 nav.main button[aria-current="page"]{border-bottom-color:var(--accent);color:var(--navy);font-weight:600}
 nav.main svg{display:none}
-.subbar{background:var(--frame);border-bottom:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.subbar{display:flex;align-items:center;gap:10px;background:var(--frame);border-bottom:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .subbar[hidden]{display:none}
 nav.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-block:8px}
 nav.tabs::-webkit-scrollbar{display:none}
@@ -396,6 +396,39 @@ footer.site button:hover{color:#fff}
   .callout{font-size:1rem;padding:16px 18px}
   footer.site nav{margin-left:0}
 }
+/* university picker */
+.uni-chip{flex:none;display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--navy);border:0;border-radius:8px;padding:5px 10px 5px 6px;cursor:pointer;font:600 .85rem var(--f-body)}
+.uni-chip .mk{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font:800 .62rem var(--f-display);color:#fff}
+.uni-chip small{font-weight:500;color:#6b7591}
+.uni-chip:hover small{color:var(--accent)}
+.unis{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;align-items:start}
+.unis-side{position:sticky;top:130px;display:grid;gap:14px}
+.search{position:relative}
+.search input{width:100%;border:0;border-radius:999px;background:#fff;color:var(--navy);padding:12px 44px 12px 18px;font:500 .95rem var(--f-body)}
+.search input::placeholder{color:#8a93ad}
+.search svg{position:absolute;right:16px;top:50%;width:20px;height:20px;margin-top:-10px;color:var(--navy);pointer-events:none}
+.sortby{display:flex;align-items:center;gap:8px;background:rgb(255 255 255 / .1);border:1px solid rgb(255 255 255 / .18);border-radius:10px;padding:0 0 0 12px;color:#fff}
+.sortby svg{width:18px;height:18px;flex:none}
+.sortby select{flex:1;min-width:0;background:transparent;border:0;color:#fff;padding:10px 10px 10px 0;font:500 .9rem var(--f-body);cursor:pointer}
+.sortby select option{color:var(--navy)}
+.unis-main h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,3vw,2.1rem);letter-spacing:-.02em;margin:0 0 6px;color:#fff}
+.unis-main .sub{margin:0 0 26px;color:#c9d4f0}
+.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:22px}
+.ucard{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;background:#fff;color:var(--navy);border:0;border-radius:22px;padding:28px 18px 20px;cursor:pointer;font:inherit;box-shadow:0 14px 34px rgb(3 10 30 / .3);transition:transform .18s,box-shadow .18s}
+.ucard:hover{transform:translateY(-3px);box-shadow:0 20px 44px rgb(3 10 30 / .4)}
+.ucard:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.ucard .logo-mk{width:96px;height:96px;border-radius:24px;display:grid;place-items:center;font:800 1.55rem/1 var(--f-display);letter-spacing:.02em;color:#fff}
+.ucard .logo-mk.long{font-size:1.05rem;letter-spacing:0}
+.ucard b{font:700 1.05rem var(--f-display);line-height:1.25}
+.ucard .full{font-size:.8rem;color:#5d6785;line-height:1.4;min-height:2.8em}
+.ucard .st{font:600 .72rem var(--f-body);letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:#e3f6ea;color:#1f7a4a}
+.ucard.soon{cursor:default}
+.ucard.soon:hover{transform:none;box-shadow:0 14px 34px rgb(3 10 30 / .3)}
+.ucard.soon .logo-mk{filter:saturate(.35);opacity:.75}
+.ucard.soon .st{background:#eef0f5;color:#6b7591}
+.unis-empty{color:#c9d4f0;padding:24px 0}
+@media (max-width:860px){ .unis{grid-template-columns:minmax(0,1fr);gap:20px} .unis-side{position:static;grid-template-columns:minmax(0,1fr) minmax(0,1fr)} }
+@media (max-width:720px){ .ugrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px} .ucard{padding:20px 10px 14px;border-radius:18px} .ucard .logo-mk{width:68px;height:68px;border-radius:18px;font-size:1.1rem} .ucard .full{display:none} .ucard .logo-mk.long{font-size:.78rem} .unis-side{grid-template-columns:minmax(0,1fr)} }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -414,6 +447,7 @@ footer.site button:hover{color:#fff}
     </div>
   </div>
   <div class="subbar" id="subbar" hidden>
+    <button type="button" class="uni-chip" id="uniChip" hidden title="Choose a different university"></button>
     <nav class="tabs" role="tablist" aria-label="Sections">
       <button role="tab" id="tab-nav" aria-selected="false" data-tab="nav" data-group="navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 5 20l7-4 7 4z"/></svg><span>Directions</span></button>
       <button role="tab" id="tab-plan" aria-selected="true" data-tab="plan" data-group="navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 12h9M12 3v13M16 12h5"/></svg><span>Floor plan</span></button>
@@ -469,6 +503,23 @@ footer.site button:hover{color:#fff}
           <div class="ncard"><span class="ico y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><h3>Secure user login</h3><p>Personalised features and role-based views for students versus visitors.</p><span class="soon">Coming soon</span></div>
         </div>
       </section>
+    </div>
+  </section>
+
+  <!-- UNIVERSITY PICKER -->
+  <section class="view" id="view-unis" hidden>
+    <div class="page">
+      <div class="unis">
+        <div class="unis-side">
+          <label class="search"><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search universities</span><input type="search" id="uniQ" placeholder="Search" autocomplete="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></label>
+          <label class="sortby"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8.5V20l-4-2v-4.5z"/></svg><span style="font:600 .85rem var(--f-body);white-space:nowrap">Sort by</span><select id="uniSort" aria-label="Sort by"><option value="avail">Available first</option><option value="az">Name A–Z</option><option value="za">Name Z–A</option></select></label>
+        </div>
+        <div class="unis-main">
+          <h2>Partnered Universities</h2>
+          <p class="sub">Choose a university to open its campus map, directions and 3D outline.</p>
+          <div class="ugrid" id="uniGrid"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -795,18 +846,51 @@ function bannerGone(){ if(S.bannerX) return true; try{ return sessionStorage.get
 /* ---------- tabs ---------- */
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 // Top bar has four sections; Navigation and Contribution each hold a row of sub-tabs.
-const GROUP={home:"home",feedback:"feedback",nav:"navigation",plan:"navigation","3d":"navigation",capture:"contribution",sessions:"contribution",history:"contribution"};
+// Partnered universities shown before the Navigation tools. Only APU has map data so far.
+const UNIS=[
+  {id:"apu",short:"APU",name:"Asia Pacific University of Technology & Innovation",color:"#1d4fa8",live:true},
+  {id:"uniten",short:"UNITEN",name:"Universiti Tenaga Nasional",color:"#e2492f",live:false},
+  {id:"sunway",short:"SUNWAY",name:"Sunway University",color:"#14254f",live:false},
+];
+const UNI_KEY="apu-uni";
+S.uni=null; try{ const u=localStorage.getItem(UNI_KEY); if(UNIS.some(x=>x.id===u&&x.live)) S.uni=u; }catch(e){}
+function renderUnis(){
+  const q=$("#uniQ").value.trim().toLowerCase(), sort=$("#uniSort").value;
+  let list=UNIS.filter(u=>!q || (u.short+" "+u.name).toLowerCase().includes(q));
+  list.sort((a,b)=> sort==="avail" ? (b.live-a.live)||a.short.localeCompare(b.short) : sort==="za" ? b.short.localeCompare(a.short) : a.short.localeCompare(b.short));
+  $("#uniGrid").innerHTML = list.length ? list.map(u=>`<button type="button" class="ucard${u.live?"":" soon"}" data-uni="${u.id}"${u.live?"":' aria-disabled="true"'}>
+      <span class="logo-mk${u.short.length>4?" long":""}" style="background:${u.color}">${esc(u.short)}</span><b>${esc(u.short)}</b><span class="full">${esc(u.name)}</span>
+      <span class="st">${u.live?"Map available":"Coming soon"}</span></button>`).join("")
+    : `<p class="unis-empty">No university matches “${esc(q)}”.</p>`;
+  $("#uniGrid").querySelectorAll(".ucard").forEach(c=>c.onclick=()=>pickUni(c.dataset.uni));
+}
+function pickUni(id){
+  const u=UNIS.find(x=>x.id===id); if(!u) return;
+  if (!u.live){ toast(`${u.short} isn't mapped yet. It's coming soon.`); return; }
+  S.uni=id; try{ localStorage.setItem(UNI_KEY,id); }catch(e){}
+  const next=S.uniNext||"nav"; S.uniNext=null; setTab(next);
+}
+$("#uniQ").oninput=renderUnis; $("#uniSort").onchange=renderUnis;
+$("#uniChip").onclick=()=>setTab("unis");
+
+const GROUP={unis:"navigation",home:"home",feedback:"feedback",nav:"navigation",plan:"navigation","3d":"navigation",capture:"contribution",sessions:"contribution",history:"contribution"};
 const LAST={home:"home",feedback:"feedback",navigation:"nav",contribution:"capture"};
-document.querySelectorAll("nav.main button").forEach(b=>b.onclick=()=>setTab(LAST[b.dataset.group]));
+document.querySelectorAll("nav.main button").forEach(b=>b.onclick=()=>setTab(b.dataset.group==="navigation"&&!S.uni?"unis":LAST[b.dataset.group]));
 $("#brandHome").onclick=()=>setTab("home");
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>setTab(b.dataset.go));
 function setTab(t){
   if (!GROUP[t]) t="home";
-  const grp=GROUP[t]; LAST[grp]=t;
+  // The Navigation tools open only after a university is chosen
+  if (GROUP[t]==="navigation" && t!=="unis" && !S.uni){ S.uniNext=t; t="unis"; }
+  const grp=GROUP[t]; if (t!=="unis") LAST[grp]=t;
+  const page=grp==="home"||grp==="feedback"||t==="unis";
   document.querySelectorAll("nav.main button").forEach(b=>{ if(b.dataset.group===grp) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
-  $("#subbar").hidden = grp!=="navigation" && grp!=="contribution";
-  document.body.classList.toggle("page-only", grp==="home"||grp==="feedback");
-  $("#siteFooter").hidden = !(grp==="home"||grp==="feedback");
+  $("#subbar").hidden = t==="unis" || (grp!=="navigation" && grp!=="contribution");
+  document.body.classList.toggle("page-only", page);
+  $("#siteFooter").hidden = !page;
+  const cu=UNIS.find(u=>u.id===S.uni); $("#uniChip").hidden = grp!=="navigation" || !cu;
+  if (cu) $("#uniChip").innerHTML=`<span class="mk" style="background:${cu.color}">${esc(cu.short.slice(0,3))}</span>${esc(cu.short)} <small>· Change</small>`;
+  if (t==="unis") renderUnis();
   document.querySelectorAll("nav.tabs button").forEach(b=>b.hidden = b.dataset.group!==grp);
   if (t!=="capture"){ stopLive(); stopGeo(); }
   if (t!=="nav") stopNavGps();
@@ -815,7 +899,7 @@ function setTab(t){
   S.tab=t;
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===(S.nav?"nav":t))));
   $("#modes").hidden=S.nav; $("#overlay").hidden=S.nav; if (wasNav!==S.nav) renderFloors();
-  ["home","feedback","plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
+  ["home","unis","feedback","plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
   document.body.classList.toggle("fill", t==="plan"||t==="3d");
   $("#exMenu").open=false; window.scrollTo(0,0);
   if (t==="3d") { init3D(); build3D(); resize3D(); }
@@ -2160,7 +2244,7 @@ $("#mapSave").onclick=()=>{ if(!MAP) return; const g=mapGeo();
 
 // Links like ?from=B-03-01&to=B-04-02 open Directions with those rooms
 (function(){ try{ const q=new URLSearchParams(location.search), f=q.get("from"), t=q.get("to");
-  if (f||t){ S.go.want={from:f,to:t}; S.tab="nav"; try{ localStorage.setItem("apu-tab","nav"); }catch(e){} } }catch(e){} })();
+  if (f||t){ S.go.want={from:f,to:t}; S.tab="nav"; S.uni=S.uni||"apu"; try{ localStorage.setItem("apu-tab","nav"); }catch(e){} } }catch(e){} })();
 
 /* ---------- boot ---------- */
 try{ const t=localStorage.getItem("apu-tab"); if(t) S.tab=t; }catch(e){}
