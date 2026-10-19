@@ -8,6 +8,7 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 
 ## What's new
 
+- **Map a corridor by walking it.** Film a slow walk along a corridor, run `python worker.py --walk --video corridor.mp4`, then **Import walk** on the Floor plan tab. The corridor appears with its real shape and width, a door wherever the video shows a room sign like "B-03-02", and a placeholder room behind each door, so Directions can route between those rooms straight away. No QR markers or hand drawing needed. [How it works](#mapping-corridors-from-a-walk)
 - **Directions.** The new **Directions** tab gives students a route from one room to another, across floors: a line on the floor plan plus steps like "Turn left into Main corridor and walk 10 m". Tap rooms on the plan or pick them from the lists, or **Scan marker** to start from the door marker you're standing at. **Step-free** keeps to lifts. Links like `/?from=B-03-01&to=B-04-02` open a route directly. [How routes are found](#directions)
 - **Place the block on a real map.** On **Floor plan** (no room selected), **Place on map** opens a map: drag it until the outline sits on the building and turn it to match. After that the GeoJSON export uses real map coordinates, Directions can show your GPS position on the plan (rough indoors, so markers are the reliable way to know where you are), and links to Google Maps for getting to the block.
 - **Live camera.** On **Contribute**, tap **Live camera**, keep it open and walk slowly. The app keeps a photo whenever the view is sharp, not a blank wall, and has moved on from the last one, takes a few shots of any door marker it reads, and stops at 80 photos. The photos then go through the usual checks and upload.
@@ -64,13 +65,13 @@ api/             Vercel serverless functions
 lib/             database, validation and HTTP helpers
 scripts/         Vercel build and local dev server
 test/            API tests
-worker/          the 3D measuring worker, run on your own computer (Python); video.py picks frames from a video
+worker/          the 3D measuring worker, run on your own computer (Python); video.py picks frames from a video, walk.py traces corridors
 ```
 
 - **Front end:** a single HTML page using Three.js. It checks the server for changes every 4 seconds.
 - **Back end:** Vercel functions on Postgres. Six tables (`plan`, `versions`, `sessions`, `photos`, `recon`, `workers`) are created automatically on first use.
 - **Photos:** opt-in. The phone resizes each usable photo to 2048 px and re-encodes it, which strips GPS and other EXIF data, then uploads them one at a time. They're stored as JPEG bytes in the `photos` table of the same Neon database, and only served back through `/api/photos`. At about 0.5–1 MB a photo, Neon's free 0.5 GB holds roughly 500–1,000 photos. Each session reserves its number of photos up front; uploads beyond that, or more than 2 hours later, are refused.
-- **3D measuring:** a worker on your own computer measures each room from its uploaded photos. See [Measuring rooms from photos](#measuring-rooms-from-photos).
+- **3D measuring:** a worker on your own computer measures each room from its uploaded photos. See [Measuring rooms from photos](#measuring-rooms-from-photos). It can also trace a corridor and its doors from a walk-through video. See [Mapping corridors from a walk](#mapping-corridors-from-a-walk).
 - **Saving:** each save includes the version it was based on. If someone else saved first, the server rejects it and the app merges room by room.
 - **Safety:** all input is checked field by field before it's stored. Setting `EDIT_KEY` makes every change require that key.
 - **No database?** The site still works, saving to each visitor's browser, and shows a banner saying so.
@@ -143,7 +144,7 @@ It checks for new sessions every 20 seconds and keeps running until you stop it 
 - `--once` measures one session, then stops.
 - `--session 42` measures session 42 again.
 - **Try again** on the Sessions tab re-queues a failed session.
-- Offline, on a walk-through video: `python worker.py --video walk.mp4 --plan plan.json`. Needs [ffmpeg](https://ffmpeg.org/download.html) on your PATH (or `--ffmpeg /path/to/ffmpeg`). It extracts `--fps` frames per second (default 2), drops frames the app would reject (blurry, too dark, overexposed, blank wall) and frames that repeat the last one, and keeps at most `--max-frames` (default 80, like Live camera), spread evenly. Film slowly at chest height, turn gently at corners and pause on door signs. Phone uploads still go through the app's in-browser capture, which sends only the kept photos instead of the whole video.
+- Offline, on a walk-through video: `python worker.py --video walk.mp4 --plan plan.json`. It uses [ffmpeg](https://ffmpeg.org/download.html) from your PATH, or `--ffmpeg /path/to/ffmpeg`, or else the copy that `pip install -r requirements.txt` bundles. It extracts `--fps` frames per second (default 2), drops frames the app would reject (blurry, too dark, overexposed, blank wall) and frames that repeat the last one, and keeps at most `--max-frames` (default 80, like Live camera), spread evenly. Film slowly at chest height, turn gently at corners and pause on door signs. Phone uploads still go through the app's in-browser capture, which sends only the kept photos instead of the whole video.
 - Offline, on a zip from **Sessions → View → Download all**: `python worker.py --photos session-42-B-03-02.zip --plan plan.json`. Here `plan.json` is the plan exported from the Floor plan tab. This writes `result.json` and `preview.png` (a top-down picture of the points, cameras and outline).
 
 **Tested accuracy.** The worker was tested on two rendered rooms of known size, not yet on real rooms.
@@ -157,6 +158,46 @@ Real rooms will be less exact: glass, mirrors, blank walls and moving people all
 - Walk along the walls and turn slowly at corners, so photos overlap across each corner.
 - Add a few photos tilted up at the ceiling and down at the floor.
 - Print markers at 100% size.
+
+---
+
+## Mapping corridors from a walk
+
+Directions needs corridors and doors more than exact room sizes. The worker can trace a corridor from a video of someone walking along it, so nobody has to draw it.
+
+```sh
+cd worker && source .venv/bin/activate
+python worker.py --walk --video corridor.mp4        # writes walk.json and preview.png
+```
+
+Then on the **Floor plan** tab, with no room selected, use **Import walk** under **Walks** and pick `walk.json`.
+
+**How it works**
+
+1. COLMAP works out where each video frame was taken. Frames are matched with their neighbours in the video, which is quicker than matching every pair.
+2. You walk on a level floor, so the camera path gives "up". The floor is the densest flat layer of points below the camera.
+3. **Scale** comes from the phone being held about 1.45 m above the floor. For a video it's checked against walking pace (about 1.25 m/s). The result says whether the two agree.
+4. The path is squared up to the building's main directions and split into straight runs. Each run's two walls are the densest layers of 3D points on either side, which gives the corridor's width. The corridor continues to its end walls when they're visible.
+5. **Door signs** like "B-03-02" are read with OCR ([RapidOCR](https://github.com/RapidAI/RapidOCR), on the CPU). Door QR markers are read too, but aren't needed. The line of sight from the camera to the sign is followed to the corridor wall, and where several frames saw the sign, their sight lines are crossed. A door goes there. A code read once right beside a more common one is treated as a misread.
+6. Each sign gets a **placeholder room** (up to 4 × 4 m) behind its door. People can fix its shape on the Floor plan, or measure it from photos.
+
+The floor and block come from the signs, or set them with `--floor 3 --block B`. `--no-ocr` reads QR markers only. With `--photos`, a zip of photos in walking order works too, but there's no walking pace to check the scale against.
+
+**Importing.** On an empty floor, the walk is placed at the origin. On a floor that already has rooms, it goes beside them, since the walk isn't lined up with them yet. A sign whose room is already on the plan gets a door on the corridor, but no new room.
+
+**Tested accuracy.** On a rendered L-shaped corridor (24 m and 14 m arms, 2.4 m wide, five door signs on 40 cm plates), a 27-second walk at 2 frames per second gave:
+- Corridor area of 81–86 m² against 85.4 m², and widths of 2.35–2.6 m.
+- Four of the five signs read. Each door was within 0.1–0.5 m of its sign.
+- Phone height and walking pace agreeing on the scale to within 1%.
+- After **Import walk**, Directions routed between two of the new rooms, with the right turns.
+
+It hasn't been run on a real corridor yet.
+
+**Filming a corridor**
+- Walk slowly, at about normal walking pace, holding the phone at chest height and tilted a little down at the floor.
+- Pan gently from side to side, so both walls are filmed.
+- Slow down at each door sign, so it's sharp in a few frames.
+- Turn slowly at corners. One corridor per video is easiest to check.
 
 ---
 

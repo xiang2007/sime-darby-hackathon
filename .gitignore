@@ -7,3 +7,4 @@ __pycache__/
 worker/.venv/
 worker/result.json
 worker/preview.png
+worker/walk.json

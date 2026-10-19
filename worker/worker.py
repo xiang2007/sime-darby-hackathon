@@ -14,8 +14,12 @@ shows up on the Floor plan tab, where someone can compare it with the drawn room
   Offline, on a zip saved from Sessions → View → Download all:
     python worker.py --photos session-42-B-03-02.zip [--plan plan.json] [--room B-03-02]
 
-  Offline, on a walk-through video (needs ffmpeg; frames are picked the way the app picks photos):
+  Offline, on a walk-through video (frames are picked the way the app picks photos):
     python worker.py --video walk.mp4 [--fps 2] [--max-frames 80] [--plan plan.json] [--room B-03-02]
+
+  Offline, trace a corridor from a walk along it (video or photos). Door signs become rooms.
+  Import the walk.json it writes on the Floor plan tab (Import walk):
+    python worker.py --walk --video corridor.mp4 [--floor 3] [--block B] [--no-ocr]
 """
 from __future__ import annotations
 
@@ -35,6 +39,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from floorplan import ReconError, measure, prepare_images, run_sfm  # noqa: E402
 from video import VideoError, extract_frames  # noqa: E402
+from walk import trace_walk  # noqa: E402
 
 VERSION = "1"
 
@@ -96,6 +101,37 @@ def process(files, room, marker, keep: Path | None = None):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def process_walk(files, times, args, keep: Path | None = None):
+    work = Path(tempfile.mkdtemp(prefix="ucampass-walk-"))
+    try:
+        images = work / "images"
+        prepare_images(files, images)
+        rec = run_sfm(images, work, log=log, sequential=True)
+        result = trace_walk(rec, images, times=times, ocr=not args.no_ocr, floor_level=args.floor, block=args.block,
+                            work=work, log=log)
+        total, placed = len(files), result["images"]["placed"]
+        result["images"]["total"] = total
+        if placed < 0.8 * total:
+            result["notes"].insert(0, f"Only {placed} of {total} frames could be linked together, so part of the walk may be "
+                                      "missing. Walk more slowly, and turn slowly at corners.")
+        result["worker"] = {"version": VERSION}
+        if keep:
+            keep.mkdir(parents=True, exist_ok=True)
+            if (work / "preview.png").exists():
+                shutil.copy(work / "preview.png", keep / "preview.png")
+        return result
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def walk_summary(r):
+    c = r["corridor"]
+    s = f"{r['length']:.1f} m walked, corridor {c['area']:.0f} m² about {c['width']:.1f} m wide, {len(c['doors'])} door(s)"
+    if r["rooms"]:
+        s += ": " + ", ".join(x["id"] for x in r["rooms"])
+    return s + f" (scale from {r['scale']['source'].replace('_', ' ')}, {r['scale']['confidence']} confidence)"
+
+
 def summary(r):
     s = f"{r['size'][0]:.2f} × {r['size'][1]:.2f} m, {r['area']:.1f} m²"
     if r.get("height"):
@@ -121,13 +157,25 @@ def load_photos(src: Path):
 
 
 def run_offline(args):
-    files, meta = [], {}
+    files, meta, times = [], {}, None
+    max_frames = args.max_frames or (150 if args.walk else 80)
     if args.video:
-        files, _ = extract_frames(args.video, fps=args.fps, max_frames=args.max_frames, ffmpeg=args.ffmpeg, log=log)
+        files, stats = extract_frames(args.video, fps=args.fps, max_frames=max_frames, ffmpeg=args.ffmpeg, log=log)
+        times = stats["times"]
         if len(files) < 8:
             raise VideoError(f"Only {len(files)} usable frames; at least 8 are needed. Film more slowly and steadily, with better light.")
     else:
         files, meta = load_photos(Path(args.photos))
+    if args.walk:
+        log(f"{len(files)} frames")
+        out = Path(args.out or "walk.json")
+        result = process_walk(files, times, args, keep=out.parent)
+        out.write_text(json.dumps(result, indent=1))
+        log("Traced:", walk_summary(result))
+        for n in result["notes"]:
+            log("Note:", n)
+        log(f"Saved {out} and {out.parent / 'preview.png'}. Import {out.name} on the Floor plan tab.")
+        return
     plan = json.loads(Path(args.plan).read_text()) if args.plan else None
     if plan and "plan" in plan and "rooms" not in plan:
         plan = plan["plan"]
@@ -195,16 +243,22 @@ def main():
     ap.add_argument("--photos", help="offline: a zip or folder of photos")
     ap.add_argument("--video", help="offline: a walk-through video; frames are extracted with ffmpeg")
     ap.add_argument("--fps", type=float, default=2.0, help="offline video: frames to extract per second (default 2)")
-    ap.add_argument("--max-frames", type=int, default=80, help="offline video: most frames to use (default 80, like Live camera)")
+    ap.add_argument("--max-frames", type=int, help="offline video: most frames to use (default 80 like Live camera, 150 with --walk)")
     ap.add_argument("--ffmpeg", help="offline video: path to ffmpeg if it isn't on PATH")
     ap.add_argument("--plan", help="offline: the plan JSON exported from the Floor plan tab")
     ap.add_argument("--room", help="offline: the room ID (default: from session.json in the zip)")
-    ap.add_argument("--out", help="offline: where to write the result (default result.json)")
+    ap.add_argument("--out", help="offline: where to write the result (default result.json, or walk.json with --walk)")
+    ap.add_argument("--walk", action="store_true", help="offline: trace the corridor walked along, instead of measuring one room")
+    ap.add_argument("--floor", type=int, help="--walk: floor number (default: read from the door signs)")
+    ap.add_argument("--block", help="--walk: block letter (default: read from the door signs)")
+    ap.add_argument("--no-ocr", action="store_true", help="--walk: don't read printed door signs, only QR door markers")
     args = ap.parse_args()
+    if args.walk and not (args.photos or args.video):
+        ap.error("--walk needs --video or --photos")
     if args.photos or args.video:
         try:
             return run_offline(args)
-        except VideoError as e:
+        except (VideoError, ReconError) as e:
             sys.exit(str(e))
     if not args.server or not args.key:
         ap.error("pass --server and --key, or --photos / --video for offline use")

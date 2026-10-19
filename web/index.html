@@ -1040,12 +1040,15 @@ function renderInspector(){
       ${S.plan.geo?`<p class="small muted" style="margin:0 0 8px">Placed at ${S.plan.geo.lat.toFixed(5)}, ${S.plan.geo.lng.toFixed(5)}, turned ${S.plan.geo.rot}°. Directions can show GPS, and the GeoJSON export uses map coordinates.</p>`
         :`<p class="small muted" style="margin:0 0 8px">Not placed yet. Place the block on a real map so Directions can show GPS and the GeoJSON export lines up with map data.</p>`}
       ${S.readOnly?"":`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="mapPlace">${S.plan.geo?"Adjust on map":"Place on map"}</button>${S.plan.geo?`<button class="btn sm" id="mapClear">Remove</button>`:""}</div>`}
+      ${S.readOnly?"":`<h3>Walks</h3><p class="small muted" style="margin:0 0 8px">Film a slow walk along a corridor, run <span class="mono">worker.py --walk</span> on it, then import the <span class="mono">walk.json</span> it saves. The corridor and a room behind each door sign it read are added here.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="walkImport">Import walk</button><input type="file" id="walkIn" accept=".json,application/json" hidden></div>`}
       <h3>Rooms on this floor</h3>
       ${rs.length?`<ul class="roomlist">${rs.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:`<p class="muted small">Nothing drawn yet.</p>`}
       ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
     el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
     const mp=$("#mapPlace"); if(mp) mp.onclick=openMapDlg;
     const mc=$("#mapClear"); if(mc) mc.onclick=()=>{ delete S.plan.geo; edit("Removed the block's map position"); };
+    const wi=$("#walkImport"), wf=$("#walkIn"); if(wi){ wi.onclick=()=>wf.click(); wf.onchange=()=>{ const f=wf.files[0]; wf.value=""; if(f) importWalk(f); }; }
     const blk=$("#blk"); if(blk) blk.onchange=()=>{ S.plan.block=blk.value.trim().toUpperCase(); edit("Renamed block to "+S.plan.block); };
     const fn=$("#flName"); if(fn) fn.onchange=()=>{ fl.name=fn.value.trim()||"Level "+S.floor; edit("Renamed L"+S.floor); };
     const df=$("#delFloor"); if(df) df.onclick=()=>{ if(!delArm){delArm=true;renderInspector();return;} delArm=false;
@@ -1678,6 +1681,37 @@ function addScanRoom(id){
     poly:m.poly.map(p=>[+(p[0]+ox).toFixed(2),+(p[1]+oy).toFixed(2)]),doors:[]});
   S.floor=s.floor; S.sel=k; setTab("plan"); edit(`Added ${rid} from measurements`); fit();
   toast(`Added ${rid}. Drag it into place and set its type.`);
+}
+/* ---------- walks: a corridor traced by worker.py --walk, with a placeholder room behind each door sign it read ----------
+   The walk's own coordinates start at (0, 0). On a floor that already has rooms it goes beside them, since the walk
+   isn't lined up with them yet. */
+function walkPlan(w,fl){
+  if (w?.kind!=="walk" || !Array.isArray(w.corridor?.poly)) throw new Error("That isn't a walk.json from worker.py --walk.");
+  const pt=p=>{ if(!Array.isArray(p)||p.length!==2||!p.every(Number.isFinite)) throw new Error("The walk has a bad point in it."); return p; };
+  const poly=q=>{ if(!Array.isArray(q)||q.length<3||q.length>200) throw new Error("The walk has an outline with too few or too many corners."); return q.map(pt); };
+  const doors=(q,ds)=>(Array.isArray(ds)?ds:[]).filter(d=>Number.isInteger(d?.e)&&d.e>=0&&d.e<q.length&&Number.isFinite(d.t))
+    .slice(0,50).map(d=>({e:d.e,t:Math.max(0,Math.min(1,+d.t)),w:Math.max(.3,Math.min(5,+d.w||DOOR_W))}));
+  const corridor=poly(w.corridor.poly), rooms=(Array.isArray(w.rooms)?w.rooms:[]).filter(r=>typeof r?.id==="string"&&r.id.trim()).map(r=>{ const q=poly(r.poly); return {id:r.id.trim().slice(0,24),poly:q,doors:doors(q,r.doors)}; });
+  const others=floorRooms(fl).flatMap(r=>r.poly), [x0,y0]=bbox([...corridor,...rooms.flatMap(r=>r.poly)]);
+  const [ox,oy]=others.length?[bbox(others)[2]+2-x0,bbox(others)[1]-y0]:[-x0,-y0];
+  const move=q=>q.map(([x,y])=>[+(x+ox).toFixed(2),+(y+oy).toFixed(2)]);
+  return {corridor:{poly:move(corridor),doors:doors(corridor,w.corridor.doors)},rooms:rooms.map(r=>({...r,poly:move(r.poly)}))};
+}
+async function importWalk(file){
+  if (S.readOnly) return;
+  let w, plan;
+  try{ w=JSON.parse(await file.text()); }catch(e){ toast("That file isn't a walk.json."); return; }
+  const fl=Number.isInteger(w?.floor)?w.floor:S.floor;
+  try{ plan=walkPlan(w,fl); }catch(e){ toast(e.message); return; }
+  if (!S.plan.floors.some(f=>f.level===fl)) S.plan.floors.push({level:fl,name:"Level "+fl});
+  if (!S.plan.block && typeof w.block==="string") S.plan.block=w.block.trim().toUpperCase().slice(0,8);
+  const others=floorRooms(fl).length>0, blk=S.plan.block||"X", k=uid(), cid=uniqueId(`${blk}-${String(fl).padStart(2,"0")}-WALK`);
+  S.plan.rooms.push({k,id:cid,name:"Walked corridor",type:"corridor",floor:fl,height:3.2,poly:plan.corridor.poly,doors:plan.corridor.doors});
+  const added=[], skipped=[];
+  plan.rooms.forEach(r=>{ if(S.plan.rooms.some(x=>x.id===r.id)){ skipped.push(r.id); return; }
+    S.plan.rooms.push({k:uid(),id:r.id,name:r.id,type:"other",floor:fl,height:3.2,poly:r.poly,doors:r.doors}); added.push(r.id); });
+  S.floor=fl; S.sel=k; setTab("plan"); edit(`Imported a walk: ${cid}${added.length?` and ${added.length} room${added.length===1?"":"s"}`:""}`); fit();
+  toast(`Added ${cid}${added.length?` and ${added.join(", ")}`:""}.${skipped.length?` ${skipped.join(", ")} ${skipped.length===1?"was":"were"} already on the plan, so only the door was added.`:""}${others?" It's beside the rooms already on this floor.":""} Room sizes are guesses until measured.`);
 }
 async function retryScan(id,b){
   b.disabled=true;

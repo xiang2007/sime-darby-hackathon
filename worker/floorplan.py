@@ -35,8 +35,9 @@ class ReconError(Exception):
 
 # ---------------------------------------------------------------- 1. camera positions and points
 
-def run_sfm(image_dir: Path, work: Path, log=print) -> list:
-    """Run COLMAP on the photos. Photos of the same size are assumed to share one camera (lens)."""
+def run_sfm(image_dir: Path, work: Path, log=print, sequential=False) -> list:
+    """Run COLMAP on the photos. Photos of the same size are assumed to share one camera (lens).
+    sequential: the photos are in walking order (a video), so each is matched only with its neighbours."""
     names = sorted(str(p.relative_to(image_dir)) for p in image_dir.rglob("*.jpg"))
     if len(names) < 6:
         raise ReconError(f"Only {len(names)} photos. At least 6 are needed, ideally 30 or more.")
@@ -56,7 +57,7 @@ def run_sfm(image_dir: Path, work: Path, log=print) -> list:
     log("Matching photos…")
     match = pycolmap.SiftMatchingOptions()
     match.guided_matching = True
-    if len(names) <= 120:
+    if len(names) <= 120 and not sequential:
         pycolmap.match_exhaustive(db, sift_options=match)
     else:
         seq = pycolmap.SequentialMatchingOptions()

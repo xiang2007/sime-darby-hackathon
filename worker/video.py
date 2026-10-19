@@ -53,14 +53,28 @@ def _ncc(a, b):
     return float((a @ b) / (np.sqrt((a @ a) * (b @ b)) or 1.0))
 
 
+def find_ffmpeg(given=None):
+    """ffmpeg from --ffmpeg, then PATH, then the copy bundled with the imageio-ffmpeg package."""
+    if given:
+        return given
+    exe = shutil.which("ffmpeg")
+    if exe:
+        return exe
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        raise VideoError("ffmpeg wasn't found. Run pip install -r requirements.txt (it bundles one), install it "
+                         "(https://ffmpeg.org/download.html), or pass --ffmpeg /path/to/ffmpeg.") from None
+
+
 def extract_frames(video, *, fps=2.0, max_frames=80, ffmpeg=None, log=print):
-    """Returns (files, stats): files is [(name, jpeg bytes)] ready for floorplan.prepare_images."""
+    """Returns (files, stats): files is [(name, jpeg bytes)] ready for floorplan.prepare_images.
+    stats["times"] maps each file name to its time in the video, in seconds."""
     video = Path(video)
     if not video.is_file():
         raise VideoError(f"{video} isn't a file.")
-    exe = ffmpeg or shutil.which("ffmpeg")
-    if not exe:
-        raise VideoError("ffmpeg wasn't found. Install it (https://ffmpeg.org/download.html) or pass --ffmpeg /path/to/ffmpeg.")
+    exe = find_ffmpeg(ffmpeg)
     vf = f"fps={fps},scale='if(gt(iw,ih),min({MAX_SIDE},iw),-2)':'if(gt(iw,ih),-2,min({MAX_SIDE},ih))'"
     with tempfile.TemporaryDirectory(prefix="ucampass-frames-") as tmp:
         cmd = [exe, "-v", "error", "-nostdin", "-i", str(video), "-an", "-vf", vf, "-q:v", "2", str(Path(tmp) / "%05d.jpg")]
@@ -71,7 +85,7 @@ def extract_frames(video, *, fps=2.0, max_frames=80, ffmpeg=None, log=print):
         if not paths:
             raise VideoError(f"No frames came out of {video.name}.")
         kept, last, tally = [], None, {}
-        for p in paths:
+        for n, p in enumerate(paths):
             data = p.read_bytes()
             im = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
             if im is None:
@@ -84,12 +98,14 @@ def extract_frames(video, *, fps=2.0, max_frames=80, ffmpeg=None, log=print):
             if last is not None and _ncc(last, thumb) > SAME_AS_LAST:
                 tally["same view"] = tally.get("same view", 0) + 1
                 continue
-            kept.append(data)
+            kept.append((data, round(n / fps, 2)))
             last = thumb
     usable = len(kept)
     if usable > max_frames:
         kept = [kept[round(i * (usable - 1) / (max_frames - 1))] for i in range(max_frames)]
-    stats = {"extracted": len(paths), "usable": usable, "kept": len(kept), "dropped": tally}
+    files = [(f"{i:03d}.jpg", d) for i, (d, _) in enumerate(kept)]
+    stats = {"extracted": len(paths), "usable": usable, "kept": len(kept), "dropped": tally,
+             "times": {f"{i:03d}.jpg": t for i, (_, t) in enumerate(kept)}}
     log(f"{video.name}: {stats['extracted']} frames at {fps:g}/s, {usable} usable, using {len(kept)}"
         + (f" (dropped: {', '.join(f'{n} {w}' for w, n in sorted(tally.items()))})" if tally else ""))
-    return [(f"{i:03d}.jpg", d) for i, d in enumerate(kept)], stats
+    return files, stats
