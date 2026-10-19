@@ -38,12 +38,12 @@ header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .sync{font-size:.78rem;color:#5b6787;display:flex;align-items:center;gap:6px}
 .sync i{width:8px;height:8px;border-radius:50%;background:#9aa4bd;display:inline-block}
 .sync[data-s="saved"] i{background:#2f9d5f} .sync[data-s="saving"] i{background:#d6a21c} .sync[data-s="error"] i{background:#d8443a}
-.me{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--navy)}
-.me img{width:34px;height:34px;border-radius:50%;border:2px solid var(--cyan)}
-.me button{font:inherit;font-family:var(--f-display);font-weight:500;color:inherit;background:none;border:0;padding:2px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.me{display:flex;align-items:center;gap:12px;font-size:1.15rem;color:var(--navy)}
+.me img{width:50px;height:50px;border-radius:50%;border:2px solid var(--cyan)}
+.me button{font:inherit;font-family:var(--f-display);font-weight:600;font-size:1.2rem;color:inherit;background:none;border:0;padding:2px;cursor:pointer;display:flex;align-items:center;gap:12px}
 .me button:hover span{text-decoration:underline}
-.avatar{width:34px;height:34px;flex:none;border-radius:50%;border:1.5px solid #c9d1e4;color:var(--cyan);background:#fff;display:grid;place-items:center}
-.avatar svg{width:30px;height:30px}
+.avatar{width:50px;height:50px;flex:none;border-radius:50%;border:2px solid #c9d1e4;color:var(--cyan);background:#fff;display:grid;place-items:center}
+.avatar svg{width:44px;height:44px}
 dialog.sheet{border:1px solid var(--rule);border-radius:14px;background:var(--sheet);color:var(--ink);padding:20px;width:min(380px,calc(100vw - 32px))}
 dialog.sheet::backdrop{background:rgb(4 10 30 / .6)}
 dialog.sheet h2{margin-top:0}
@@ -255,8 +255,11 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
   .brand{padding-block:8px}
   header.bar{z-index:8}
   .sync{font-size:.72rem;white-space:nowrap}
+  .sync span{display:none}
   .banner .more{display:none}
-  .me button{padding:2px 8px;font-size:.74rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .me img,.avatar{width:40px;height:40px}
+  .avatar svg{width:35px;height:35px}
+  .me button{padding:2px 4px;font-size:.95rem;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .bar-top{flex-wrap:nowrap;column-gap:10px}
   nav.main{position:fixed;left:0;right:0;bottom:0;z-index:7;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
     background:#fff;border-top:1px solid #d5dbea;box-shadow:0 -2px 10px rgb(0 0 0 / .15);padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
