@@ -28,7 +28,7 @@ Last updated: 2026-10-19 · Branch: `claude/vigilant-mayer-cuzfx0`
    - **Door-sign OCR** (RapidOCR, CPU only) reads codes like `B-03-02`. QR door markers are still read, but are optional. Each sign is placed by crossing the sight lines from the frames that saw it. A one-off misread beside a real sign is dropped.
    - Adds a **placeholder room** (up to 4 × 4 m) behind each door, sized so rooms don't overlap the corridor or each other.
    - Writes `walk.json` and `preview.png`. The floor and block come from the signs, or from `--floor` / `--block`.
-   - Walks use sequential matching (each frame against its neighbours) instead of matching every pair, which scales to longer walks.
+   - Walks use sequential matching (each frame against its neighbours) instead of matching every pair. On the 46-frame test walk, matching took 71 s instead of about 3 min, and the whole run 3m48s instead of 5m55s, with the same result.
 2. **App: Import walk** (Floor plan → no room selected → *Walks* → **Import walk**). Adds the corridor with its doors and the placeholder rooms. Rooms already on the plan aren't duplicated. Directions routes over the result with no changes.
 3. **F2 fixed:** `imageio-ffmpeg` is in `worker/requirements.txt`, and the worker uses its bundled ffmpeg when none is installed.
 4. **Unit tests** for the walk geometry: `cd worker && python -m unittest test_walk` (8 tests).
