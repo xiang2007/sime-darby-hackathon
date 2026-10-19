@@ -257,9 +257,15 @@ td.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-n
   .sync{font-size:.72rem;white-space:nowrap}
   .sync span{display:none}
   .banner .more{display:none}
-  .me img,.avatar{width:40px;height:40px}
-  .avatar svg{width:35px;height:35px}
-  .me button{padding:2px 4px;font-size:.95rem;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brand{flex:none}
+  .bar-right{flex:1 1 0;justify-content:flex-end}
+  .me{min-width:0;gap:8px}
+  .me img,.avatar{width:34px;height:34px}
+  .avatar svg{width:30px;height:30px}
+  .me button{padding:2px;gap:8px;font-size:.95rem;max-width:150px;min-width:0}
+  .me button.long{font-size:.8rem}
+  .me button .avatar{order:-1}
+  .me button > span:first-child,.me > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .bar-top{flex-wrap:nowrap;column-gap:10px}
   nav.main{position:fixed;left:0;right:0;bottom:0;z-index:7;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
     background:#fff;border-top:1px solid #d5dbea;box-shadow:0 -2px 10px rgb(0 0 0 / .15);padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
@@ -1958,7 +1964,7 @@ function conflictBanner(b){
 function renderMe(){
   if (!S.api) return;
   const m=$("#me"); m.hidden=false;
-  m.innerHTML=`<button type="button" id="meBtn" title="Change your name${S.editKey?" or edit key":""}"><span>${S.meId?esc(S.meId):"Set your name"}</span><span class="avatar"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11.5" r="6"/><path d="M5 27c1.5-6 6-8.5 11-8.5s9.5 2.5 11 8.5z"/></svg></span></button>`;
+  m.innerHTML=`<button type="button" id="meBtn"${(S.meId||"").length>9?' class="long"':""} title="Change your name${S.editKey?" or edit key":""}"><span>${S.meId?esc(S.meId):"Set your name"}</span><span class="avatar"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11.5" r="6"/><path d="M5 27c1.5-6 6-8.5 11-8.5s9.5 2.5 11 8.5z"/></svg></span></button>`;
   $("#meBtn").onclick=openProfile;
 }
 function openProfile(){
