@@ -42,15 +42,19 @@ CIRCULATION = ("corridor", "lobby")
 
 # ---------------------------------------------------------------- floor space and doorways
 
-def wall_cells(pts, heights, shape, lo):
-    """Cells with wall points between knee and head height: below a door's head, so doorways stay open.
-    Thin walls between a room and the hallway are solid here even where the floor space either side nearly meets."""
+def wall_cells(pts, heights, count, lo):
+    """Cells with wall points between knee and head height (below a door's head, so doorways stay open) that
+    sight lines don't pass through. Thin walls between a room and the hallway are solid here even where the
+    floor space either side nearly meets; stray points from a badly placed frame, which the other frames see
+    straight through, are not."""
     sel = (heights > WALL_BAND[0]) & (heights < WALL_BAND[1])
     ix = np.round((pts[sel] - lo) / GRID).astype(int)
-    ok = (ix[:, 0] >= 0) & (ix[:, 1] >= 0) & (ix[:, 0] < shape[1]) & (ix[:, 1] < shape[0])
-    n = np.zeros(shape, np.int32)
+    ok = (ix[:, 0] >= 0) & (ix[:, 1] >= 0) & (ix[:, 0] < count.shape[1]) & (ix[:, 1] < count.shape[0])
+    n = np.zeros(count.shape, np.int32)
     np.add.at(n, (ix[ok, 1], ix[ok, 0]), 1)
-    return cv2.dilate((n >= 2).astype(np.uint8), np.ones((3, 3), np.uint8))
+    seen = count[count >= 2]
+    through = float(np.median(seen)) if len(seen) else 0.0     # real walls: well under; stray points: over
+    return cv2.dilate(((n >= 2) & (count < through)).astype(np.uint8), np.ones((3, 3), np.uint8))
 
 
 def free_space(count, cams, lo, walls=None):
@@ -308,7 +312,7 @@ def map_floor(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, 
     # every point counts for seeing through, the floor in front of the camera too, so the middle of a room
     # walked round is filled in
     count, lo = carve(cams, pts, F["obs_p"], F["obs_c"], F["heights"] > -0.3)
-    free = free_space(count, cams, lo, wall_cells(pts, F["heights"], count.shape, lo))
+    free = free_space(count, cams, lo, wall_cells(pts, F["heights"], count, lo))
     lab = split(free)
     ways = doorways(lab, lo)
     log(f"Found {lab.max()} rooms and hallways, {len(ways)} doorway(s).")

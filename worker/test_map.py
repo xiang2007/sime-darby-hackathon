@@ -82,8 +82,10 @@ class FreeSpace(unittest.TestCase):
         box(*CORRIDOR)
         for (x0, y0, x1, y1), _ in ROOMS.values():
             box(x0, y0 - (0.05 if y1 <= 0 else 0), x1, y1 + (0.05 if y1 <= 0 else 0))
-            box(x0, -0.15, x1, 0) if y1 <= 0 else box(x0, 2.4, x1, 2.55)      # 1 cell short of meeting at most
+            box(x0, -0.15, x1, 0) if y1 <= 0 else box(x0, 2.4, x1, 2.55)
         count = m.astype(np.int32) * 5
+        for wy in (-0.075, 2.475):                     # sight lines stop at the wall: a 1-cell gap between the two sides
+            count[int(round((wy - LO[1]) / GRID - 0.5)), :] = 0
         pts, hs = [], []
         for (x0, y0, x1, y1), (d0, d1) in ROOMS.values():
             wy = -0.075 if y1 <= 0 else 2.475
@@ -98,7 +100,7 @@ class FreeSpace(unittest.TestCase):
                         [[(d0 + d1) / 2, y] for (_, y0, _, y1), (d0, d1) in ROOMS.values()
                          for y in ((-1.0, -0.075, 0.5) if y1 <= 0 else (1.9, 2.475, 3.5))])
         self.assertEqual(split(free_space(count, cams, LO)).max(), 1, "without walls it's one space")
-        free = free_space(count, cams, LO, wall_cells(pts, hs, count.shape, LO))
+        free = free_space(count, cams, LO, wall_cells(pts, hs, count, LO))
         lab = split(free)
         self.assertEqual(lab.max(), 4)
         self.assertEqual(len(doorways(lab, LO)), 3)
