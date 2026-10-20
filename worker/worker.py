@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """UCampass(PIC) reconstruction worker. Runs on your own computer, not on Vercel.
 
-It asks the website for capture sessions whose photos have been uploaded, measures each
-room from its photos (see floorplan.py), and sends the outline and height back. The result
-shows up on the Floor plan tab, where someone can compare it with the drawn room and apply it.
+It asks the website for capture sessions whose photos or walk video have been uploaded.
+Photos (Contribute → Live camera, or photos added by hand, with "upload for 3D" ticked): it downloads them from
+the website (kept in its Neon database), measures the room in 3D (see floorplan.py) and sends the outline and
+height back. The website puts the room on the floor plan straight away: over the drawn room with the same ID, or
+where the session's GPS says, lined up with the walls around it.
+Walk videos (Contribute → Map a whole floor): it downloads the video from the website (kept in its Neon database),
+maps the floor (see floormap.py) and sends the map back. The website adds it to the floor plan straight
+away, placed by the session's GPS, as Floor plan → Import walk or map would.
 
   Connected to the website (keeps running, checks for new sessions every 20 seconds):
     python worker.py --server https://your-app.vercel.app --key WORKER_KEY
@@ -29,12 +34,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import shutil
 import sys
 import tempfile
 import time
 import traceback
+import types
 import urllib.error
 import urllib.request
 import zipfile
@@ -46,7 +53,7 @@ from video import VideoError, extract_frames  # noqa: E402
 from floormap import map_floor  # noqa: E402
 from walk import trace_walk  # noqa: E402
 
-VERSION = "1"
+VERSION = "4"
 
 
 def log(*a):
@@ -54,16 +61,24 @@ def log(*a):
 
 
 class Api:
-    def __init__(self, server, key):
+    def __init__(self, server, key, bypass=None):
         self.base = server.rstrip("/")
         self.key = key
+        # Vercel Deployment Protection: a preview deployment (or a protected production one) answers 401 to
+        # anyone not signed in to Vercel. Its "Protection Bypass for Automation" secret lets the worker through.
+        self.bypass = bypass
 
-    def call(self, method, path, body=None, raw=False):
+    def headers(self, extra=None):
+        h = {"x-worker-key": self.key, "user-agent": f"ucampass-worker/{VERSION}"}
+        if self.bypass:
+            h["x-vercel-protection-bypass"] = self.bypass
+        return {**h, **(extra or {})}
+
+    def call(self, method, path, body=None, raw=False, timeout=60):
         data = json.dumps(body).encode() if body is not None else None
-        req = urllib.request.Request(self.base + path, data=data, method=method, headers={
-            "x-worker-key": self.key, "content-type": "application/json", "user-agent": f"ucampass-worker/{VERSION}"})
+        req = urllib.request.Request(self.base + path, data=data, method=method, headers=self.headers({"content-type": "application/json"}))
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 payload = r.read()
                 if raw:
                     return payload
@@ -73,7 +88,38 @@ class Api:
                 msg = json.loads(e.read()).get("message")
             except Exception:
                 msg = None
+            if e.code == 401 and not msg:
+                msg = ("blocked by Vercel Deployment Protection. Use the production address, or pass --bypass "
+                       "with the project's Protection Bypass for Automation secret")
             raise RuntimeError(f"{method} {path}: HTTP {e.code} {msg or e.reason}") from None
+
+    def download_video(self, session_id, dest: Path):
+        """Save a session's walk video to dest. The website keeps it in its Neon database in pieces of a few MB
+        (a Vercel function sends at most 4.5 MB at a time), so fetch them in order and join them up."""
+        info = self.call("GET", f"/api/videos?session={session_id}")
+        if info.get("deleted"):
+            raise RuntimeError("The video was deleted after it was mapped. Upload it again from Contribute.")
+        if not info.get("ready"):
+            raise RuntimeError(f"The video hasn't finished uploading ({info.get('received', 0)} of {info['parts']} pieces).")
+        total, parts, done, last = int(info["bytes"]), int(info["parts"]), 0, time.time()
+        with open(dest, "wb") as f:
+            for i in range(parts):
+                for attempt in range(4):
+                    try:
+                        data = self.call("GET", f"/api/videos?session={session_id}&i={i}", raw=True, timeout=120)
+                        break
+                    except (RuntimeError, OSError) as e:
+                        if attempt == 3 or "HTTP 4" in str(e):
+                            raise RuntimeError(f"Couldn't download piece {i + 1} of {parts}: {e}") from None
+                        time.sleep(2 ** (attempt + 1))
+                f.write(data)
+                done += len(data)
+                if time.time() - last > 10:
+                    log(f"  downloaded {done / 1e6:.0f} of {total / 1e6:.0f} MB")
+                    last = time.time()
+        if done != total:
+            raise RuntimeError(f"The video download came to {done} bytes, not {total}.")
+        return done
 
 
 def marker_text(plan, room_id):
@@ -96,6 +142,10 @@ def process(files, room, marker, keep: Path | None = None):
             result["notes"].insert(0, f"Only {placed} of {total} photos could be linked together, so part of the room may be "
                                       "missing from the outline. Take photos closer together, especially when turning at corners.")
         result["worker"] = {"version": VERSION}
+        # Where each photo was taken in the room, by upload slot (the files are named 000.jpg, 001.jpg, ...). The
+        # website matches them with each photo's GPS fix to place and turn the room on the plan.
+        names = result.pop("cameraNames", [])
+        result["shots"] = [{"i": int(Path(n).stem), "xy": xy} for n, xy in zip(names, result["cameras"]) if Path(n).stem.isdigit()]
         if keep:
             keep.mkdir(parents=True, exist_ok=True)
             for f in ("preview.png",):
@@ -209,9 +259,9 @@ def run_offline(args):
 
 
 def run_server(args):
-    api = Api(args.server, args.key)
+    api = Api(args.server, args.key, args.bypass or os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET"))
     name = args.name or platform.node() or "worker"
-    log(f"Worker '{name}' connected to {api.base}. Waiting for sessions with uploaded photos… (Ctrl+C to stop)")
+    log(f"Worker '{name}' connected to {api.base}. Waiting for sessions with uploaded photos or walk videos… (Ctrl+C to stop)")
     while True:
         try:
             q = f"?session={args.session}" if args.session else ""
@@ -230,13 +280,18 @@ def run_server(args):
             continue
         j = job["job"]
         sid = j["session"]["_id"]
-        log(f"Session {sid}: room {j['session']['room']}, {len(j['photos'])} photos")
         try:
-            files = [(f"{p['i']:03d}.jpg", api.call("GET", f"/api/photos?id={p['id']}", raw=True)) for p in j["photos"]]
-            result = process(files, j.get("room"), j.get("marker"))
-            api.call("PUT", f"/api/jobs?session={sid}", {"status": "done", "result": result})
-            log(f"Session {sid} done:", summary(result))
-        except ReconError as e:
+            if j.get("kind") == "map":
+                run_map_job(api, j, args)
+            else:
+                tagged = sum(1 for p in j["photos"] if p.get("geo"))
+                log(f"Session {sid}: room {j['session']['room']}, {len(j['photos'])} photos" + (f", {tagged} with GPS" if tagged else ""))
+                files = [(f"{p['i']:03d}.jpg", api.call("GET", f"/api/photos?id={p['id']}", raw=True)) for p in j["photos"]]
+                result = process(files, j.get("room"), j.get("marker"))
+                r = api.call("PUT", f"/api/jobs?session={sid}", {"status": "done", "result": result})
+                log(f"Session {sid} done:", summary(result))
+                log_room_import(sid, (r or {}).get("imported"))
+        except (ReconError, VideoError) as e:
             log(f"Session {sid} failed:", e)
             api.call("PUT", f"/api/jobs?session={sid}", {"status": "failed", "error": str(e)})
         except Exception as e:
@@ -249,10 +304,68 @@ def run_server(args):
             return
 
 
+PLACED = {"gps": "placed by the session's GPS", "rooms": "lined up with the rooms already on the plan",
+          "beside": "beside the other rooms (no GPS)", "origin": "on an empty floor (no GPS)"}
+
+
+def log_room_import(sid, imp):
+    if not imp:
+        return
+    if imp.get("error"):
+        log(f"Session {sid}: not put on the plan:", imp["error"])
+        return
+    what = f"new outline for {imp['room']}" if imp.get("action") == "replaced" else f"added {imp['room']}"
+    where = {"room": f"over the drawn room ({round((imp.get('match') or 0) * 100)}% the same)",
+             "gps": f"placed by the GPS of {imp.get('gpsPhotos')} photos" if imp.get("gpsPhotos") else None}.get(imp.get("placed")) \
+        or PLACED.get(imp.get("placed"), imp.get("placed"))
+    walls = f", lined up with {imp['snapped']} wall(s) nearby" if imp.get("snapped") else ""
+    log(f"Session {sid}: on the floor plan as revision r{imp['rev']}: {what}, {where}"
+        + (f" in {imp['building']}" if imp.get("building") else "") + walls + ".")
+
+
+def run_map_job(api, j, args):
+    """A walk video from the website: download it, map the floor, send the map back (the website adds it to the plan)."""
+    s = j["session"]
+    sid = s["_id"]
+    v = j.get("video") or {}
+    where = f"Block {s['block']} " if s.get("block") else ""
+    gps = f", GPS ±{s['geo']['acc']} m" if s.get("geo") else ", no GPS"
+    log(f"Session {sid}: walk video for {where}L{s['floor']} ({(v.get('bytes') or 0) / 1e6:.0f} MB{gps})")
+    work = Path(tempfile.mkdtemp(prefix="ucampass-video-"))
+    try:
+        ext = {"video/quicktime": ".mov", "video/webm": ".webm"}.get(v.get("type"), ".mp4")
+        path = work / f"session-{sid}{ext}"
+        n = api.download_video(sid, path)
+        log(f"Downloaded {n / 1e6:.0f} MB")
+        files, stats = extract_frames(path, fps=args.fps or 3.0, max_frames=args.max_frames or 360, ffmpeg=args.ffmpeg, log=log)
+        if len(files) < 8:
+            raise VideoError(f"Only {len(files)} usable frames; at least 8 are needed. Film more slowly and steadily, with better light.")
+        log(f"{len(files)} frames")
+        opts = types.SimpleNamespace(map=True, no_ocr=args.no_ocr, floor=s["floor"], block=(s.get("block") or None))
+        result = process_walk(files, stats["times"], opts)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    r = api.call("PUT", f"/api/jobs?session={sid}", {"status": "done", "result": result})
+    log(f"Session {sid} mapped:", map_summary(result))
+    for note in result["notes"]:
+        log("Note:", note)
+    imp = (r or {}).get("imported") or {}
+    if imp.get("error"):
+        log(f"Session {sid}: not added to the plan:", imp["error"])
+    elif imp:
+        what = (f"added {', '.join(imp['added'])}" if imp.get("added") else "") + \
+               (f"{'; ' if imp.get('added') else ''}updated {', '.join(imp['replaced'])}" if imp.get("replaced") else "")
+        log(f"Session {sid}: on the floor plan as revision r{imp['rev']}, {PLACED.get(imp.get('placed'), imp.get('placed'))}"
+            + (f" in {imp['building']}" if imp.get("building") else "")
+            + (f", lined up with {imp['snapped']} wall(s) nearby" if imp.get("snapped") else "") + (f": {what}" if what else "") + ".")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--server", help="the website, e.g. https://your-app.vercel.app")
     ap.add_argument("--key", help="WORKER_KEY, as set on the website")
+    ap.add_argument("--bypass", help="Vercel Protection Bypass for Automation secret, if the deployment is protected "
+                    "(default: $VERCEL_AUTOMATION_BYPASS_SECRET)")
     ap.add_argument("--name", help="name shown on the website (default: this computer's name)")
     ap.add_argument("--session", help="process this session even if it was done before")
     ap.add_argument("--once", action="store_true", help="process at most one session, then stop")
