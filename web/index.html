@@ -2257,7 +2257,7 @@ async function scanDoorPhoto(file){
 /* ---------- placing the block on a real map ----------
    plan.geo = {x, y, lat, lng, rot}: plan point (x, y) sits at (lat, lng), and the plan is turned rot degrees clockwise.
    Plan x runs east and y south before turning. Metres per degree use a flat-earth approximation, fine across a campus. */
-const M_PER_DEG=111320, DEFAULT_LL=[3.0553,101.7007];   // APU campus, Bukit Jalil
+const M_PER_DEG=111320, DEFAULT_LL=[3.0556,101.7000];   // APU main building, Bukit Jalil (centre of its OSM footprint)
 function toLatLng(p,g=S.plan.geo){ const t=g.rot*Math.PI/180, e0=p[0]-g.x, n0=-(p[1]-g.y);
   const e=e0*Math.cos(t)+n0*Math.sin(t), n=-e0*Math.sin(t)+n0*Math.cos(t);
   return [g.lat+n/M_PER_DEG, g.lng+e/(M_PER_DEG*Math.cos(g.lat*Math.PI/180))]; }
@@ -2435,9 +2435,9 @@ function fitToFootprint(rooms,b){
   const fc=areaCentroid(F.map(orient)), pc=areaCentroid(P.map(orient));
   const segs=p=>p.map((q,i)=>[q,p[(i+1)%p.length]]);
   const tf=dominantAngle(F.flatMap(segs)), tp=dominantAngle(P.flatMap(p=>segs(p).map(([a,b])=>[[a[0],-a[1]],[b[0],-b[1]]])));   // plan y runs south
-  let best=null;
+  let best=null; const rots=[];
   for (let q=0;q<4;q++){
-    let rot=(tp-tf)*180/Math.PI+q*90; rot=((rot+180)%360+360)%360-180;
+    let rot=(tp-tf)*180/Math.PI+q*90; rot=((rot+180)%360+360)%360-180; rots.push(rot);
     const t=rot*Math.PI/180, cs=Math.cos(t), sn=Math.sin(t);
     const toF=([x,y])=>{ const e0=x-pc[0], n0=-(y-pc[1]); return [fc[0]+e0*cs+n0*sn, fc[1]-e0*sn+n0*cs]; };
     const toP=([e,n])=>{ e-=fc[0]; n-=fc[1]; const e0=e*cs-n*sn, n0=e*sn+n*cs; return [pc[0]+e0, pc[1]-n0]; };
@@ -2445,17 +2445,31 @@ function fitToFootprint(rooms,b){
     const I=(a+c)/2, iou=I/(ps.length+fs.length-I);
     if (!best || iou>best.iou+1e-9) best={rot,iou};
   }
-  return {x:pc[0],y:pc[1],lat:ll0[0]+fc[1]/M_PER_DEG,lng:ll0[1]+fc[0]/k,rot:best.rot,iou:best.iou,ratio:pArea/fArea};
+  return {x:pc[0],y:pc[1],lat:ll0[0]+fc[1]/M_PER_DEG,lng:ll0[1]+fc[0]/k,rot:best.rot,iou:best.iou,ratio:pArea/fArea,rots};
 }
 /* osm:end */
 function snapToPick(){
   const C=S.campus, b=C&&MAP&&C.buildings.find(x=>x.id===MAP.pick); if(!b) return;
   const rs=floorRooms(S.floor).length?floorRooms(S.floor):S.plan.rooms, f=fitToFootprint(rs,b);
   if (!f){ toast("That outline is too small to snap to."); return; }
-  MAP.c=[f.x,f.y]; MAP.rot=+f.rot.toFixed(1); MAP.osm=b.id; $("#mapRot").value=MAP.rot;
+  const name=b.name||b.ref||"the building";
+  MAP.osm=b.id;
+  if (f.ratio<.5){
+    /* The block is one part of a bigger building (APU's main building is a single footprint in OSM): where it sits
+       inside can't be told from the outline, so only line it up with the building's walls, picking the turn closest
+       to the current one, and leave the position to the person. */
+    const turn=d=>Math.abs(((d-MAP.rot+540)%360)-180);
+    MAP.rot=+f.rots.reduce((a,r)=>turn(r)<turn(a)?r:a).toFixed(1); $("#mapRot").value=MAP.rot;
+    const c=MAP.map.getCenter();
+    if (!b.rings.some(r=>llInside([c.lat,c.lng],r))) MAP.map.setView([f.lat,f.lng],Math.max(MAP.map.getZoom(),18));
+    drawMapOutline();
+    toast(`Lined the block up with the walls of ${name}. The building is much bigger than this block, so drag the map to put it in the right part, then save.`);
+    return;
+  }
+  MAP.c=[f.x,f.y]; MAP.rot=+f.rot.toFixed(1); $("#mapRot").value=MAP.rot;
   MAP.map.setView([f.lat,f.lng],Math.max(MAP.map.getZoom(),18)); drawMapOutline();
-  const size=f.ratio>1.4?" The plan is bigger than the building outline; check the scale.":f.ratio<.5?" The plan covers only part of the building, so check the position.":"";
-  toast(`Snapped to ${b.name||b.ref||"the building"}: ${Math.round(f.iou*100)}% overlap.${size} Fine-tune, then save.`);
+  const size=f.ratio>1.4?" The plan is bigger than the building outline; check the scale.":"";
+  toast(`Snapped to ${name}: ${Math.round(f.iou*100)}% overlap.${size} Fine-tune, then save.`);
 }
 /* Campus lines in plan coordinates, for the 3D ground outline. */
 function campusInPlan(){
