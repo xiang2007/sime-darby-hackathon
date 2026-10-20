@@ -222,7 +222,7 @@ python worker.py --map --video floor.mp4        # writes map.json and preview.pn
 
 Then on the **Floor plan** tab, with no room selected, use **Import walk or map** under **Walks** and pick `map.json`.
 
-**Or let the website do it all.** On **Capture**, under **Map a whole floor from one video**, turn on the GPS tag, pick the video and press **Upload video for mapping**. Leave a worker running with `python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY`. It:
+**Or let the website do it all.** On **Capture**, under **Map a whole floor from one video**, tick the permission box and press **Record walk with live camera**: the phone records the walk, with GPS on throughout, and uploads it as soon as you press **Stop and upload**. Or turn on the GPS tag, choose a video you filmed, and press **Upload video for mapping**. For a recorded walk, the GPS point is the average of the fixes taken along it (the more accurate ones count more, ones worse than 60 m are left out), which is a better guess at the walk's middle than a single fix. Leave a worker running with `python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY`. It:
 
 1. downloads the video from the website. It's kept in the Neon database in 4 MB pieces, since a Vercel function takes at most 4.5 MB per request, so no other storage is needed;
 2. maps the floor, as `--map` does;

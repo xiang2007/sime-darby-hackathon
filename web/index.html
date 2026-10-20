@@ -1580,7 +1580,7 @@ function checkImage(bmp,W,H){
 // moved: a frame is kept once it matches the last kept one less than this (NCC), so photos overlap but aren't repeats.
 const LIVE={every:400, moved:.8, max:80, markerShots:3, markerGap:1500};
 let live=null;
-async function startLive(){
+async function startLive(mode="photos"){
   if (live) return;
   if (S.noContrib){ toast("Your sharing level doesn't allow new sessions."); return; }
   if (!navigator.mediaDevices?.getUserMedia){ toast("This browser can't open the camera here. Add photos instead."); return; }
@@ -1588,19 +1588,71 @@ async function startLive(){
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}}); }
   catch(e){ toast(e?.name==="NotAllowedError"?"Camera access was blocked. Allow it for this site, or add photos instead.":"Couldn't open the camera. Add photos instead."); return; }
   const v=$("#liveVid"); v.srcObject=stream;
-  live={stream,timer:null,last:null,markers:0,lastMarker:0,kept:0,busy:false,started:Date.now()};
-  $("#live").hidden=false; $("#liveThumbs").innerHTML=""; liveHud("Starting camera…");
+  live={stream,timer:null,last:null,markers:0,lastMarker:0,kept:0,busy:false,started:Date.now(),mode};
+  $("#live").hidden=false; $("#liveThumbs").innerHTML="";
+  $("#liveStop").textContent=mode==="video"?"Stop and upload":"Done";
   try{ await v.play(); }catch(e){}
+  if (mode==="video") return startRecording(stream);
+  liveHud("Starting camera…");
   if (S.capture.geoOn) startGeo();
   live.timer=setInterval(liveTick,LIVE.every);
 }
 function stopLive(){
   if (!live) return;
+  if (live.mode==="video") return stopRecording();
   clearInterval(live.timer); live.stream.getTracks().forEach(t=>t.stop());
   const n=live.kept; live=null;
   $("#liveVid").srcObject=null; $("#live").hidden=true;
   scoreOverlap(); renderCapture();
   if (n) toast(`${n} photo${n===1?"":"s"} kept from the live camera.`);
+}
+/* Live camera, video mode: record one floor walk and send it to be mapped (renderVideo, uploadVideo).
+   GPS is on for the whole walk. The map is placed with the walk's middle at the GPS point, so the fixes from
+   along the walk are averaged (the more accurate ones count more) rather than keeping only the first. */
+const REC_TYPES=["video/mp4;codecs=avc1","video/mp4","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"], REC_BPS=5e6;
+const recSupported=()=>typeof MediaRecorder!=="undefined" && REC_TYPES.some(t=>MediaRecorder.isTypeSupported(t));
+function startRecording(stream){
+  const C=S.capture, mime=REC_TYPES.find(t=>MediaRecorder.isTypeSupported(t));
+  let rec;
+  try{ rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:REC_BPS}); }
+  catch(e){ live.mode="photos"; stopLive(); toast("This browser can't record video here. Film with the phone's camera app and choose the video instead."); return; }
+  Object.assign(live,{rec,mime,parts:[],bytes:0,fixes:C.geo?[C.geo]:[]});
+  rec.ondataavailable=e=>{ if(!e.data?.size||!live) return; live.parts.push(e.data); live.bytes+=e.data.size;
+    if (live.bytes>VIDEO_MAX*0.97){ toast(`Stopped at ${mb(VIDEO_MAX)}, the most one video can be. Start another for the rest of the floor.`); stopRecording(); } };
+  rec.start(1000);
+  C.geoOn=true; startGeo();
+  navigator.wakeLock?.request("screen").then(l=>{ if(live) live.lock=l; else l.release(); }).catch(()=>{});
+  live.timer=setInterval(recHud,1000); recHud();
+}
+// Accuracy-weighted mean of the fixes (ignoring ones worse than 60 m), with a conservative accuracy.
+function walkGeo(fixes){
+  const ok=fixes.filter(g=>g.acc<=60), use=ok.length?ok:fixes; if(!use.length) return null;
+  let w=0,lat=0,lng=0; use.forEach(g=>{ const k=1/Math.max(3,g.acc)**2; w+=k; lat+=g.lat*k; lng+=g.lng*k; });
+  const accs=use.map(g=>g.acc).sort((a,b)=>a-b);
+  return {lat:lat/w,lng:lng/w,acc:Math.round(accs[Math.floor(accs.length/2)])};
+}
+function recHud(){
+  if (!live?.rec) return;
+  const C=S.capture, t=Math.round((Date.now()-live.started)/1000), g=C.geo?`GPS ±${Math.round(C.geo.acc)} m`:"Finding GPS…";
+  $("#liveHint").textContent=t<8?"Recording. Start a few steps into the hallway.":"Recording. Walk slowly; step into each room and back out.";
+  $("#liveSub").textContent=[C.block?`Block ${C.block}`:"",`floor ${C.floor}`,g].filter(Boolean).join(" · ");
+  $("#liveCount").innerHTML=`<span style="color:#ff5d5d">●</span> ${Math.floor(t/60)}:${String(t%60).padStart(2,"0")}<br><span class="small">${mb(live.bytes)}</span>`;
+}
+function stopRecording(){
+  const L=live; if (!L?.rec || L.stopping) return; L.stopping=true;
+  clearInterval(L.timer);
+  L.rec.onstop=()=>{
+    L.stream.getTracks().forEach(t=>t.stop()); L.lock?.release().catch(()=>{});
+    live=null; $("#liveVid").srcObject=null; $("#live").hidden=true;
+    const C=S.capture, V=C.vid||(C.vid={file:null,consent:false,up:null}), type=L.mime.split(";")[0];
+    const stamp=new Date().toISOString().slice(0,16).replace(/[-:T]/g,"");
+    const file=new File(L.parts,`live-walk-${stamp}.${type==="video/mp4"?"mp4":"webm"}`,{type});
+    const g=walkGeo(L.fixes); if (g) C.geo=g; stopGeo();
+    if (!file.size){ renderCapture(); toast("Nothing was recorded. Try again."); return; }
+    V.file=file; renderCapture();
+    if (V.consent) uploadVideo(); else toast("Recorded. Tick the permission box, then upload it.");
+  };
+  if (L.rec.state==="inactive") L.rec.onstop(); else L.rec.stop();
 }
 function liveHud(hint){
   $("#liveHint").textContent=hint;
@@ -1656,7 +1708,8 @@ function startGeo(){
       const g={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy};
       // Keep the most accurate fix seen during the session.
       if (!C.geo || g.acc<=C.geo.acc) C.geo=g;
-      if (live) liveHud($("#liveHint").textContent); else renderGeoLine();
+      if (live?.rec) { live.fixes.push(g); recHud(); }
+      else if (live) liveHud($("#liveHint").textContent); else renderGeoLine();
     },e=>{ stopGeo(); C.geoOn=false; C.geo=null; renderCapture();
       toast(e.code===1?"Location access was blocked, so this session won't be tagged.":"Couldn't get a GPS fix. This session won't be tagged."); },
     {enableHighAccuracy:true,maximumAge:15000,timeout:30000});
@@ -1749,9 +1802,9 @@ function renderVideo(){
   const f=V.file, bad=f&&(!videoType(f)?"Pick an MP4, MOV or WebM video.":f.size>VIDEO_MAX?`That's ${mb(f.size)}; the most is ${mb(VIDEO_MAX)}. Film one floor or wing at a time.`:null);
   const can=f&&!bad&&V.consent&&!V.up&&!C.upload;
   el.innerHTML=`<h3>Map a whole floor from one video</h3>
-    <p class="small muted" style="margin:0">Film one walk along the hallway that steps into each room. A worker computer maps the hallway, rooms and doors, and they're added to the Floor plan by themselves, placed where your GPS says.</p>
+    <p class="small muted" style="margin:0">Record one walk with the live camera, or choose a video you filmed, along the hallway stepping into each room. It uploads when you stop recording. A worker computer maps the hallway, rooms and doors, and they're added to the Floor plan by themselves, placed where your GPS says.</p>
     <ol class="small muted"><li>Start a few steps into the hallway, phone at chest height, tilted a little down.</li><li>At each room, pause by its door sign, walk in, go once round, and come back out the same door.</li><li>Walk slowly and turn slowly. One floor, or one wing, per video.</li></ol>
-    <div class="vid-pick"><button class="btn sm" id="vPick" ${V.up?"disabled":""}>${f?"Choose another video":"Choose video"}</button><input type="file" id="vIn" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm" hidden>
+    <div class="vid-pick">${recSupported()?`<button class="btn sm primary" id="vRec" ${V.up||!V.consent?"disabled":""} title="${V.consent?"":"Tick the permission box first"}">Record walk with live camera</button>`:""}<button class="btn sm" id="vPick" ${V.up?"disabled":""}>${f?"Choose another video":"Choose video"}</button><input type="file" id="vIn" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm" hidden>
       ${f?`<span class="small mono">${esc(f.name)} · ${mb(f.size)}</span>`:`<span class="small muted">MP4, MOV or WebM, up to ${mb(VIDEO_MAX)}</span>`}</div>
     ${bad?`<p class="small warn" style="margin:0 0 8px">${esc(bad)}</p>`:""}
     <p class="small muted" style="margin:0 0 8px">For <b>Block ${esc(C.block||"?")}</b>, <b>floor ${esc(C.floor)}</b> (change them under Session). ${C.geoOn?`<span id="vGeo">${C.geo?`GPS ${esc(geoText(C.geo))}.`:"Finding your location…"}</span>`:`<b>Turn on the GPS tag</b> under Session so the map lands in the right place; without it, it's put beside the rooms already on the floor.`}</p>
@@ -1761,6 +1814,7 @@ function renderVideo(){
     <button class="btn primary" id="vSend" ${can?"":"disabled"}>Upload video for mapping</button>`;
   const inp=$("#vIn");
   $("#vPick").onclick=()=>inp.click();
+  const rb=$("#vRec"); if (rb) rb.onclick=()=>startLive("video");
   inp.onchange=()=>{ V.file=inp.files[0]||null; inp.value=""; renderVideo(); };
   $("#vConsent").onchange=e=>{ V.consent=e.target.checked; renderVideo(); };
   $("#vSend").onclick=uploadVideo;
