@@ -22,6 +22,9 @@ test("plan validation keeps the map placement", () => {
   assert.throws(() => V.plan({ ...plan(), geo: { x: 0, y: 0, lat: 3, lng: 101, rot: 200 } }), V.Invalid);
   assert.throws(() => V.plan({ ...plan(), geo: { x: 0, y: 0, lat: "3", lng: 101, rot: 0 } }), V.Invalid);
   assert.throws(() => V.plan({ ...plan(), geo: [1, 2] }), V.Invalid);
+  const snapped = V.plan({ ...plan(), geo: { x: 0, y: 0, lat: 3, lng: 101, rot: 0, osm: "way/123456" } });
+  assert.equal(snapped.geo.osm, "way/123456");
+  assert.throws(() => V.plan({ ...plan(), geo: { x: 0, y: 0, lat: 3, lng: 101, rot: 0, osm: "node/1" } }), V.Invalid);
 });
 
 test("plan validation rejects bad input", () => {

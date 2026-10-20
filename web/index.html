@@ -662,8 +662,9 @@ img.mk{object-fit:contain;background:#fff}
   <h2 id="mapTitle">Place the block on the map</h2>
   <p class="small muted" style="margin:0">Drag the map until the outline sits on the building, then turn it to match. Zoom right in to line up the walls.</p>
   <div id="mapBox"></div>
+  <p class="small muted" id="mapCampus" style="margin:0 0 8px"></p>
   <div class="field"><label for="mapRot">Turn the plan <span class="mono" id="mapRotV">0°</span></label><input type="range" id="mapRot" min="-180" max="180" step="0.5" value="0"></div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn" type="button" id="mapHere" style="margin-right:auto">Go to my location</button><button class="btn" type="button" id="mapCancel">Cancel</button><button class="btn primary" type="button" id="mapSave">Save position</button></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn" type="button" id="mapHere" style="margin-right:auto">Go to my location</button><button class="btn" type="button" id="mapSnap" hidden>Snap to building</button><button class="btn" type="button" id="mapCancel">Cancel</button><button class="btn primary" type="button" id="mapSave">Save position</button></div>
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -1265,8 +1266,8 @@ function init3D(){
   cam.position.set(20,40,55);
   const ctl=new THREE.OrbitControls(cam,renderer.domElement); ctl.enableDamping=true; ctl.target.set(20,4,9);
   scene.add(new THREE.HemisphereLight(0xffffff,0x667788,.85)); const dl=new THREE.DirectionalLight(0xffffff,.55); dl.position.set(30,60,20); scene.add(dl);
-  const group=new THREE.Group(); scene.add(group);
-  T={renderer,scene,cam,ctl,group,picks:[],host};
+  const group=new THREE.Group(), ground=new THREE.Group(); scene.add(group,ground);
+  T={renderer,scene,cam,ctl,group,ground,picks:[],host};
   S.three=true;
   const ray=new THREE.Raycaster(), m=new THREE.Vector2(); let down=null;
   renderer.domElement.addEventListener("pointerdown",e=>down=[e.clientX,e.clientY]);
@@ -1316,6 +1317,18 @@ function build3D(){
   if (!T.framed && !bb.isEmpty()){ const c=bb.getCenter(new THREE.Vector3()), s=bb.getSize(new THREE.Vector3()).length();
     T.ctl.target.copy(c); T.cam.position.set(c.x+s*.15,c.y+s*.75,c.z+s*.85); T.framed=true; }
   showInfo3D(sel&&roomByK(sel));
+  drawCampus3D();
+}
+/* Faint campus boundary and building footprints on the ground, once the block is placed on the map. Not exported. */
+function drawCampus3D(){
+  while(T.ground.children.length){ const c=T.ground.children.pop(); c.geometry?.dispose(); c.material?.dispose(); }
+  if (!S.plan.geo) return;
+  if (!S.campus){ if(!S.campusFailed) loadCampus().then(()=>{ if(T) drawCampus3D(); },()=>{}); return; }
+  const L=campusInPlan(); if(!L) return;
+  const line=(ring,col,op)=>{ const g=new THREE.BufferGeometry().setFromPoints(ring.map(([x,y])=>new THREE.Vector3(x,-.02,y)));
+    const m=new THREE.Line(g,new THREE.LineBasicMaterial({color:new THREE.Color(css(col)),transparent:true,opacity:op})); T.ground.add(m); };
+  L.buildings.forEach(r=>line(r,"--ink-2",.35));
+  L.boundary.forEach(r=>line(r,"--gold",.8));
 }
 /* stair geometry in world space: steps, landings and a balustrade along the well (y0 = top of this floor's slab) */
 function stair3D(r,L,y0,mat,railMat,o){
@@ -1376,6 +1389,17 @@ function gpsAnchor(){
   return {lat:+median(g.map(x=>x.lat)).toFixed(5),lng:+median(g.map(x=>x.lng)).toFixed(5),accuracy_m:Math.round(median(g.map(x=>x.acc))),sessions:g.length,
     note:"Approximate building position (WGS84) from GPS-tagged capture sessions. Indoor GPS is often off by 10–50 m."};
 }
+/* The campus boundary and the building the block was snapped to, from OpenStreetMap (only with the block placed). */
+function campusFeatures(){
+  const C=S.campus, g=S.plan.geo; if(!C||!g) return [];
+  const poly=rings=>({type:"Polygon",coordinates:rings.map(r=>r.map(([lat,lng])=>[+lng.toFixed(7),+lat.toFixed(7)]))});
+  const src={source:"OpenStreetMap",attribution:"© OpenStreetMap contributors",licence:"ODbL-1.0"};
+  const out=[];
+  if (C.campus) out.push({type:"Feature",properties:{kind:"campus_boundary",osm_id:C.campus.id,name:C.campus.name,...src},geometry:poly(C.campus.rings)});
+  const b=g.osm&&C.buildings.find(x=>x.id===g.osm);
+  if (b) out.push({type:"Feature",properties:{kind:"building_footprint",osm_id:b.id,name:b.name,ref:b.ref,block:S.plan.block,...src},geometry:poly(b.rings)});
+  return out;
+}
 /* With the block placed on the map, coordinates are WGS84 [lng, lat] as GeoJSON expects; otherwise local metres. */
 function geojson(){
   const g=S.plan.geo, anchor=g?null:gpsAnchor();
@@ -1386,8 +1410,9 @@ function geojson(){
     ...(anchor?{anchor}:{}),
     features:S.plan.rooms.map(r=>({type:"Feature",properties:{id:r.id,name:r.name,type:r.type,type_label:TYPES[r.type]?.label,block:S.plan.block,floor:r.floor,
       area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0,...stairProps(r)},
-      geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(pt)]}}))},null,2);
+      geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(pt)]}})).concat(campusFeatures())},null,2);
 }
+$("#exMenu").addEventListener("toggle",()=>{ if($("#exMenu").open && S.plan.geo) loadCampus().catch(()=>{}); });
 $("#exMenu").querySelectorAll(".pop button").forEach(b=>b.addEventListener("click",()=>$("#exMenu").open=false));
 document.addEventListener("pointerdown",e=>{ const m=$("#exMenu"); if(m.open && !m.contains(e.target)) m.open=false; });
 $("#exGeo").onclick=()=>saveFile(`apu-block-${S.plan.block}-outline.geojson.json`,geojson());
@@ -2276,19 +2301,168 @@ async function openMapDlg(){
   if (!MAP){
     const map=Lf.map("mapBox",{zoomControl:true,attributionControl:true,maxZoom:21});
     Lf.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:21,maxNativeZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
-    MAP={map,layer:Lf.layerGroup().addTo(map),c,rot:0};
+    MAP={map,campus:Lf.layerGroup().addTo(map),layer:Lf.layerGroup().addTo(map),c,rot:0};
     map.on("move",drawMapOutline);
   }
-  MAP.c=c; MAP.rot=g?g.rot:0; $("#mapRot").value=MAP.rot;
-  MAP.map.invalidateSize(); MAP.map.setView(start,19); drawMapOutline();
+  MAP.c=g?[g.x,g.y]:c; MAP.rot=g?g.rot:0; MAP.osm=g?.osm||null; MAP.pick=MAP.osm; $("#mapRot").value=MAP.rot;
+  MAP.map.invalidateSize(); MAP.map.setView(g?[g.lat,g.lng]:start,19); drawMapOutline();
+  campusNote(); loadCampus().then(()=>{ drawCampusLayer(); campusNote(); },()=>campusNote());
 }
 $("#mapRot").oninput=e=>{ if(!MAP) return; MAP.rot=+e.target.value; drawMapOutline(); };
 $("#mapCancel").onclick=()=>$("#mapDlg").close();
+$("#mapSnap").onclick=snapToPick;
 $("#mapHere").onclick=()=>{ if(!navigator.geolocation||!MAP){ toast("This browser can't share your location."); return; }
   navigator.geolocation.getCurrentPosition(p=>MAP.map.setView([p.coords.latitude,p.coords.longitude],19),()=>toast("Location is blocked or unavailable."),{enableHighAccuracy:true,timeout:15000}); };
 $("#mapSave").onclick=()=>{ if(!MAP) return; const g=mapGeo();
-  S.plan.geo={x:+g.x.toFixed(3),y:+g.y.toFixed(3),lat:+g.lat.toFixed(7),lng:+g.lng.toFixed(7),rot:+g.rot.toFixed(2)};
+  S.plan.geo={x:+g.x.toFixed(3),y:+g.y.toFixed(3),lat:+g.lat.toFixed(7),lng:+g.lng.toFixed(7),rot:+g.rot.toFixed(2),...(MAP.osm?{osm:MAP.osm}:{})};
   $("#mapDlg").close(); edit("Placed the block on the map"); toast("Block placed. The GeoJSON export now uses map coordinates."); };
+
+/* ---------- campus outline from OpenStreetMap ----------
+   The campus boundary, building footprints, footpaths and entrances. The app first loads the snapshot that
+   scripts/osm-campus.mjs saves to web/data/ (no runtime dependency on Overpass); without one it asks Overpass
+   directly and keeps the answer in this browser for a week. That script reads CAMPUS_QUERY from this page, and
+   test/campus.test.mjs runs the code between osm:begin and osm:end. Map data © OpenStreetMap contributors, ODbL. */
+/* osm:begin */
+const CAMPUS_BBOX=[3.0490,101.6945,3.0615,101.7070];   // south, west, north, east around APU, Technology Park Malaysia
+const CAMPUS_NAME=/asia pacific|\bAPU\b|\bAPIIT\b/i;
+const CAMPUS_QUERY=`[out:json][timeout:25];(
+nwr["amenity"="university"](${CAMPUS_BBOX});nwr["landuse"="education"](${CAMPUS_BBOX});
+way["building"](${CAMPUS_BBOX});relation["building"](${CAMPUS_BBOX});
+way["highway"~"^(footway|path|pedestrian|steps|service|corridor)$"](${CAMPUS_BBOX});
+node["entrance"](${CAMPUS_BBOX}););out geom;`;
+const PATH_KINDS=new Set(["footway","path","pedestrian","steps","service","corridor"]);
+const llOf=g=>g.filter(Boolean).map(p=>[p.lat,p.lon]);
+const closed=l=>l.length>3 && l[0][0]===l[l.length-1][0] && l[0][1]===l[l.length-1][1];
+/* Join a multipolygon's member ways end to end into closed rings. */
+function joinRings(ways){
+  const todo=ways.filter(w=>w.length>1).map(w=>w.slice()), rings=[], same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
+  while (todo.length){
+    let ring=todo.shift();
+    for (let grew=true; grew && !closed(ring);){ grew=false;
+      for (let i=0;i<todo.length;i++){ const w=todo[i], end=ring[ring.length-1];
+        if (same(end,w[0])) ring=ring.concat(w.slice(1));
+        else if (same(end,w[w.length-1])) ring=ring.concat(w.slice(0,-1).reverse());
+        else continue;
+        todo.splice(i,1); grew=true; break; } }
+    if (closed(ring)) rings.push(ring);
+  }
+  return rings;
+}
+function llArea(ring){ const k=Math.cos(ring[0][0]*Math.PI/180); let a=0;
+  for (let i=0,j=ring.length-1;i<ring.length;j=i++) a+=(ring[j][1]*k+ring[i][1]*k)*(ring[j][0]-ring[i][0]);
+  return Math.abs(a/2)*111320*111320; }
+function llInside(ll,ring){ return inside([ll[1],ll[0]],ring.map(p=>[p[1],p[0]])); }
+function llCentroid(ring){ const r=ring.slice(0,-1); return [r.reduce((s,p)=>s+p[0],0)/r.length, r.reduce((s,p)=>s+p[1],0)/r.length]; }
+/* Overpass JSON ("out geom") to {campus, buildings, paths, entrances}, coordinates as [lat, lng]. */
+function parseCampus(osm, at){
+  const C={campus:null,others:[],buildings:[],paths:[],entrances:[],at:at||osm.snapshot_at||osm.osm3s?.timestamp_osm_base||null};
+  const areas=[];
+  for (const e of osm.elements||[]){
+    const t=e.tags||{}, id=`${e.type}/${e.id}`;
+    let rings=[];
+    if (e.type==="way" && e.geometry){ const l=llOf(e.geometry); if (closed(l)) rings=[l];
+      if (PATH_KINDS.has(t.highway) && t.area!=="yes"){ C.paths.push({id,kind:t.highway,name:t.name||"",covered:t.covered==="yes"||t.highway==="corridor",line:l}); continue; } }
+    if (e.type==="relation" && e.members) rings=joinRings(e.members.filter(m=>m.type==="way"&&m.role!=="inner"&&m.geometry).map(m=>llOf(m.geometry)));
+    if (e.type==="node" && t.entrance){ C.entrances.push({id,kind:t.entrance,name:t.name||t.ref||"",ll:[e.lat,e.lon]}); continue; }
+    if (!rings.length) continue;
+    const item={id,name:t.name||"",rings,area:rings.reduce((s,r)=>s+llArea(r),0)};
+    if (t.building) C.buildings.push({...item,ref:t.ref||t["addr:housename"]||"",levels:+t["building:levels"]||null});
+    else if (t.amenity==="university"||t.landuse==="education") areas.push(item);
+  }
+  // The campus: the area named like APU, else the one around the default spot, else the largest
+  const here=[DEFAULT_LL[0],DEFAULT_LL[1]];
+  C.campus=areas.find(a=>CAMPUS_NAME.test(a.name)) || areas.find(a=>a.rings.some(r=>llInside(here,r))) || areas.sort((a,b)=>b.area-a.area)[0] || null;
+  C.others=areas.filter(a=>a!==C.campus);
+  C.buildings.forEach(b=>b.inCampus=!C.campus || C.campus.rings.some(r=>llInside(llCentroid(b.rings[0]),r)));
+  return C;
+}
+const CAMPUS_FILE="data/apu-campus.osm.json", CAMPUS_CACHE="apu-campus-osm", CAMPUS_TTL=7*864e5;
+let campusP=null;
+function loadCampus(){
+  if (S.campus) return Promise.resolve(S.campus);
+  if (!campusP) campusP=(async()=>{
+    let src="snapshot", osm=await fetch(CAMPUS_FILE,{cache:"no-cache"}).then(r=>r.ok&&/json/.test(r.headers.get("content-type")||"")?r.json():null).catch(()=>null);
+    if (!osm){ src="cached";
+      try{ const c=JSON.parse(localStorage.getItem(CAMPUS_CACHE)||"null"); if(c && Date.now()-c.at<CAMPUS_TTL) osm=c.osm; }catch(e){} }
+    if (!osm){ src="live";
+      osm=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:new URLSearchParams({data:CAMPUS_QUERY})}).then(r=>r.ok?r.json():null).catch(()=>null);
+      if (osm) try{ localStorage.setItem(CAMPUS_CACHE,JSON.stringify({at:Date.now(),osm})); }catch(e){} }
+    if (!osm) throw new Error("campus");
+    const C=parseCampus(osm); C.src=src; S.campus=C; return C;
+  })().catch(e=>{ campusP=null; S.campusFailed=true; throw e; });
+  return campusP;
+}
+function campusNote(){
+  const el=$("#mapCampus"); if(!el) return;
+  const C=S.campus;
+  if (!C){ el.textContent=S.campusFailed?"Couldn't load the campus outline from OpenStreetMap. You can still place the block by hand.":"Loading the campus outline from OpenStreetMap…"; $("#mapSnap").hidden=true; return; }
+  const n=C.buildings.filter(b=>b.inCampus).length;
+  const what=C.campus?`${C.campus.name||"Campus"} boundary and ${n} building${n===1?"":"s"}`:`${n} building${n===1?"":"s"} (no campus boundary mapped yet)`;
+  const pick=MAP&&MAP.pick&&C.buildings.find(b=>b.id===MAP.pick);
+  el.innerHTML=`${esc(what)} from OpenStreetMap${C.src==="live"?" (live)":""}. `+(pick?`Selected <b>${esc(pick.name||pick.ref||"building")}</b>.`:"Tap a building outline to snap the block to it.");
+  $("#mapSnap").hidden=!pick;
+}
+function drawCampusLayer(){
+  const Lf=window.L, C=S.campus; if(!MAP||!C) return;
+  MAP.campus.clearLayers();
+  const ink=css("--ink-2"), gold=css("--gold"), cyan=css("--cyan");
+  if (C.campus) Lf.polygon(C.campus.rings,{color:gold,weight:3,dashArray:"8 6",fill:false,interactive:false}).addTo(MAP.campus);
+  C.paths.forEach(p=>Lf.polyline(p.line,{color:cyan,weight:p.covered?3:1.5,opacity:.7,dashArray:p.covered?null:"3 4",interactive:false}).addTo(MAP.campus));
+  C.buildings.forEach(b=>{ const on=b.id===MAP.pick;
+    const poly=Lf.polygon(b.rings,{color:on?gold:ink,weight:on?3:1.5,fillColor:on?gold:ink,fillOpacity:on?.25:(b.inCampus?.12:.04),opacity:b.inCampus?1:.5}).addTo(MAP.campus);
+    const label=b.name||b.ref; if(label) poly.bindTooltip(label,{sticky:true});
+    poly.on("click",()=>{ MAP.pick=b.id; drawCampusLayer(); campusNote(); }); });
+  C.entrances.forEach(e=>Lf.circleMarker(e.ll,{radius:3,color:gold,weight:1,fillOpacity:1,interactive:false}).addTo(MAP.campus));
+}
+/* Fit the plan onto a footprint: rotation from the dominant wall direction of each (4-way search, as place() in
+   worker/floorplan.py), position by area centroid, the best overlap wins. Works in local metres (east, north). */
+function dominantAngle(segs){ let c=0,s=0; segs.forEach(([a,b])=>{ const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),t=Math.atan2(dy,dx); c+=L*Math.cos(4*t); s+=L*Math.sin(4*t); }); return Math.atan2(s,c)/4; }
+/* Area-weighted centroid of several polygons (rooms don't overlap, so this is the centroid of their union). */
+function areaCentroid(polys){ let A=0,x=0,y=0;
+  polys.forEach(p=>{ for(let i=0;i<p.length;i++){ const [x1,y1]=p[i],[x2,y2]=p[(i+1)%p.length], c=x1*y2-x2*y1; A+=c; x+=(x1+x2)*c; y+=(y1+y2)*c; } });
+  return Math.abs(A)<1e-9?centroid(polys.flat()):[x/(3*A),y/(3*A)]; }
+function gridIn(polys,step){ const b=bbox(polys.flat()), out=[];
+  for (let x=b[0]+step/2;x<b[2];x+=step) for (let y=b[1]+step/2;y<b[3];y+=step) if (polys.some(p=>inside([x,y],p))) out.push([x,y]);
+  return out; }
+function fitToFootprint(rooms,b){
+  const ll0=llCentroid(b.rings[0]), k=M_PER_DEG*Math.cos(ll0[0]*Math.PI/180);
+  const toEN=([lat,lng])=>[(lng-ll0[1])*k,(lat-ll0[0])*M_PER_DEG];
+  const F=b.rings.map(r=>r.slice(0,-1).map(toEN)), P=rooms.map(r=>r.poly);
+  const fArea=F.reduce((s,p)=>s+area(p),0), pArea=P.reduce((s,p)=>s+area(p),0);
+  const step=Math.max(.15,Math.sqrt(Math.max(fArea,pArea)/4000)), fs=gridIn(F,step), ps=gridIn(P,step);
+  if (!fs.length||!ps.length) return null;
+  const orient=p=>signed(p)<0?p.slice().reverse():p;   // the same winding for every polygon before summing
+  const fc=areaCentroid(F.map(orient)), pc=areaCentroid(P.map(orient));
+  const segs=p=>p.map((q,i)=>[q,p[(i+1)%p.length]]);
+  const tf=dominantAngle(F.flatMap(segs)), tp=dominantAngle(P.flatMap(p=>segs(p).map(([a,b])=>[[a[0],-a[1]],[b[0],-b[1]]])));   // plan y runs south
+  let best=null;
+  for (let q=0;q<4;q++){
+    let rot=(tp-tf)*180/Math.PI+q*90; rot=((rot+180)%360+360)%360-180;
+    const t=rot*Math.PI/180, cs=Math.cos(t), sn=Math.sin(t);
+    const toF=([x,y])=>{ const e0=x-pc[0], n0=-(y-pc[1]); return [fc[0]+e0*cs+n0*sn, fc[1]-e0*sn+n0*cs]; };
+    const toP=([e,n])=>{ e-=fc[0]; n-=fc[1]; const e0=e*cs-n*sn, n0=e*sn+n*cs; return [pc[0]+e0, pc[1]-n0]; };
+    const a=ps.filter(p=>F.some(f=>inside(toF(p),f))).length, c=fs.filter(p=>P.some(r=>inside(toP(p),r))).length;
+    const I=(a+c)/2, iou=I/(ps.length+fs.length-I);
+    if (!best || iou>best.iou+1e-9) best={rot,iou};
+  }
+  return {x:pc[0],y:pc[1],lat:ll0[0]+fc[1]/M_PER_DEG,lng:ll0[1]+fc[0]/k,rot:best.rot,iou:best.iou,ratio:pArea/fArea};
+}
+/* osm:end */
+function snapToPick(){
+  const C=S.campus, b=C&&MAP&&C.buildings.find(x=>x.id===MAP.pick); if(!b) return;
+  const rs=floorRooms(S.floor).length?floorRooms(S.floor):S.plan.rooms, f=fitToFootprint(rs,b);
+  if (!f){ toast("That outline is too small to snap to."); return; }
+  MAP.c=[f.x,f.y]; MAP.rot=+f.rot.toFixed(1); MAP.osm=b.id; $("#mapRot").value=MAP.rot;
+  MAP.map.setView([f.lat,f.lng],Math.max(MAP.map.getZoom(),18)); drawMapOutline();
+  const size=f.ratio>1.4?" The plan is bigger than the building outline; check the scale.":f.ratio<.5?" The plan covers only part of the building, so check the position.":"";
+  toast(`Snapped to ${b.name||b.ref||"the building"}: ${Math.round(f.iou*100)}% overlap.${size} Fine-tune, then save.`);
+}
+/* Campus lines in plan coordinates, for the 3D ground outline. */
+function campusInPlan(){
+  const C=S.campus, g=S.plan.geo; if(!C||!g) return null;
+  const P=r=>r.map(([lat,lng])=>fromLatLng(lat,lng,g));
+  return {boundary:C.campus?C.campus.rings.map(P):[], buildings:C.buildings.filter(b=>b.inCampus).flatMap(b=>b.rings.map(P))};
+}
 
 // Links like ?from=B-03-01&to=B-04-02 open Directions with those rooms
 (function(){ try{ const q=new URLSearchParams(location.search), f=q.get("from"), t=q.get("to");

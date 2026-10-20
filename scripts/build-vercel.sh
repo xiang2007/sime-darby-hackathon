@@ -10,3 +10,5 @@ mkdir -p dist
   cat web/index.html
   printf '\n</html>\n'
 } > dist/index.html
+# Static data the page loads, e.g. the OpenStreetMap campus snapshot (scripts/osm-campus.mjs)
+if [ -d web/data ]; then cp -r web/data dist/data; fi
