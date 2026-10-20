@@ -22,6 +22,7 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 | **App: Floor plan → Walks → Import walk** | **New**, working |
 | ffmpeg bundled via `imageio-ffmpeg` (was F2) | Fixed |
 | **OSM campus outline: boundary, footprints, paths on "Place on map"; snap block to footprint; 3D ground outline; GeoJSON export** | **New**, working with a real APU snapshot |
+| **Campus backdrop in Floor plan and 3D; corners snap to the building outline; Move tool for walks** | **New**, working |
 
 ### How `--walk` works (`worker/walk.py`)
 - **Path and scale:** COLMAP with sequential matching gives the camera path. "Up" comes from the walk's plane. Scale comes from phone height (1.45 m), checked against walking pace (1.25 m/s).
@@ -51,7 +52,7 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 | F1 | **Not run on a real corridor** | Glass, blank walls, people, blur and real sign styles untested | Film 2–3 APU corridors (README tips), run `--walk`, check `preview.png` |
 | F5 | Scale without a marker is rough | 5–10% distance error; pace check flags big ones | Acceptable for navigation |
 | F6 | No scalable media storage (80-photo cap, Neon 0.5 GB, Vercel body limit) | `--walk` is offline only | R2/S3 presigned uploads, then a "walk" session type |
-| F9 | Walks aren't aligned to existing rooms; editor can't move groups | Merging into an existing plan needs redrawing | Align by shared door signs; add "move selection" |
+| F9 | Walks aren't aligned to existing rooms automatically | Placed by hand with the Move tool (drag, turn, line up with building) | Align by shared door signs |
 | F10 | A sign seen only side-on was missed | Missing rooms on fast walks | Slow down at signs, or `--fps 3` |
 | F11 | Walks aren't joined | Two walks of one hallway overlap | Merge at shared signs/junctions |
 
@@ -90,8 +91,12 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 
 **So for APU, snapping only lines a block up with the building's walls.** When the plan is less than half the footprint's area, Snap to building picks the wall-aligned turn closest to the current one and leaves the position to the person. On the real data it turned Block B to 37.6°. A whole-building plan still snaps fully (position and turn). Headless Chromium on the real snapshot: boundary, footprint and paths drawn, `geo.osm` saved, 3D outline and GeoJSON export correct, no page errors.
 
+**Campus backdrop (2026-10-20):** the Floor plan editor draws the boundary, the main building's footprint, other buildings and footpaths under the rooms; 3D shows the campus buildings as see-through outlines up to their roof (`building:levels`, else 3; ground = level 1). Without `plan.geo`, a rough frame is used: the plan's centre at the main building's centre, with its walls square to the grid. With the example plan the main building's walls end up at 0° in plan coordinates, so the grid lines up with them. Corners snap to the building outline while drawing and reshaping (10 px to a corner, 7 px to a wall). Buttons: **ALL** (fit the campus) and **OSM** (show or hide, remembered per browser).
+
+**Move tool:** drag a room with every room within 0.3 m of it (a walk's corridor and its rooms move as one); turn ±5° or ±90° (stair directions follow 90° turns), or **Line up with building** (squares the group to the main building's walls). Group corners snap to building corners. Headless Chromium: walk imported at 20° → moved, lined up to 0.01°, turned 90°; 3D drew 659 outline pieces; no page errors.
+
 **Open:**
-- Placing a block inside the main building is by hand. Options: draw the block outlines inside the building in OSM (`building:part=*`) and snapshot again, or align by shared door signs once two blocks are placed (F9).
+- Placing a block inside the main building is by hand (Move tool, or Place on map). Options: draw the block outlines inside the building in OSM (`building:part=*`) and snapshot again, or align by shared door signs once two blocks are placed (F9).
 - No `entrance=*` nodes, so step 5 (outdoor routing) needs the main entrances added in OSM first.
 - To refresh the snapshot, run `node scripts/osm-campus.mjs` on a normal internet connection. Overpass refuses requests from the cloud sandbox.
 
@@ -104,7 +109,7 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 | Priority | Task | Why |
 |---|---|---|
 | P0 | F1: run `--walk` on real APU corridors; tune OCR confidence and `SIGN` regex to APU signs | Proves it outside the renderer |
-| P1 | Align a walk to existing rooms by shared signs (4-way rotation search, as `place()` in `floorplan.py`) | Walks build up one plan |
+| P1 | Align a walk to existing rooms by shared signs (4-way rotation search, as `place()` in `floorplan.py`); until then use the Move tool | Walks build up one plan |
 | P1 | Merge overlapping corridors into one polygon | More walks → better map |
 | P1 | "Walk" session in Live camera (ordered, timestamped frames) + server-mode `--walk` | No laptop step for contributors |
 | P2 | F6: R2/S3 media storage | Video uploads at scale |

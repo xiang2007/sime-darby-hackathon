@@ -126,6 +126,7 @@ svg#plan{position:absolute;inset:0;width:100%;height:100%;display:block;user-sel
 .hint{position:absolute;left:12px;bottom:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;font-size:.78rem;color:var(--ink-2);max-width:calc(100% - 24px);pointer-events:none}
 .zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px}
 .zoom button{width:34px;height:34px;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;cursor:pointer;font-family:var(--f-mono)}
+.zoom button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
 .legend{position:absolute;right:12px;top:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;font-size:.74rem;display:grid;grid-template-columns:auto auto;gap:3px 12px;pointer-events:none}
 .legend span{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .sw{width:10px;height:10px;border-radius:2px;display:inline-block;flex:none}
@@ -558,6 +559,7 @@ img.mk{object-fit:contain;background:#fff}
             <button data-mode="select" aria-pressed="true">Select</button>
             <button data-mode="draw" aria-pressed="false">Draw room</button>
             <button data-mode="door" aria-pressed="false">Doors</button>
+            <button data-mode="move" aria-pressed="false" title="Move a room with the rooms joined to it, such as an imported walk">Move</button>
           </div>
         </div>
         <div class="svgbox" id="svgbox">
@@ -568,7 +570,7 @@ img.mk{object-fit:contain;background:#fff}
           </div>
           <div class="legend" id="legend"></div>
           <div class="hint" id="hint"></div>
-          <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Fit plan" style="font-size:.7rem">FIT</button></div>
+          <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Fit plan" style="font-size:.7rem">FIT</button><button id="zall" aria-label="Show the whole campus" title="Show the whole campus" style="font-size:.62rem">ALL</button><button id="zcampus" aria-label="Campus outline from OpenStreetMap" title="Campus outline from OpenStreetMap" aria-pressed="true" style="font-size:.62rem">OSM</button></div>
         </div>
       </div>
       <aside class="inspector" id="insp" aria-label="Details">
@@ -938,7 +940,7 @@ function renderFloors(){
 
 /* ---------- modes ---------- */
 $("#modes").querySelectorAll("button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
-function setMode(m){ if(S.readOnly && m!=="select") return; S.mode=m; S.draft=[]; S.hoverEdge=null;
+function setMode(m){ if(S.readOnly && m!=="select") return; S.mode=m; S.draft=[]; S.hoverEdge=null; S.moveKeys=null;
   $("#modes").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m))); renderPlan(); }
 $("#overlay").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.overlay=b.dataset.ov;
   $("#overlay").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); renderPlan(); if(S.three) build3D(); });
@@ -947,11 +949,16 @@ $("#overlay").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.overlay=b.
 const svg=$("#plan"), box=$("#svgbox");
 function vb(){ const w=box.clientWidth||800,h=box.clientHeight||500,s=S.view.scale; return [S.view.cx-w/2/s,S.view.cy-h/2/s,w/s,h/s]; }
 function toWorld(ev){ const r=svg.getBoundingClientRect(),[x,y,w,h]=vb(); return [x+(ev.clientX-r.left)/r.width*w, y+(ev.clientY-r.top)/r.height*h]; }
-function fit(){ const rs=floorRooms(S.floor); if(!rs.length){ S.view={cx:10,cy:8,scale:22}; renderPlan(); return; }
+function fit(){ const rs=floorRooms(S.floor); if(!rs.length){ if(S.showCampus&&S.campus&&campusGeom()) return fitCampus(); S.view={cx:10,cy:8,scale:22}; renderPlan(); return; }
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; rs.forEach(r=>r.poly.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}));
   const w=box.clientWidth||800,h=box.clientHeight||500; S.view={cx:(x0+x1)/2,cy:(y0+y1)/2,scale:Math.max(4,Math.min(80,Math.min(w/((x1-x0)+4),h/((y1-y0)+4))))}; renderPlan(); }
 function zoom(f,at){ const s0=S.view.scale,s1=Math.max(3,Math.min(160,s0*f)); if(at){ S.view.cx=at[0]+(S.view.cx-at[0])*s0/s1; S.view.cy=at[1]+(S.view.cy-at[1])*s0/s1; } S.view.scale=s1; renderPlan(); }
-$("#zin").onclick=()=>zoom(1.3); $("#zout").onclick=()=>zoom(1/1.3); $("#zfit").onclick=fit;
+$("#zin").onclick=()=>zoom(1.3); $("#zout").onclick=()=>zoom(1/1.3); $("#zfit").onclick=fit; $("#zall").onclick=fitCampus;
+S.showCampus=true; try{ S.showCampus=localStorage.getItem("apu-campus-on")!=="0"; }catch(e){}
+$("#zcampus").setAttribute("aria-pressed",String(S.showCampus));
+$("#zcampus").onclick=()=>{ S.showCampus=!S.showCampus; try{ localStorage.setItem("apu-campus-on",S.showCampus?"1":"0"); }catch(e){}
+  $("#zcampus").setAttribute("aria-pressed",String(S.showCampus)); renderPlan(); if(S.three) build3D();
+  toast(S.showCampus?"Showing the campus outline from OpenStreetMap.":"Campus outline hidden."); };
 svg.addEventListener("wheel",e=>{ e.preventDefault(); zoom(e.deltaY<0?1.15:1/1.15,toWorld(e)); },{passive:false});
 
 function roomFill(r,cov){ if(S.overlay==="coverage") return css(["--cov0","--cov1","--cov2","--cov3"][covLevel(cov[r.id]||0)]); return css((TYPES[r.type]||TYPES.other).v); }
@@ -970,7 +977,7 @@ function renderPlan(){
   const rs=floorRooms(S.floor); let rooms="",labels="",doors="",handles="",stairs="";
   const fs=Math.max(.35,Math.min(.9,13/S.view.scale));
   rs.forEach(r=>{
-    const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel;
+    const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel||(S.mode==="move"&&S.moveKeys?.includes(r.k));
     const unscanned=S.overlay==="coverage" && !(cov[r.id]>0);
     rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":roomFill(r,cov)}" fill-opacity="${S.overlay==="coverage"?.9:.28}" stroke="${sel||navMark(r)?acc:ink}" stroke-width="${sel||navMark(r)?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
     stairs+=stairSymbol(r,fs);
@@ -1004,7 +1011,7 @@ function renderPlan(){
   const sb = S.view.scale>30?2:S.view.scale>12?5:S.view.scale>5?10:20, sx=x+w-sb-1.2-56/S.view.scale, sy=y+h-.9;
   const scale=`<g pointer-events="none"><line x1="${sx}" y1="${sy}" x2="${sx+sb}" y2="${sy}" stroke="${ink}" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${sx+sb/2}" y="${sy-.25}" font-family="${css("--f-mono")}" font-size="${fs*.75}" fill="${ink}" text-anchor="middle">${sb} m</text></g>`;
   const empty = !rs.length ? `<text x="${S.view.cx}" y="${S.view.cy}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*1.1}" fill="${css("--ink-2")}">No rooms on L${S.floor} yet. Pick “Draw room” and click the corners.</text>` : "";
-  svg.innerHTML=defs+`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${paper}" data-bg="1"/>`+g+rooms+stairs+doors+labels+overlay+handles+scale+empty;
+  svg.innerHTML=defs+`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${paper}" data-bg="1"/>`+g+campusSvg()+rooms+stairs+doors+labels+overlay+handles+scale+empty;
   renderHint(); renderLegend(); renderInspector();
 }
 function inwardNormal(r,e){ const [a,b]=edgeOf(r.poly,e), dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1, s=signed(r.poly)>0?1:-1; return [-dy/L*s, dx/L*s]; }
@@ -1017,13 +1024,18 @@ function renderHint(){
       :TOUCH?"Tap a room to edit it · drag to pan · pinch to zoom":"Click a room to edit it · drag corner handles to reshape · drag to pan",
     draw:n?(TOUCH?`${n} corner${n===1?"":"s"} · tap to add more, or tap the first corner to close`:"Click to add corners (right angles snap; Shift for free angles) · click the first corner or press Enter to close")
       :`${tap} to place the first corner. Points snap to a 0.5 m grid.`,
-    door:`${tap} a wall to add a 0.9 m door · ${tap.toLowerCase()} a door to remove it`}[S.mode];
-  const acts = S.mode==="draw" && n ? `<span class="acts"><button class="btn sm" data-d="undo">Undo</button><button class="btn sm primary" data-d="done" ${n<3?"disabled":""}>Finish room</button><button class="btn sm" data-d="cancel">Cancel</button></span>` : "";
+    door:`${tap} a wall to add a 0.9 m door · ${tap.toLowerCase()} a door to remove it`,
+    move:S.moveKeys?.length?`${S.moveKeys.length} room${S.moveKeys.length===1?"":"s"} picked · drag to move${S.showCampus?" (corners snap to the building outline)":""} · turn them here`
+      :`${tap} or drag a room to move it with every room joined to it, such as an imported walk`}[S.mode]
+    +(S.mode==="draw"&&!n&&S.showCampus&&S.campus?" Corners snap to the building outline.":"");
+  const acts = S.mode==="draw" && n ? `<span class="acts"><button class="btn sm" data-d="undo">Undo</button><button class="btn sm primary" data-d="done" ${n<3?"disabled":""}>Finish room</button><button class="btn sm" data-d="cancel">Cancel</button></span>`
+    : S.mode==="move" && S.moveKeys?.length && !S.readOnly ? `<span class="acts"><button class="btn sm" data-m="-90" title="Turn 90° anticlockwise">⟲ 90°</button><button class="btn sm" data-m="-5">⟲ 5°</button><button class="btn sm" data-m="5">⟳ 5°</button><button class="btn sm" data-m="90" title="Turn 90° clockwise">⟳ 90°</button>${S.showCampus&&S.campus?`<button class="btn sm primary" data-m="align" title="Turn to line up with the building's walls">Line up with building</button>`:""}</span>` : "";
   const key=h+acts; if (key===hintKey) return; hintKey=key;
   const el=$("#hint"); el.innerHTML=`<span>${esc(h)}</span>${acts}`;
   el.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{ const d=b.dataset.d;
     if (d==="undo") S.draft.pop(); if (d==="cancel") S.draft=[]; S.cursor=null;
     if (d==="done" && S.draft.length>=3) return closeDraft(); renderPlan(); });
+  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>b.dataset.m==="align"?alignGroup():rotateGroup(+b.dataset.m));
 }
 function renderLegend(){
   const l=$("#legend");
@@ -1041,11 +1053,14 @@ function endDrag(){ if(!S.drag) return; const d=S.drag; S.drag=null; if(d.moved)
 svg.addEventListener("pointerdown",ev=>{
   if (ev.button>0) return;
   ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY}); try{ svg.setPointerCapture(ev.pointerId); }catch(e){}
-  if (ptrs.size===2){ endDrag(); press=null; const p=pinchState(), s=S.view.scale;
+  if (ptrs.size===2){ endDrag(); endMove(); press=null; const p=pinchState(), s=S.view.scale;
     pinch={d:p.d,s,w:[S.view.cx+p.m[0]/s,S.view.cy+p.m[1]/s]}; if(S.mode==="draw"){ S.cursor=null; renderPlan(); } return; }
   if (ptrs.size>2) return;
   const t=ev.target;
   if (S.mode==="select" && t.dataset.h!==undefined && S.sel && !S.readOnly){ S.drag={i:+t.dataset.h,k:S.sel,moved:false}; return; }
+  if (S.mode==="move" && !S.readOnly && !S.nav){ const pt=toWorld(ev), k=t.dataset.k||hitRoom(pt);
+    if (k){ S.sel=k; S.moveKeys=joinedRooms(k); S.mdrag={start:pt,orig:Object.fromEntries(S.moveKeys.map(x=>[x,roomByK(x).poly.map(p=>p.slice())])),moved:false}; renderPlan(); return; }
+    S.moveKeys=null; }
   press={x:ev.clientX,y:ev.clientY,cx:S.view.cx,cy:S.view.cy,target:t,moved:false};
   if (ev.pointerType!=="mouse") hover(ev);
 });
@@ -1053,7 +1068,8 @@ svg.addEventListener("pointermove",ev=>{
   if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
   if (pinch){ if(ptrs.size<2) return; const p=pinchState(), s=Math.max(3,Math.min(160,pinch.s*p.d/pinch.d));
     S.view={cx:pinch.w[0]-p.m[0]/s, cy:pinch.w[1]-p.m[1]/s, scale:s}; renderPlan(); return; }
-  if (S.drag){ const pt=toWorld(ev), r=roomByK(S.drag.k); r.poly[S.drag.i]=[snap(pt[0],VSNAP),snap(pt[1],VSNAP)]; S.drag.moved=true; renderPlan(); return; }
+  if (S.mdrag){ dragGroup(toWorld(ev)); return; }
+  if (S.drag){ const pt=toWorld(ev), r=roomByK(S.drag.k); r.poly[S.drag.i]=outlineSnap(pt)||[snap(pt[0],VSNAP),snap(pt[1],VSNAP)]; S.drag.moved=true; renderPlan(); return; }
   if (press){
     if (!press.moved && Math.hypot(ev.clientX-press.x,ev.clientY-press.y)>(ev.pointerType==="mouse"?4:8)){ press.moved=true; S.cursor=null; S.hoverEdge=null; }
     if (press.moved){ const s=S.view.scale; S.view.cx=press.cx-(ev.clientX-press.x)/s; S.view.cy=press.cy-(ev.clientY-press.y)/s; renderPlan(); return; }
@@ -1069,6 +1085,7 @@ function pointerEnd(ev){
   ptrs.delete(ev.pointerId);
   if (pinch){ if(!ptrs.size) pinch=null; press=null; return; }   // the finger left over after a pinch does nothing
   if (S.drag){ endDrag(); return; }
+  if (S.mdrag){ endMove(); return; }
   const p=press; press=null;
   if (p && !p.moved && ev.type==="pointerup") tapAt(ev,p.target);
   if (ev.pointerType!=="mouse" && (S.cursor||S.hoverEdge)){ S.cursor=null; S.hoverEdge=null; renderPlan(); }
@@ -1079,6 +1096,7 @@ function tapAt(ev,t){
   const pt=toWorld(ev);
   if (S.nav){ const k=t.dataset.k||hitRoom(pt); if(k) navPick(roomByK(k)); return; }
   if (S.mode==="select"){ const k=t.dataset.k||hitRoom(pt)||null; if(k!==S.sel){ S.sel=k; S.sheetScroll=true; } renderPlan(); return; }
+  if (S.mode==="move"){ renderPlan(); return; }
   if (S.readOnly) return;
   if (S.mode==="draw"){
     const p=drawPoint(pt,ev.shiftKey);
@@ -1099,12 +1117,14 @@ svg.addEventListener("pointerleave",ev=>{ if(ev.pointerType==="mouse" && S.mode=
 svg.addEventListener("dblclick",()=>{ if(S.mode==="draw" && S.draft.length>=3) closeDraft(); });
 window.addEventListener("keydown",ev=>{
   if (S.tab!=="plan" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)) return;
-  if (ev.key==="Escape"){ S.draft=[]; S.sel=null; setSheet(false); renderPlan(); }
+  if (ev.key==="Escape"){ S.draft=[]; S.sel=null; S.moveKeys=null; setSheet(false); renderPlan(); }
   if (ev.key==="Enter" && S.mode==="draw" && S.draft.length>=3) closeDraft();
   if (ev.key==="Delete" && S.sel && !S.readOnly && !S.nav){ deleteRoom(S.sel); }
 });
 function hitRoom(pt){ const rs=floorRooms(S.floor).filter(r=>inside(pt,r.poly)); rs.sort((a,b)=>area(a.poly)-area(b.poly)); return rs[0]?.k; }
-function drawPoint(pt,free){ let p=[snap(pt[0],GRID),snap(pt[1],GRID)];
+function drawPoint(pt,free){
+  const o=outlineSnap(pt); if(o) return S.draft.length>=2 && dist(o,S.draft[0])<.6 ? S.draft[0].slice() : o;
+  let p=[snap(pt[0],GRID),snap(pt[1],GRID)];
   if (!free && S.draft.length){ const a=S.draft[S.draft.length-1]; if (Math.abs(p[0]-a[0])<Math.abs(p[1]-a[1])) p[0]=a[0]; else p[1]=a[1]; }
   if (S.draft.length>=2 && dist(p,S.draft[0])<.6) p=S.draft[0].slice();
   return p; }
@@ -1137,7 +1157,7 @@ function renderInspector(){
       <dl class="kv"><dt>Rooms</dt><dd>${rs.length}</dd><dt>Floor area</dt><dd>${fmtArea(tot)}</dd><dt>Doors</dt><dd>${rs.reduce((s,r)=>s+r.doors.length,0)}</dd><dt>Rooms with scans</dt><dd>${scanned} / ${rs.length}</dd></dl>
       <h3>On the map</h3>
       ${S.plan.geo?`<p class="small muted" style="margin:0 0 8px">Placed at ${S.plan.geo.lat.toFixed(5)}, ${S.plan.geo.lng.toFixed(5)}, turned ${S.plan.geo.rot}°. Directions can show GPS, and the GeoJSON export uses map coordinates.</p>`
-        :`<p class="small muted" style="margin:0 0 8px">Not placed yet. Place the block on a real map so Directions can show GPS and the GeoJSON export lines up with map data.</p>`}
+        :`<p class="small muted" style="margin:0 0 8px">Not placed yet. Place the block on a real map so Directions can show GPS and the GeoJSON export lines up with map data.${S.showCampus&&S.campus&&mainBuilding()?" Until then the campus outline on the plan is lined up roughly, centred on the main building.":""}</p>`}
       ${S.readOnly?"":`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="mapPlace">${S.plan.geo?"Adjust on map":"Place on map"}</button>${S.plan.geo?`<button class="btn sm" id="mapClear">Remove</button>`:""}</div>`}
       ${S.readOnly?"":`<h3>Walks</h3><p class="small muted" style="margin:0 0 8px">Film a slow walk along a corridor, run <span class="mono">worker.py --walk</span> on it, then import the <span class="mono">walk.json</span> it saves. The corridor and a room behind each door sign it read are added here.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="walkImport">Import walk</button><input type="file" id="walkIn" accept=".json,application/json" hidden></div>`}
@@ -1319,16 +1339,27 @@ function build3D(){
   showInfo3D(sel&&roomByK(sel));
   drawCampus3D();
 }
-/* Faint campus boundary and building footprints on the ground, once the block is placed on the map. Not exported. */
+/* The campus in 3D: boundary, paths and other buildings on the ground; the campus buildings as see-through
+   outlines from the ground to their roof (OSM building:levels, else 3), so the floors can be checked against them.
+   Ground is level 1 (or the lowest level if that's below it). Kept out of the GLB export. */
 function drawCampus3D(){
   while(T.ground.children.length){ const c=T.ground.children.pop(); c.geometry?.dispose(); c.material?.dispose(); }
-  if (!S.plan.geo) return;
-  if (!S.campus){ if(!S.campusFailed) loadCampus().then(()=>{ if(T) drawCampus3D(); },()=>{}); return; }
-  const L=campusInPlan(); if(!L) return;
-  const line=(ring,col,op)=>{ const g=new THREE.BufferGeometry().setFromPoints(ring.map(([x,y])=>new THREE.Vector3(x,-.02,y)));
-    const m=new THREE.Line(g,new THREE.LineBasicMaterial({color:new THREE.Color(css(col)),transparent:true,opacity:op})); T.ground.add(m); };
-  L.buildings.forEach(r=>line(r,"--ink-2",.35));
-  L.boundary.forEach(r=>line(r,"--gold",.8));
+  const G=wantCampus(); if(!G) return;
+  const minL=Math.min(...S.plan.floors.map(f=>f.level)), y0=(Math.min(1,minL)-minL)*FLOOR_H-.03;
+  const mat=(c,op)=>new THREE.LineBasicMaterial({color:new THREE.Color(css(c)),transparent:true,opacity:op});
+  const V=(x,y,z)=>new THREE.Vector3(x,y,z), add=(pts,m,Kind=THREE.Line)=>T.ground.add(new Kind(new THREE.BufferGeometry().setFromPoints(pts),m));
+  const loop=(r,y,m)=>add([...r,r[0]].map(([x,z])=>V(x,y,z)),m);
+  const mo=mat("--ink-2",.18), mp=mat("--cyan",.35), mb=mat("--gold",.8), mg=mat("--gold",.5);
+  G.others.forEach(r=>loop(r,y0,mo));
+  G.paths.forEach(p=>add(p.line.map(([x,z])=>V(x,y0,z)),mp));
+  G.boundary.forEach(r=>loop(r,y0,mb));
+  G.inCampus.forEach(b=>{ const top=y0+(b.levels||3)*FLOOR_H;
+    b.rings.forEach(r=>{ loop(r,y0,mg); loop(r,top,mg); add(r.flatMap(([x,z])=>[V(x,y0,z),V(x,top,z)]),mg,THREE.LineSegments); }); });
+  const main=G.inCampus.find(b=>b.main);
+  if (main && !T.campusFramed){ T.campusFramed=true;   // the first time: frame the whole building with the rooms in it
+    const bb=new THREE.Box3(); main.rings.flat().forEach(([x,z])=>{ bb.expandByPoint(V(x,y0,z)); bb.expandByPoint(V(x,y0+(main.levels||3)*FLOOR_H,z)); });
+    const c=bb.getCenter(V(0,0,0)), sz=bb.getSize(V(0,0,0)).length();
+    T.ctl.target.copy(c); T.cam.position.set(c.x+sz*.15,c.y+sz*.6,c.z+sz*.75); T.framed=true; }
 }
 /* stair geometry in world space: steps, landings and a balustrade along the well (y0 = top of this floor's slab) */
 function stair3D(r,L,y0,mat,railMat,o){
@@ -2471,11 +2502,104 @@ function snapToPick(){
   const size=f.ratio>1.4?" The plan is bigger than the building outline; check the scale.":"";
   toast(`Snapped to ${name}: ${Math.round(f.iou*100)}% overlap.${size} Fine-tune, then save.`);
 }
-/* Campus lines in plan coordinates, for the 3D ground outline. */
-function campusInPlan(){
-  const C=S.campus, g=S.plan.geo; if(!C||!g) return null;
-  const P=r=>r.map(([lat,lng])=>fromLatLng(lat,lng,g));
-  return {boundary:C.campus?C.campus.rings.map(P):[], buildings:C.buildings.filter(b=>b.inCampus).flatMap(b=>b.rings.map(P))};
+/* ---------- the campus as a backdrop for the floor plan and 3D ----------
+   OSM shapes are drawn in plan coordinates through plan.geo. Until the block is placed on the map, a rough frame is
+   used: the plan's centre at the main building's centre, the building's walls square to the grid. Rooms can then be
+   drawn inside the real outline (corners snap to it) and imported walks moved into it with the Move tool. */
+let campusGeomCache=null;
+function mainBuilding(){ const C=S.campus; return C?C.buildings.filter(b=>b.inCampus).sort((a,b)=>b.area-a.area)[0]||null:null; }
+const ringSegs=p=>p.map((q,i)=>[q,p[(i+1)%p.length]]);
+const square45=d=>((d%90)+135)%90-45;   // the same direction mod 90°, as the smallest turn (−45° to 45°)
+function campusFrame(){
+  if (S.plan.geo) return {g:S.plan.geo,provisional:false};
+  const b=mainBuilding(); if(!b) return null;
+  if (!S.campusAnchor){
+    const ll0=llCentroid(b.rings[0]), k=M_PER_DEG*Math.cos(ll0[0]*Math.PI/180);
+    const F=b.rings.map(r=>r.slice(0,-1).map(([lat,lng])=>[(lng-ll0[1])*k,(lat-ll0[0])*M_PER_DEG]));
+    const rot=square45(-dominantAngle(F.flatMap(ringSegs))*180/Math.PI), c=planCentre();
+    S.campusAnchor={x:+c[0].toFixed(2),y:+c[1].toFixed(2),lat:ll0[0],lng:ll0[1],rot:+rot.toFixed(2)};
+  }
+  return {g:S.campusAnchor,provisional:true};
+}
+/* Every OSM shape in plan metres. Rings are open (no repeated first point). */
+function campusGeom(){
+  const C=S.campus, f=C&&campusFrame(); if(!f) return null;
+  const key=JSON.stringify(f.g)+"|"+C.at+"|"+C.buildings.length;
+  if (campusGeomCache?.key===key) return campusGeomCache;
+  const P=r=>r.map(([lat,lng])=>fromLatLng(lat,lng,f.g)), open=r=>P(r).slice(0,-1), main=mainBuilding();
+  return campusGeomCache={key,provisional:f.provisional,
+    boundary:C.campus?C.campus.rings.map(open):[],
+    inCampus:C.buildings.filter(b=>b.inCampus).map(b=>({id:b.id,name:b.name||b.ref||"",levels:b.levels,main:b===main,rings:b.rings.map(open)})),
+    others:C.buildings.filter(b=>!b.inCampus).flatMap(b=>b.rings.map(open)),
+    paths:C.paths.map(p=>({covered:p.covered,line:P(p.line)}))};
+}
+function wantCampus(){   // start loading the outline the first time a view needs it
+  if (!S.showCampus) return null;
+  if (!S.campus){ if(!S.campusFailed && !campusP) loadCampus().then(()=>{ renderPlan(); if(S.three) build3D(); },()=>renderPlan()); return null; }
+  return campusGeom();
+}
+function campusSvg(){
+  const G=wantCampus(); if(!G) return "";
+  if (G.svg) return G.svg;
+  const pts=r=>r.map(p=>p[0].toFixed(2)+","+p[1].toFixed(2)).join(" "), ns='vector-effect="non-scaling-stroke"';
+  const ink2=css("--ink-2"), gold=css("--gold"), cyan=css("--cyan");
+  let s=`<g pointer-events="none">`;
+  G.others.forEach(r=>s+=`<polygon points="${pts(r)}" fill="${ink2}" fill-opacity=".05" stroke="${ink2}" stroke-opacity=".3" stroke-width="1" ${ns}/>`);
+  G.paths.forEach(p=>s+=`<polyline points="${pts(p.line)}" fill="none" stroke="${cyan}" stroke-opacity="${p.covered?.7:.4}" stroke-width="${p.covered?2:1}"${p.covered?"":' stroke-dasharray="4 4"'} ${ns}/>`);
+  G.boundary.forEach(r=>s+=`<polygon points="${pts(r)}" fill="none" stroke="${gold}" stroke-opacity=".75" stroke-width="2" stroke-dasharray="10 6" ${ns}/>`);
+  G.inCampus.forEach(b=>b.rings.forEach(r=>s+=`<polygon points="${pts(r)}" fill="${gold}" fill-opacity=".05" stroke="${gold}" stroke-opacity=".9" stroke-width="${b.main?2.5:1.5}" ${ns}/>`));
+  return G.svg=s+"</g>";
+}
+/* A point near a corner or wall of the campus buildings (or the boundary) moves onto it. */
+function outlineSnap(pt){
+  if (!S.showCampus || !S.campus) return null; const G=campusGeom(); if(!G) return null;
+  const rings=[...G.inCampus.flatMap(b=>b.rings),...G.boundary]; let best=null, bd=10/S.view.scale;
+  rings.forEach(r=>r.forEach(p=>{ const d=dist(pt,p); if(d<bd){ bd=d; best=p; } }));
+  if (!best){ bd=7/S.view.scale; rings.forEach(r=>r.forEach((_,i)=>{ const e=edgeOf(r,i), q=lerp(e[0],e[1],projT(pt,e)), d=dist(pt,q); if(d<bd){ bd=d; best=q; } })); }
+  return best&&best.map(v=>+v.toFixed(3));
+}
+function fitCampus(){
+  const G=S.campus&&campusGeom(); if(!G){ toast(S.campusFailed?"The campus outline didn't load.":"The campus outline is still loading."); wantCampus(); return; }
+  const pts=[...G.boundary.flat(),...G.inCampus.flatMap(b=>b.rings.flat())]; if(!pts.length) return;
+  const [x0,y0,x1,y1]=bbox(pts), w=box.clientWidth||800, h=box.clientHeight||500;
+  S.view={cx:(x0+x1)/2,cy:(y0+y1)/2,scale:Math.max(3,Math.min(80,Math.min(w/(x1-x0+10),h/(y1-y0+10))))}; renderPlan();
+}
+
+/* ---------- Move tool: a room and every room joined to it (such as a walk's corridor and its rooms) move together ---------- */
+function polyGap(a,b){ let d=1e9; const f=(P,Q)=>P.forEach(p=>Q.forEach((_,i)=>{ const e=edgeOf(Q,i); d=Math.min(d,dist(p,lerp(e[0],e[1],projT(p,e)))); })); f(a,b); f(b,a); return d; }
+function joinedRooms(k){
+  const rs=floorRooms(S.floor), seen=new Set([k]), q=[k];
+  while (q.length){ const r=roomByK(q.shift()); rs.forEach(o=>{ if(!seen.has(o.k) && polyGap(r.poly,o.poly)<.3){ seen.add(o.k); q.push(o.k); } }); }
+  return [...seen];
+}
+function moveGroup(){ return (S.moveKeys||[]).map(roomByK).filter(Boolean); }
+function dragGroup(pt){
+  const m=S.mdrag; let dx=snap(pt[0]-m.start[0],.05), dy=snap(pt[1]-m.start[1],.05);
+  const G=S.showCampus&&S.campus&&campusGeom();
+  if (G){ // a corner of the group close to a corner of the building outline lands on it
+    const fv=G.inCampus.flatMap(b=>b.rings.flat()); let bd=8/S.view.scale, corr=null;
+    Object.values(m.orig).forEach(poly=>poly.forEach(p=>{ const q=[p[0]+dx,p[1]+dy]; fv.forEach(v=>{ const d=dist(q,v); if(d<bd){ bd=d; corr=[v[0]-q[0],v[1]-q[1]]; } }); }));
+    if (corr){ dx+=corr[0]; dy+=corr[1]; }
+  }
+  Object.entries(m.orig).forEach(([k,poly])=>{ const r=roomByK(k); if(r) r.poly=poly.map(([x,y])=>[+(x+dx).toFixed(3),+(y+dy).toFixed(3)]); });
+  m.moved=Math.hypot(dx,dy)>1e-6; renderPlan();
+}
+function endMove(){ const m=S.mdrag; if(!m) return; S.mdrag=null; const n=Object.keys(m.orig).length;
+  if (m.moved) edit(`Moved ${n===1?roomByK(Object.keys(m.orig)[0])?.id:`${n} rooms`}`); else renderPlan(); }
+/* Turn the group about its centre; y runs south, so a positive angle turns clockwise on screen. */
+function rotateGroup(deg){
+  const rs=moveGroup(); if(!rs.length) return;
+  const b=bbox(rs.flatMap(r=>r.poly)), c=[(b[0]+b[2])/2,(b[1]+b[3])/2], t=deg*Math.PI/180, cs=Math.cos(t), sn=Math.sin(t);
+  rs.forEach(r=>{ r.poly=r.poly.map(([x,y])=>{ const dx=x-c[0], dy=y-c[1]; return [+(c[0]+dx*cs-dy*sn).toFixed(3),+(c[1]+dx*sn+dy*cs).toFixed(3)]; });
+    if (r.stair && deg%90===0) r.stair={...r.stair,dir:((r.stair.dir+deg/90)%4+4)%4}; });
+  edit(`Turned ${rs.length===1?rs[0].id:`${rs.length} rooms`} ${deg>0?"clockwise":"anticlockwise"} ${Math.abs(+deg.toFixed(1))}°`);
+}
+function alignGroup(){
+  const rs=moveGroup(), main=S.campus&&campusGeom()?.inCampus.find(b=>b.main);
+  if (!rs.length) return; if (!main){ toast("The campus outline isn't loaded, so there are no walls to line up with."); return; }
+  const d=square45((dominantAngle(main.rings.flatMap(ringSegs))-dominantAngle(rs.flatMap(r=>ringSegs(r.poly))))*180/Math.PI);
+  if (Math.abs(d)<.05){ toast("Already lined up with the building's walls."); return; }
+  rotateGroup(+d.toFixed(2));
 }
 
 // Links like ?from=B-03-01&to=B-04-02 open Directions with those rooms
