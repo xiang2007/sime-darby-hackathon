@@ -8,6 +8,7 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 
 ## What's new
 
+- **Hallways found from their shape.** Rooms measured from photos used to all arrive as **Other**. Now **Add room to plan** sets a long, narrow scan (under 3.5 m wide and at least 3 times as long as it is wide) to **Corridor**, and a big open area that branches out to **Lobby**. For rooms already on the plan, **Mark as hallways** on the Floor plan tab (no room selected) lists the **Other** rooms that look like hallways and changes them in one click, and a room's panel suggests the change too. Directions prefers corridors and lobbies, so routes keep to the hallways. [How it's measured](#hallways-from-the-shape)
 - **Map a corridor by walking it.** Film a slow walk along a corridor, run `python worker.py --walk --video corridor.mp4`, then **Import walk** on the Floor plan tab. The corridor appears with its real shape and width, a door wherever the video shows a room sign like "B-03-02", and a placeholder room behind each door, so Directions can route between those rooms straight away. No QR markers or hand drawing needed. [How it works](#mapping-corridors-from-a-walk)
 - **Directions.** The new **Directions** tab gives students a route from one room to another, across floors: a line on the floor plan plus steps like "Turn left into Main corridor and walk 10 m". Tap rooms on the plan or pick them from the lists, or **Scan marker** to start from the door marker you're standing at. **Step-free** keeps to lifts. Links like `/?from=B-03-01&to=B-04-02` open a route directly. [How routes are found](#directions)
 - **Place the block on a real map.** On **Floor plan** (no room selected), **Place on map** opens a map: drag it until the outline sits on the building and turn it to match. After that the GeoJSON export uses real map coordinates, Directions can show your GPS position on the plan (rough indoors, so markers are the reliable way to know where you are), and links to Google Maps for getting to the block.
@@ -49,6 +50,10 @@ Routes come straight from the floor plan, so a route only works if the plan is c
 - Routes prefer corridors, lobbies and stairs, and only cut through other rooms when that is much shorter. Inside a room the route goes in straight lines between doors and bends round inside corners.
 
 Indoor GPS is off by 10 to 50 m, which is the size of the whole block, so it can't say which room you're in. The door markers are the precise "you are here": scanning one starts the route at that door.
+
+### Hallways from the shape
+
+The width is measured from the outline itself: every point inside is given its distance to the nearest wall, and the points along the middle of the shape give the typical width (twice that distance). The length is the area divided by the width. A room counts as a **corridor** if it's at most 3.5 m wide and at least 3 times as long as wide, and as a **lobby** if it's over 60 m², under 6 m wide, and fills less than 60% of its bounding box. Anything else stays a room. It's only a guess, so check the type and change it if it's wrong. Rooms you've already given a type are never changed. The thresholds are `HALL` in `web/index.html`.
 
 ### Stairwells
 

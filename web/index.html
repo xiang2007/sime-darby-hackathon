@@ -782,6 +782,35 @@ const snap = (v,g) => Math.round(v/g)*g;
 function doorCenter(room,d){ const [a,b]=edgeOf(room.poly,d.e); return lerp(a,b,d.t); }
 function bbox(p){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; p.forEach(([x,y])=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}); return [x0,y0,x1,y1]; }
 
+/* Guess from its outline whether a room is a hallway. Measured rooms all arrive as "Other", so this is the only hint.
+   width: typical distance between opposite walls (twice the distance from the outline's centre line to the nearest wall).
+   kind: "corridor" when it's long and narrow, "lobby" when it's a big open area that branches out, else null (a room). */
+const HALL = { maxWidth:3.5, minRatio:3, lobbyArea:60, lobbyFill:.6, lobbyWidth:6 };
+const shapeCache=new Map();
+function shapeOf(p){
+  const key=JSON.stringify(p); if(shapeCache.has(key)) return shapeCache.get(key);
+  const [x0,y0,x1,y1]=bbox(p), A=area(p);
+  let c=.1; while(((x1-x0)/c+2)*((y1-y0)/c+2)>250000) c*=1.5;
+  const nx=Math.ceil((x1-x0)/c)+2, ny=Math.ceil((y1-y0)/c)+2, d=new Float32Array(nx*ny), BIG=1e9;
+  for(let j=0;j<ny;j++) for(let i=0;i<nx;i++) d[j*nx+i]=inside([x0+(i-.5)*c,y0+(j-.5)*c],p)?BIG:0;
+  // chamfer distance to the nearest cell outside the outline, in metres
+  const D1=c, D2=c*Math.SQRT2;
+  for(let j=1;j<ny;j++) for(let i=1;i<nx-1;i++){ const k=j*nx+i; if(d[k]) d[k]=Math.min(d[k],d[k-1]+D1,d[k-nx]+D1,d[k-nx-1]+D2,d[k-nx+1]+D2); }
+  for(let j=ny-2;j>=0;j--) for(let i=nx-2;i>=1;i--){ const k=j*nx+i; if(d[k]) d[k]=Math.min(d[k],d[k+1]+D1,d[k+nx]+D1,d[k+nx+1]+D2,d[k+nx-1]+D2); }
+  // the centre line: cells at least as far from the walls as all their neighbours
+  const ridge=[];
+  for(let j=1;j<ny-1;j++) for(let i=1;i<nx-1;i++){ const k=j*nx+i, v=d[k]; if(v<2*c) continue;
+    if(v>=d[k-1]&&v>=d[k+1]&&v>=d[k-nx]&&v>=d[k+nx]&&v>=d[k-nx-1]&&v>=d[k-nx+1]&&v>=d[k+nx-1]&&v>=d[k+nx+1]) ridge.push(v); }
+  ridge.sort((a,b)=>a-b);
+  const width=ridge.length?2*ridge[ridge.length>>1]:Math.min(x1-x0,y1-y0), length=A/Math.max(width,.1), fill=A/Math.max((x1-x0)*(y1-y0),1e-9);
+  const kind=width<=HALL.maxWidth&&length>=HALL.minRatio*width?"corridor"
+    :A>=HALL.lobbyArea&&fill<HALL.lobbyFill&&width<=HALL.lobbyWidth?"lobby":null;
+  const out={width,length,fill,kind};
+  if(shapeCache.size>500) shapeCache.clear();
+  shapeCache.set(key,out); return out;
+}
+function hallNote(g){ return g.kind==="corridor"?`about ${g.width.toFixed(1)} m wide and ${g.length.toFixed(0)} m long`:`a ${g.width.toFixed(1)} m wide open area that branches out`; }
+
 /* ---------- stairs (README step 12: stairwells connect the floors) ---------- */
 const RISER_MAX=.17, TREAD_MAX=.30, TREAD_OK=.25, LANDING=.6, WELL=.2, STAIR_T=.18;
 const DIRS=[[1,0],[0,1],[-1,0],[0,-1]];
@@ -1187,6 +1216,7 @@ function renderInspector(){
   if (!r){
     const rs=floorRooms(S.floor).slice().sort((a,b)=>a.id.localeCompare(b.id)), fl=S.plan.floors.find(f=>f.level===S.floor);
     const tot=rs.reduce((s,r)=>s+area(r.poly),0), scanned=rs.filter(r=>cov[r.id]>0).length;
+    const halls=S.readOnly?[]:rs.filter(r=>r.type==="other").map(r=>({r,g:shapeOf(r.poly)})).filter(h=>h.g.kind);
     el.innerHTML=`<h2>${esc(fl?.name||"Level "+S.floor)}</h2>
       ${S.readOnly?"":`<div class="row2" style="margin-bottom:10px"><div class="field"><label for="blk">Block</label><input id="blk" value="${esc(S.plan.block||"")}" maxlength="8"></div><div class="field"><label for="flName">Floor name</label><input id="flName" value="${esc(fl?.name||"")}" maxlength="40"></div></div>`}
       <dl class="kv"><dt>Rooms</dt><dd>${rs.length}</dd><dt>Floor area</dt><dd>${fmtArea(tot)}</dd><dt>Doors</dt><dd>${rs.reduce((s,r)=>s+r.doors.length,0)}</dd><dt>Rooms with scans</dt><dd>${scanned} / ${rs.length}</dd></dl>
@@ -1196,10 +1226,15 @@ function renderInspector(){
       ${S.readOnly?"":`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="mapPlace">${S.plan.geo?"Adjust on map":"Place on map"}</button>${S.plan.geo?`<button class="btn sm" id="mapClear">Remove</button>`:""}</div>`}
       ${S.readOnly?"":`<h3>Walks</h3><p class="small muted" style="margin:0 0 8px">Film a slow walk along a corridor, run <span class="mono">worker.py --walk</span> on it, then import the <span class="mono">walk.json</span> it saves. The corridor and a room behind each door sign it read are added here.</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="walkImport">Import walk</button><input type="file" id="walkIn" accept=".json,application/json" hidden></div>`}
+      ${halls.length?`<h3>Hallways</h3><p class="small muted" style="margin:0 0 8px">${halls.length===1?"This room looks":"These rooms look"} like ${halls.length===1?"a hallway":"hallways"} from ${halls.length===1?"its":"their"} shape. Directions prefers corridors and lobbies, so marking them gives better routes.</p>
+      <ul class="small" style="margin:0 0 8px;padding-left:18px">${halls.map(h=>`<li><span class="mono">${esc(h.r.id)}</span>: ${TYPES[h.g.kind].label.toLowerCase()}, ${esc(hallNote(h.g))}</li>`).join("")}</ul>
+      <button class="btn sm" id="markHalls">Mark as hallways</button>`:""}
       <h3>Rooms on this floor</h3>
       ${rs.length?`<ul class="roomlist">${rs.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:`<p class="muted small">Nothing drawn yet.</p>`}
       ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
     el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
+    const mh=$("#markHalls"); if(mh) mh.onclick=()=>{ halls.forEach(h=>{ h.r.type=h.g.kind; });
+      edit(`Marked ${halls.map(h=>h.r.id).join(", ")} as hallways`); toast(`Marked ${halls.length} room${halls.length===1?"":"s"} as hallways. Change any type that's wrong in the room's panel.`); };
     const mp=$("#mapPlace"); if(mp) mp.onclick=openMapDlg;
     const mc=$("#mapClear"); if(mc) mc.onclick=()=>{ delete S.plan.geo; edit("Removed the block's map position"); };
     const wi=$("#walkImport"), wf=$("#walkIn"); if(wi){ wi.onclick=()=>wf.click(); wf.onchange=()=>{ const f=wf.files[0]; wf.value=""; if(f) importWalk(f); }; }
@@ -1211,11 +1246,13 @@ function renderInspector(){
   }
   delArm=false;
   const dup=S.plan.rooms.some(x=>x!==r && x.id===r.id), n=cov[r.id]||0, ro=S.readOnly?"disabled":"";
+  const g0=r.type==="other"?shapeOf(r.poly):null, hint=g0&&g0.kind?g0:null;
   el.innerHTML=`<h2>${esc(r.id)}</h2>
     <div class="field"><label for="rId">Room ID (printed on the door marker)</label><input id="rId" class="mono" value="${esc(r.id)}" maxlength="24" ${ro}>${dup?`<span class="warn">Another room already uses this ID.</span>`:""}</div>
     <div class="field"><label for="rName">Name</label><input id="rName" value="${esc(r.name)}" maxlength="60" placeholder="e.g. Lecture Theatre 4" ${ro}></div>
     <div class="row2"><div class="field"><label for="rType">Type</label><select id="rType" ${ro}>${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===r.type?"selected":""}>${t.label}</option>`).join("")}</select></div>
     <div class="field"><label for="rH">Ceiling height (m)</label><input id="rH" type="number" min="2.2" max="12" step="0.1" value="${r.height}" ${ro}></div></div>
+    ${hint?`<p class="small muted" style="margin:-4px 0 10px">Looks like a ${TYPES[hint.kind].label.toLowerCase()} from its shape: ${esc(hallNote(hint))}. ${ro?"":`<button class="btn sm" id="rHall">Set as ${TYPES[hint.kind].label.toLowerCase()}</button>`}</p>`:""}
     <dl class="kv"><dt>Area</dt><dd>${fmtArea(area(r.poly))}</dd><dt>Corners</dt><dd>${r.poly.length}</dd><dt>Doors</dt><dd>${r.doors.length}</dd><dt>Floor</dt><dd>L${r.floor}</dd>
       <dt>Coverage</dt><dd><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${COV_LABEL[covLevel(n)]}</span></dd></dl>
     ${stairPanel(r,ro)}
@@ -1235,6 +1272,7 @@ function renderInspector(){
   const sT=$("#sTurn"); if(sT) sT.onclick=()=>{ const st=stairOf(r); r.stair={...st,dir:(st.dir+1)%4}; edit("Turned the stair in "+r.id); };
   const sM=$("#sFlip"); if(sM) sM.onclick=()=>{ const st=stairOf(r); r.stair={...st,mirror:!st.mirror}; edit("Mirrored the stair in "+r.id); };
   bind("#rH",e=>{ const v=Math.max(2.2,Math.min(12,+e.target.value||3.2)); r.height=v; edit(`Set ${r.id} height to ${v} m`); });
+  const rh=$("#rHall"); if(rh) rh.onclick=()=>{ r.type=hint.kind; edit(`Set ${r.id} to ${TYPES[r.type].label}`); };
   $("#rBack").onclick=()=>{ S.sel=null; renderPlan(); };
   const dl=$("#rDel"); if(dl) dl.onclick=()=>{ if(dl.dataset.arm){ deleteRoom(r.k); } else { dl.dataset.arm=1; dl.textContent="Confirm delete"; } };
   const dp=$("#rDup"); if(dp) dp.onclick=()=>{ const c=clone(r); c.k=uid(); c.id=uniqueId(r.id); c.poly=c.poly.map(([x,y])=>[x+1,y+1]); S.plan.rooms.push(c); S.sel=c.k; edit("Duplicated "+r.id); };
@@ -1866,10 +1904,12 @@ function addScanRoom(id){
   const others=floorRooms(s.floor).flatMap(r=>r.poly), [px0,py0]=bbox(m.poly);
   const [ox,oy]=others.length?[bbox(others)[2]+1-px0,bbox(others)[1]-py0]:[-px0,-py0];
   const rid=uniqueId(s.room||`${S.plan.block||"X"}-${String(s.floor).padStart(2,"0")}-${String(floorRooms(s.floor).length+1).padStart(2,"0")}`);
-  const k=uid(); S.plan.rooms.push({k,id:rid,name:"",type:"other",floor:s.floor,height:m.height?Math.max(2.2,Math.min(12,+m.height.toFixed(2))):3.2,
+  const g=shapeOf(m.poly), type=g.kind||"other";
+  const k=uid(); S.plan.rooms.push({k,id:rid,name:"",type,floor:s.floor,height:m.height?Math.max(2.2,Math.min(12,+m.height.toFixed(2))):3.2,
     poly:m.poly.map(p=>[+(p[0]+ox).toFixed(2),+(p[1]+oy).toFixed(2)]),doors:[]});
-  S.floor=s.floor; S.sel=k; setTab("plan"); edit(`Added ${rid} from measurements`); fit();
-  toast(`Added ${rid}. Drag it into place and set its type.`);
+  S.floor=s.floor; S.sel=k; setTab("plan"); edit(`Added ${rid} from measurements${g.kind?` as a ${TYPES[type].label.toLowerCase()}`:""}`); fit();
+  toast(g.kind?`Added ${rid} as a ${TYPES[type].label.toLowerCase()}: it's ${hallNote(g)}. Change its type if that's wrong, then drag it into place.`
+    :`Added ${rid}. Drag it into place and set its type.`);
 }
 /* ---------- walks: a corridor traced by worker.py --walk, with a placeholder room behind each door sign it read ----------
    The walk's own coordinates start at (0, 0). On a floor that already has rooms it goes beside them, since the walk
