@@ -76,18 +76,19 @@ worker/          the 3D measuring worker, run on your own computer (Python); vid
 - **Photos:** opt-in. The phone resizes each usable photo to 2048 px and re-encodes it, which strips GPS and other EXIF data, then uploads them one at a time. They're stored as JPEG bytes in the `photos` table of the same Neon database, and only served back through `/api/photos`. At about 0.5–1 MB a photo, Neon's free 0.5 GB holds roughly 500–1,000 photos. Each session reserves its number of photos up front; uploads beyond that, or more than 2 hours later, are refused.
 - **3D measuring:** a worker on your own computer measures each room from its uploaded photos. See [Measuring rooms from photos](#measuring-rooms-from-photos). It can also trace a corridor and its doors from a walk-through video. See [Mapping corridors from a walk](#mapping-corridors-from-a-walk).
 - **Saving:** each save includes the version it was based on. If someone else saved first, the server rejects it and the app merges room by room.
-- **Safety:** all input is checked field by field before it's stored. Setting `EDIT_KEY` makes every change require that key.
+- **Who can do what:** everyone can view the plan, get directions and contribute (submit capture sessions and upload their photos). Only editors, who enter `EDIT_KEY` under their name, can draw or change rooms, place the block on the map, import walks or restore versions. Without `EDIT_KEY` set, nobody can edit the shared plan.
+- **Safety:** all input is checked field by field before it's stored.
 - **No database?** The site still works, saving to each visitor's browser, and shows a banner saying so.
 
 | Route | Purpose |
 |-------|---------|
 | `GET /api/health` | Is a database connected? Is photo storage set up? Is an edit key needed? |
 | `GET /api/state` | Current plan, recent versions and sessions |
-| `PUT /api/plan` | Save the plan (returns 409 if someone saved first) |
+| `PUT /api/plan` | Save the plan (editors only: needs `x-edit-key`; returns 409 if someone saved first) |
 | `GET /api/versions?rev=N` | Fetch an old version |
 | `POST /api/sessions` | Submit a capture session (`photos`: how many it will upload) |
 | `POST /api/photos?session=&i=&w=&h=` | Upload one JPEG for a session |
-| `GET /api/photos?session=ID` / `?id=ID` | List a session's photos / fetch one |
+| `GET /api/photos?session=ID` / `?id=ID` | List a session's photos / fetch one (edit key or worker key) |
 | `POST /api/jobs` | Worker: claim the next session to measure |
 | `PUT /api/jobs?session=ID` | Worker: report the measurement, or why it failed |
 | `GET /api/jobs?session=ID` | A session's full measurement, for the plan overlay |
@@ -102,7 +103,7 @@ worker/          the 3D measuring worker, run on your own computer (Python); vid
 1. **Storage → Create Database → Neon (Postgres)**, connected to this project. This sets `DATABASE_URL`.
 2. Photo uploads need nothing extra: they're stored in the same database. To turn them off, set `PHOTO_UPLOAD=off`; the upload option is then hidden and photos stay on phones.
 3. For 3D measuring: add `WORKER_KEY` under **Settings → Environment Variables**, set to a long random password. The worker uses it to connect. Without it, no worker can connect.
-4. Optional: add `EDIT_KEY` too. It's then also needed to view photos.
+4. Add `EDIT_KEY`, a password you share only with editors. Visitors without it see the finished floor plan and can still contribute photos; editors enter it under **Set your name → Edit key** to draw rooms. It's also needed to view uploaded photos. Without it, the plan can't be edited by anyone.
 5. Redeploy.
 
 **Locally:**

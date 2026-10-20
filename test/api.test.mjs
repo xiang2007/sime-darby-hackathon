@@ -73,9 +73,13 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
   after(closeDb);
   await query("SELECT 1");
   await query("TRUNCATE plan, versions, sessions, photos, recon, workers RESTART IDENTITY");
+  const KEY = "open sesame", E = { "x-edit-key": KEY };
+  process.env.EDIT_KEY = KEY;
+  after(() => { delete process.env.EDIT_KEY; });
   const api = name => import(`../api/${name}.js`);
+  // Calls send the edit key unless a test passes its own x-edit-key ("" for none).
   const call = async (name, method, body, headers = {}) => {
-    const req = new Request(`http://x/api/${name}`, { method, headers: { "content-type": "application/json", ...headers },
+    const req = new Request(`http://x/api/${name}`, { method, headers: { "content-type": "application/json", ...E, ...headers },
       body: body === undefined ? undefined : JSON.stringify(body) });
     const res = await (await api(name.split("?")[0]))[method](new Request(`http://x/api/${name}`, req));
     return { status: res.status, etag: res.headers.get("etag"), body: [204, 304].includes(res.status) ? null : await res.json() };
@@ -84,7 +88,9 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
   await t.test("health reports the database", async () => {
     const r = await call("health", "GET");
     assert.equal(r.body.db, true);
-    assert.equal(r.body.editKey, false);
+    assert.equal(r.body.editKey, true);
+    assert.equal(r.body.editKeySet, true);
+    assert.equal(r.body.keyOk, true);
   });
 
   await t.test("empty state", async () => {
@@ -164,11 +170,11 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.equal(st.body.sessions.find(x => x._id === id).photos, 2);
     const list = await call(`photos?session=${id}`, "GET");
     assert.deepEqual(list.body.photos.map(p => [p.i, p.w, p.h, p.bytes]), [[0, 4, 3, 10], [1, 4, 3, 10]]);
-    const res = await (await api("photos")).GET(new Request(`http://x/api/photos?id=${list.body.photos[0].id}`));
+    const res = await (await api("photos")).GET(new Request(`http://x/api/photos?id=${list.body.photos[0].id}`, { headers: E }));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "image/jpeg");
     assert.deepEqual(new Uint8Array(await res.arrayBuffer()), jpeg);
-    assert.equal((await (await api("photos")).GET(new Request("http://x/api/photos?id=12345"))).status, 404);
+    assert.equal((await (await api("photos")).GET(new Request("http://x/api/photos?id=12345", { headers: E }))).status, 404);
     const none = await call("sessions", "POST", { block: "B", floor: 3, room: "B-03-02", verdict: "thin", frames: 9, usable: 9, gaps: 0 });
     assert.equal((await up(`session=${none.body._id}&i=0&w=4&h=3`)).status, 409, "session reserved no photos");
     process.env.PHOTO_UPLOAD = "off";
@@ -205,11 +211,8 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
       assert.equal(j.body.job.marker, "APU|B|03|B-03-01");
       assert.equal((await claim()).status, 204, "already being processed");
 
-      process.env.EDIT_KEY = "open sesame";
-      try {
-        const photo = id => api("photos").then(m => m.GET(new Request(`http://x/api/photos?id=${id}`, { headers: W })));
-        assert.equal((await photo(j.body.job.photos[0].id)).status, 200, "the worker can fetch photos with its own key");
-      } finally { delete process.env.EDIT_KEY; }
+      const photo = id => api("photos").then(m => m.GET(new Request(`http://x/api/photos?id=${id}`, { headers: W })));
+      assert.equal((await photo(j.body.job.photos[0].id)).status, 200, "the worker can fetch photos with its own key");
 
       assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result: { ...result, poly: [[0, 0]] } }, W)).status, 400);
       assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result }, W)).status, 200);
@@ -234,19 +237,31 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     } finally { delete process.env.WORKER_KEY; }
   });
 
-  await t.test("edit key", async () => {
-    process.env.EDIT_KEY = "open sesame";
+  await t.test("edit key: only editors change the plan, anyone can contribute", async () => {
+    const V0 = { "x-edit-key": "" };
+    const no = await call("plan", "PUT", { plan: plan(), baseRev: 4 }, V0);
+    assert.equal(no.status, 401);
+    assert.equal((await call("plan", "PUT", { plan: plan(), baseRev: 4 }, { "x-edit-key": "wrong" })).status, 401);
+    const s = await call("sessions", "POST", { block: "B", floor: 3, room: "x", verdict: "accepted", frames: 1, usable: 1, gaps: 0, photos: 1 }, V0);
+    assert.equal(s.status, 201, "viewers can submit sessions");
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
+    const up = await (await api("photos")).POST(new Request(`http://x/api/photos?session=${s.body._id}&i=0&w=4&h=3`,
+      { method: "POST", headers: { "content-type": "image/jpeg" }, body: jpeg }));
+    assert.equal(up.status, 201, "and upload their photos");
+    assert.equal((await call("plan", "GET", undefined, V0)).status, 200, "and view the plan");
+    const yes = await call("plan", "PUT", { plan: plan(), baseRev: 4 });
+    assert.equal(yes.status, 200);
+    assert.equal((await call("photos?session=1", "GET", undefined, V0)).status, 401, "viewing photos needs the key");
+    assert.equal((await call("jobs?session=1", "DELETE", undefined, V0)).status, 401, "so does resetting a measurement");
+    const h = await call("health", "GET", undefined, { "x-edit-key": "wrong" });
+    assert.equal(h.body.editKey, true); assert.equal(h.body.keyOk, false);
+    delete process.env.EDIT_KEY;
     try {
-      const no = await call("plan", "PUT", { plan: plan(), baseRev: 4 });
-      assert.equal(no.status, 401);
-      const s = await call("sessions", "POST", { block: "B", floor: 3, room: "x", verdict: "thin", frames: 1, usable: 1, gaps: 0 });
-      assert.equal(s.status, 401);
-      const yes = await call("plan", "PUT", { plan: plan(), baseRev: 4 }, { "x-edit-key": "open sesame" });
-      assert.equal(yes.status, 200);
-      assert.equal((await call("photos?session=1", "GET")).status, 401, "photos need the key too");
-      assert.equal((await call("jobs?session=1", "DELETE")).status, 401, "so does resetting a measurement");
-      const h = await call("health", "GET", undefined, { "x-edit-key": "wrong" });
-      assert.equal(h.body.editKey, true); assert.equal(h.body.keyOk, false);
-    } finally { delete process.env.EDIT_KEY; }
+      const off = await call("plan", "PUT", { plan: plan(), baseRev: 5 });
+      assert.equal(off.status, 503, "without EDIT_KEY nobody can edit");
+      assert.equal(off.body.error, "no_edit_key");
+      const h2 = await call("health", "GET");
+      assert.equal(h2.body.editKeySet, false); assert.equal(h2.body.keyOk, false);
+    } finally { process.env.EDIT_KEY = KEY; }
   });
 });

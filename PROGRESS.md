@@ -16,6 +16,7 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 | Contribute: photo checks, Live camera auto-capture (≤80 frames) | Working |
 | Photo upload to Neon Postgres (EXIF/GPS stripped) | Working, capped by the 0.5 GB free tier |
 | GPS tag for sessions, "Place on map" | Working (10–50 m indoors) |
+| **Viewers vs editors:** visitors only see the built floor plan (no drawing tools) but can still contribute; editing needs `EDIT_KEY` | **New**, working |
 | University picker and logos | Working |
 | Worker: measure one room from photos or video (COLMAP) | Rendered rooms only |
 | Worker `--walk`: trace a corridor from a walk video | Working on a rendered corridor; not yet on a real one (F1) |

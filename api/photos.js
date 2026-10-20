@@ -2,7 +2,7 @@
 //   POST /api/photos?session=&i=&w=&h=   body: the JPEG (image/jpeg). Slot i must be one the session reserved.
 //   GET  /api/photos?session=ID          the session's photos: [{id, i, w, h, bytes, at}]
 //   GET  /api/photos?id=ID               one photo's bytes
-// When EDIT_KEY is set, viewing photos needs the key too (or the worker's WORKER_KEY).
+// Anyone can upload to a session they submitted. Viewing photos needs the edit key (or the worker's WORKER_KEY).
 import { json, route, requireKey, workerKeyOk } from "../lib/http.js";
 import * as V from "../lib/validate.js";
 import { claimPhoto, savePhotoData, dropPhoto, listPhotos, getPhoto } from "../lib/store.js";
@@ -34,7 +34,6 @@ export const GET = route(async req => {
 
 export const POST = route(async req => {
   if (!photoStore()) return noStore();
-  const denied = requireKey(req); if (denied) return denied;
   const p = V.photoParams(req.url);
   if (+(req.headers.get("content-length") || 0) > V.MAX_PHOTO_BYTES) throw new V.Invalid("Photo is too large");
   const bytes = new Uint8Array(await req.arrayBuffer());
