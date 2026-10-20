@@ -312,7 +312,8 @@ def map_floor(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, 
     # every point counts for seeing through, the floor in front of the camera too, so the middle of a room
     # walked round is filled in
     count, lo = carve(cams, pts, F["obs_p"], F["obs_c"], F["heights"] > -0.3)
-    free = free_space(count, cams, lo, wall_cells(pts, F["heights"], count, lo))
+    walls = wall_cells(pts, F["heights"], count, lo)
+    free = free_space(count, cams, lo, walls)
     lab = split(free)
     ways = doorways(lab, lo)
     log(f"Found {lab.max()} rooms and hallways, {len(ways)} doorway(s).")
@@ -356,7 +357,7 @@ def map_floor(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, 
             if np.hypot(*d) < 0.2 or here <= 0:
                 continue
             d /= np.hypot(*d)
-            hit = _march(lab, lo, cams[i], d)
+            hit = _march(lab, walls, lo, cams[i], d)
             if hit is None:
                 continue
             near = [(float(np.hypot(*(dd["at"] - hit))), host, dd["to"]) for host, dd in doors if here in (host, dd["to"])]
@@ -415,15 +416,19 @@ def map_floor(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, 
     return result
 
 
-def _march(lab, lo, c, d, step=0.025, max_s=15.0):
-    """Follow the sight line from c along d until it leaves the floor space; the last point inside, or None."""
+def _march(lab, walls, lo, c, d, step=0.025, max_s=15.0):
+    """Follow the sight line from c along d to the wall it meets; the last point before it, or None. It carries on
+    through floor the walk didn't see (beside where filming started, say), but not out past the floor space."""
     last = None
     for s in np.arange(0.1, max_s, step):
         q = c + d * s
         x, y = np.round((q - lo) / GRID).astype(int)
-        if not (0 <= y < lab.shape[0] and 0 <= x < lab.shape[1]) or lab[y, x] < 0:
+        if not (0 <= y < lab.shape[0] and 0 <= x < lab.shape[1]):
+            return None
+        if walls[y, x]:
             return last
-        last = q
+        if lab[y, x] >= 0:
+            last = q
     return None
 
 
