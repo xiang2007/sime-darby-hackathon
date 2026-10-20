@@ -1,6 +1,7 @@
 // Photos that contributors chose to upload with a capture session.
-//   POST /api/photos?session=&i=&w=&h=   body: the JPEG (image/jpeg). Slot i must be one the session reserved.
-//   GET  /api/photos?session=ID          the session's photos: [{id, i, w, h, bytes, at}]
+//   POST /api/photos?session=&i=&w=&h=[&lat=&lng=&acc=]   body: the JPEG (image/jpeg). Slot i must be one the
+//                                        session reserved. lat/lng/acc: where it was taken (GPS-tagged sessions)
+//   GET  /api/photos?session=ID          the session's photos: [{id, i, w, h, bytes, at, geo}]
 //   GET  /api/photos?id=ID               one photo's bytes
 // Anyone can upload to a session they submitted. Viewing photos needs the edit key (or the worker's WORKER_KEY).
 import { json, route, requireKey, workerKeyOk } from "../lib/http.js";

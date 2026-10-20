@@ -617,6 +617,7 @@ def measure(recs, image_dir: Path, *, room=None, marker_text=None, work: Path | 
     sub = wall_pts if len(wall_pts) <= 1500 else wall_pts[np.random.default_rng(0).choice(len(wall_pts), 1500, replace=False)]
     result["wallPoints"] = rnd(sub)
     result["cameras"] = rnd(cams)
+    result["cameraNames"] = [os.path.basename(im.name) for im in imgs]   # which photo each camera position is
     result["marker"] = rnd(marker_xy[None])[0] if marker_xy is not None else None
 
     if work is not None:
