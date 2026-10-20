@@ -21,6 +21,7 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 | **Worker `--walk`: trace a corridor from a walk video** | **New**, rendered corridor only |
 | **App: Floor plan → Walks → Import walk** | **New**, working |
 | ffmpeg bundled via `imageio-ffmpeg` (was F2) | Fixed |
+| **OSM campus outline: boundary, footprints, paths on "Place on map"; snap block to footprint; 3D ground outline; GeoJSON export** | **New**, built and tested; no real APU snapshot yet |
 
 ### How `--walk` works (`worker/walk.py`)
 - **Path and scale:** COLMAP with sequential matching gives the camera path. "Up" comes from the walk's plane. Scale comes from phone height (1.45 m), checked against walking pace (1.25 m/s).
@@ -58,7 +59,7 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 
 ---
 
-## 3. Plan: campus outline from OpenStreetMap (OSM)
+## 3. Campus outline from OpenStreetMap (OSM): steps 2–4 built
 
 **Why:** blocks are placed by hand ("Place on map") on plain OSM tiles, and nothing shows where the campus ends or how buildings connect outside. OSM already maps many campuses: the boundary, building footprints and footpaths. Using that data gives a clear campus perimeter, a check on block placement, and outdoor routes between blocks. It doesn't help indoors; corridors still come from walks.
 
@@ -77,7 +78,15 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 4. **Snap blocks.** In "Place on map", pick a footprint; the block's position and rotation are fitted to it (rotation from the footprint's longest edge, the same 4-way search as `place()` in `floorplan.py`). The fitted `geo` is saved as it is now.
 5. **Outdoor routing (later).** Turn footpaths into a graph, link it to each block's ground-floor entrance doors, and let Directions route between blocks.
 
-**Done when:** "Place on map" shows the APU boundary and block outlines, a block can be snapped to its footprint, and the GeoJSON export includes the perimeter.
+**Built (2026-10-20):**
+- `scripts/osm-campus.mjs` saves `web/data/apu-campus.osm.json` (raw Overpass JSON). It reads the query from `web/index.html` (`CAMPUS_QUERY`), so the app and the script ask the same thing. It also takes a file exported from overpass-turbo.eu.
+- The app loads that snapshot; without one it asks Overpass from the browser and caches the answer for 7 days.
+- "Place on map" draws the boundary (gold dashed), buildings, footpaths (covered ones thicker) and entrances. Tap a building → **Snap to building**: rotation from the dominant wall direction of plan and footprint, 4-way search by overlap, position by area centroid. The building id is saved as `geo.osm` (validated as `way/N` or `relation/N`).
+- 3D view: faint boundary and footprints on the ground (kept out of the GLB export).
+- GeoJSON export: adds `campus_boundary` and the snapped `building_footprint` with OSM credit.
+- Tests: `test/campus.test.mjs` (parsing, multipolygon rings, snap recovers a 30° and a −120° turn within 1°, corners within 0.5 m). Headless Chromium with a stand-in snapshot: snap found the 25° turn, 91% overlap, saved `osm: way/3`, 3D and export correct, no page errors.
+
+**Still to do:** step 1 (check APU coverage, run `node scripts/osm-campus.mjs`, commit the snapshot). OSM and the CDNs were blocked in the dev sandbox, so nothing here has seen real APU data. Step 5 (outdoor routing) not started.
 
 **Risks:** OSM coverage of APU is unverified (Overpass was blocked in the dev sandbox); footprints can be a few metres off; covered walkways are often missing from OSM.
 
@@ -92,7 +101,7 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 | P1 | Merge overlapping corridors into one polygon | More walks → better map |
 | P1 | "Walk" session in Live camera (ordered, timestamped frames) + server-mode `--walk` | No laptop step for contributors |
 | P2 | F6: R2/S3 media storage | Video uploads at scale |
-| P1 | OSM campus outline: check coverage, snapshot GeoJSON, show perimeter, snap blocks (§3) | Clear campus perimeter, accurate block placement |
+| P0 | OSM step 1: check APU coverage on openstreetmap.org, run `node scripts/osm-campus.mjs`, commit `web/data/apu-campus.osm.json`, snap Block B and check it | The outline code is built; it needs real data |
 | P2 | Outdoor routing over OSM footpaths (§3 step 5) | Directions between blocks |
 | P3 | MASt3R/DUSt3R for blank corridors; visual place recognition | Robustness, markerless "you are here" |
 
@@ -116,5 +125,9 @@ python worker.py --photos session-42-B-03-02.zip --plan plan.json
 python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY
 
 # Tests
-python -m unittest test_walk
+python -m unittest test_walk          # worker (in worker/)
+npm test                              # API validation + campus outline
+
+# OSM campus snapshot (needs internet), then commit web/data/apu-campus.osm.json
+node scripts/osm-campus.mjs [overpass-export.json]
 ```
