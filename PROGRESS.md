@@ -26,6 +26,7 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 | **Campus backdrop under the Floor plan and in 3D; corners snap to the building outline** | **New**, working |
 | **Move tool: move and turn a walk (or any joined rooms) as one; Line up with building** | **New**, working |
 | GeoJSON export adds the campus boundary and snapped footprint | **New**, working |
+| **Hallways guessed from shape:** measured rooms that are long and narrow become Corridor (branching open areas become Lobby) on Add room to plan; **Mark as hallways** fixes rooms already on the plan | **New**, working (`test/shape.test.mjs`) |
 
 ### Building the map from the campus outline and videos
 1. **Floor plan** shows the APU boundary (gold dashed), the main building's footprint, nearby buildings and footpaths under the rooms. **ALL** zooms to the whole campus; **OSM** shows or hides the backdrop.
@@ -96,7 +97,7 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 | `test/campus.test.mjs` | Parsing, multipolygon rings; snap recovers a 30° and a −120° turn within 1°, corners within 0.5 m |
 | Snap on the real snapshot (headless Chromium) | Block B turned to 37.6°, `geo.osm` saved, export correct |
 | Backdrop and Move tool (headless Chromium) | 391 backdrop shapes drawn; a draw point snapped onto a building corner; a walk imported at 20° moved, lined up to 0.01°, turned 90°; 3D drew the building; OSM toggle hides it; no page errors |
-| `npm test` | 9 tests: 8 pass, 1 skipped (the Postgres API test runs only with `TEST_DATABASE_URL`) |
+| `npm test` | 12 tests: 11 pass, 1 skipped (the Postgres API test runs only with `TEST_DATABASE_URL`) |
 
 ### Open
 - **Blocks inside the main building** are placed by hand. To snap them fully, draw the block outlines in OSM (`building:part=*`) and refresh the snapshot, or align by shared door signs (F9).
