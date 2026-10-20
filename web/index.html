@@ -1224,8 +1224,8 @@ function renderInspector(){
       ${S.plan.geo?`<p class="small muted" style="margin:0 0 8px">Placed at ${S.plan.geo.lat.toFixed(5)}, ${S.plan.geo.lng.toFixed(5)}, turned ${S.plan.geo.rot}°. Directions can show GPS, and the GeoJSON export uses map coordinates.</p>`
         :`<p class="small muted" style="margin:0 0 8px">Not placed yet. Place the block on a real map so Directions can show GPS and the GeoJSON export lines up with map data.${S.showCampus&&S.campus&&mainBuilding()?" Until then the campus outline on the plan is lined up roughly, centred on the main building.":""}</p>`}
       ${S.readOnly?"":`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="mapPlace">${S.plan.geo?"Adjust on map":"Place on map"}</button>${S.plan.geo?`<button class="btn sm" id="mapClear">Remove</button>`:""}</div>`}
-      ${S.readOnly?"":`<h3>Walks</h3><p class="small muted" style="margin:0 0 8px">Film a slow walk along a corridor, run <span class="mono">worker.py --walk</span> on it, then import the <span class="mono">walk.json</span> it saves. The corridor and a room behind each door sign it read are added here.</p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="walkImport">Import walk</button><input type="file" id="walkIn" accept=".json,application/json" hidden></div>`}
+      ${S.readOnly?"":`<h3>Walks</h3><p class="small muted" style="margin:0 0 8px">Film a slow walk along the hallway that steps into each room, run <span class="mono">worker.py --map</span> on it, then import the <span class="mono">map.json</span> it saves. The hallways, the rooms and the doors between them are added where they really are. A <span class="mono">walk.json</span> from <span class="mono">--walk</span> (the corridor only) works too.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="walkImport">Import walk or map</button><input type="file" id="walkIn" accept=".json,application/json" hidden></div>`}
       ${halls.length?`<h3>Hallways</h3><p class="small muted" style="margin:0 0 8px">${halls.length===1?"This room looks":"These rooms look"} like ${halls.length===1?"a hallway":"hallways"} from ${halls.length===1?"its":"their"} shape. Directions prefers corridors and lobbies, so marking them gives better routes.</p>
       <ul class="small" style="margin:0 0 8px;padding-left:18px">${halls.map(h=>`<li><span class="mono">${esc(h.r.id)}</span>: ${TYPES[h.g.kind].label.toLowerCase()}, ${esc(hallNote(h.g))}</li>`).join("")}</ul>
       <button class="btn sm" id="markHalls">Mark as hallways</button>`:""}
@@ -1926,10 +1926,59 @@ function walkPlan(w,fl){
   const move=q=>q.map(([x,y])=>[+(x+ox).toFixed(2),+(y+oy).toFixed(2)]);
   return {corridor:{poly:move(corridor),doors:doors(corridor,w.corridor.doors)},rooms:rooms.map(r=>({...r,poly:move(r.poly)}))};
 }
+/* ---------- maps: rooms, hallways and the doors between them, from one walk (worker.py --map) ----------
+   Everything was measured in one frame, so it's added as one piece. Rooms already on the floor with the same ID
+   (read from their door signs) get the measured outline. If two or more of them are already laid out the way the
+   map has them (within 1.5 m), the map is turned (in 90° steps) and moved onto them. Otherwise their positions
+   can't be trusted (measured rooms are added side by side), so the map goes on an empty floor's origin, or beside
+   the other rooms. */
+function mapPlan(w,fl){
+  if (w?.kind!=="map" || !Array.isArray(w.regions) || !w.regions.length) throw new Error("That isn't a map.json from worker.py --map.");
+  const pt=p=>{ if(!Array.isArray(p)||p.length!==2||!p.every(Number.isFinite)) throw new Error("The map has a bad point in it."); return p; };
+  const poly=q=>{ if(!Array.isArray(q)||q.length<3||q.length>200) throw new Error("The map has an outline with too few or too many corners."); return q.map(pt); };
+  const regions=w.regions.slice(0,200).map(r=>{ const q=poly(r?.poly);
+    const doors=(Array.isArray(r.doors)?r.doors:[]).filter(d=>Number.isInteger(d?.e)&&d.e>=0&&d.e<q.length&&Number.isFinite(d.t)).slice(0,50)
+      .map(d=>({e:d.e,t:Math.max(0,Math.min(1,+d.t)),w:Math.max(.3,Math.min(5,+d.w||DOOR_W))}));
+    return {id:typeof r.id==="string"&&r.id.trim()?r.id.trim().slice(0,24):null, type:["corridor","lobby"].includes(r.type)?r.type:"other",
+      poly:q, doors, partial:!!r.partial}; });
+  const here=new Map(floorRooms(fl).map(r=>[r.id,r])), match=regions.filter(r=>r.id&&here.has(r.id));
+  const rot=(p,k)=>{ let [x,y]=p; for(let i=0;i<k;i++) [x,y]=[-y,x]; return [x,y]; };
+  let best=null;
+  if (match.length>1) for (let k=0;k<4;k++){
+    const A=match.map(r=>rot(centroid(r.poly),k)), B=match.map(r=>centroid(here.get(r.id).poly));
+    const t=[0,1].map(i=>B.reduce((s,b,j)=>s+b[i]-A[j][i],0)/B.length), err=A.reduce((s,a,j)=>s+dist([a[0]+t[0],a[1]+t[1]],B[j]),0)/A.length;
+    if (err<=1.5 && (!best || err<best.err)) best={k,t,err}; }
+  const others=floorRooms(fl).filter(r=>!match.some(m=>m.id===r.id)).flatMap(r=>r.poly);
+  if (!best){ const [x0,y0]=bbox(regions.flatMap(r=>r.poly)); best={k:0,t:others.length?[bbox(others)[2]+2-x0,bbox(others)[1]-y0]:[-x0,-y0]}; }
+  const move=q=>q.map(p=>{ const [x,y]=rot(p,best.k); return [+(x+best.t[0]).toFixed(2),+(y+best.t[1]).toFixed(2)]; });
+  return {regions:regions.map(r=>({...r,poly:move(r.poly)})), lined:best.err!=null, beside:best.err==null&&others.length>0};
+}
+function importMap(w){
+  const fl=Number.isInteger(w?.floor)?w.floor:S.floor;
+  let plan; try{ plan=mapPlan(w,fl); }catch(e){ toast(e.message); return; }
+  if (!S.plan.floors.some(f=>f.level===fl)) S.plan.floors.push({level:fl,name:"Level "+fl});
+  if (!S.plan.block && typeof w.block==="string") S.plan.block=w.block.trim().toUpperCase().slice(0,8);
+  const blk=S.plan.block||"X", pre=`${blk}-${String(fl).padStart(2,"0")}`, added=[], replaced=[], partial=[];
+  let n=0;
+  plan.regions.forEach(r=>{
+    const old=r.id&&floorRooms(fl).find(x=>x.id===r.id);
+    if (old){ old.poly=r.poly; old.doors=r.doors; if(old.type==="other") old.type=r.type; replaced.push(old.id); }
+    else { const id=uniqueId(r.id||(r.type==="other"?`${pre}-R${++n}`:`${pre}-${r.type==="lobby"?"LOBBY":"HALL"}`)), k=uid();
+      S.plan.rooms.push({k,id,name:"",type:r.type,floor:fl,height:3.2,poly:r.poly,doors:r.doors}); added.push(id); }
+    if (r.partial) partial.push(r.id||"one room");
+  });
+  const halls=plan.regions.filter(r=>r.type!=="other").length, doors=plan.regions.reduce((s,r)=>s+r.doors.length,0);
+  S.floor=fl; S.sel=null; setTab("plan"); edit(`Imported a map: ${halls} hallway${halls===1?"":"s"}, ${plan.regions.length-halls} room${plan.regions.length-halls===1?"":"s"}, ${doors} door${doors===1?"":"s"}`); fit();
+  toast(`Added ${halls} hallway${halls===1?"":"s"} and ${plan.regions.length-halls} room${plan.regions.length-halls===1?"":"s"} with ${doors} door${doors===1?"":"s"}.`
+    +(replaced.length?` ${replaced.join(", ")} ${replaced.length===1?"has":"have"} the measured outline now (the old one is in History)${plan.lined?", and the map is lined up with where they were":""}.`:"")
+    +(plan.beside?" It's beside the other rooms on this floor; use Move to put it in place.":"")
+    +(partial.length?` ${partial.join(", ")} ${partial.length===1?"was":"were"} only seen through the door, so the outline is partial.`:""));
+}
 async function importWalk(file){
   if (S.readOnly) return;
   let w, plan;
-  try{ w=JSON.parse(await file.text()); }catch(e){ toast("That file isn't a walk.json."); return; }
+  try{ w=JSON.parse(await file.text()); }catch(e){ toast("That file isn't a walk.json or map.json."); return; }
+  if (w?.kind==="map") return importMap(w);
   const fl=Number.isInteger(w?.floor)?w.floor:S.floor;
   try{ plan=walkPlan(w,fl); }catch(e){ toast(e.message); return; }
   if (!S.plan.floors.some(f=>f.level===fl)) S.plan.floors.push({level:fl,name:"Level "+fl});

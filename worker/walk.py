@@ -345,8 +345,10 @@ def _floor(P, C, c0, up):
     return max(below, key=lambda x: int((np.abs(h - x) < 2 * w).sum())) if below else None
 
 
-def trace_walk(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, block=None, work: Path | None = None, log=print):
-    """recs: from floorplan.run_sfm. times: {image basename: seconds into the video}, if known."""
+def walk_frame(recs, times=None):
+    """The walk in metres, on the floor plane, squared up to the building: cameras in walking order, 3D points,
+    and which points are on the walls. Up comes from the walk's plane, scale from phone height checked against
+    walking pace. Shared by --walk and --map."""
     imgs, poses, C, P, obs_p, obs_c = _gather(recs)
     order = np.argsort([Path(im.name).name for im in imgs], kind="stable")
     imgs = [imgs[i] for i in order]
@@ -415,6 +417,15 @@ def trace_walk(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None,
     Rm = _rot(theta)
     pts, cams = Pm @ Rm.T, Cm @ Rm.T
     wall_pts = pts[band]
+    return dict(imgs=imgs, poses=poses, C=C, P=P, obs_p=obs_p, obs_c=obs_c, flat=flat, Rm=Rm, pts=pts, cams=cams,
+                band=band, wall_pts=wall_pts, scale=scale, notes=notes)
+
+
+def trace_walk(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, block=None, work: Path | None = None, log=print):
+    """recs: from floorplan.run_sfm. times: {image basename: seconds into the video}, if known."""
+    F = walk_frame(recs, times)
+    imgs, poses, C, P, notes, flat, Rm, pts, cams, wall_pts, scale = (F[k] for k in
+        ("imgs", "poses", "C", "P", "notes", "flat", "Rm", "pts", "cams", "wall_pts", "scale"))
 
     # the walk, smoothed and squared up
     k = 2
