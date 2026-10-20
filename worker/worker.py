@@ -2,8 +2,10 @@
 """UCampass(PIC) reconstruction worker. Runs on your own computer, not on Vercel.
 
 It asks the website for capture sessions whose photos or walk video have been uploaded.
-Photos: it measures the room (see floorplan.py) and sends the outline and height back; the result
-shows up on the Floor plan tab, where someone can compare it with the drawn room and apply it.
+Photos (Contribute → Live camera, or photos added by hand, with "upload for 3D" ticked): it downloads them from
+the website (kept in its Neon database), measures the room in 3D (see floorplan.py) and sends the outline and
+height back. The website puts the room on the floor plan straight away: over the drawn room with the same ID, or
+where the session's GPS says, lined up with the walls around it.
 Walk videos (Contribute → Map a whole floor): it downloads the video from the website (kept in its Neon database),
 maps the floor (see floormap.py) and sends the map back. The website adds it to the floor plan straight
 away, placed by the session's GPS, as Floor plan → Import walk or map would.
@@ -51,7 +53,7 @@ from video import VideoError, extract_frames  # noqa: E402
 from floormap import map_floor  # noqa: E402
 from walk import trace_walk  # noqa: E402
 
-VERSION = "2"
+VERSION = "3"
 
 
 def log(*a):
@@ -281,8 +283,9 @@ def run_server(args):
                 log(f"Session {sid}: room {j['session']['room']}, {len(j['photos'])} photos")
                 files = [(f"{p['i']:03d}.jpg", api.call("GET", f"/api/photos?id={p['id']}", raw=True)) for p in j["photos"]]
                 result = process(files, j.get("room"), j.get("marker"))
-                api.call("PUT", f"/api/jobs?session={sid}", {"status": "done", "result": result})
+                r = api.call("PUT", f"/api/jobs?session={sid}", {"status": "done", "result": result})
                 log(f"Session {sid} done:", summary(result))
+                log_room_import(sid, (r or {}).get("imported"))
         except (ReconError, VideoError) as e:
             log(f"Session {sid} failed:", e)
             api.call("PUT", f"/api/jobs?session={sid}", {"status": "failed", "error": str(e)})
@@ -298,6 +301,19 @@ def run_server(args):
 
 PLACED = {"gps": "placed by the session's GPS", "rooms": "lined up with the rooms already on the plan",
           "beside": "beside the other rooms (no GPS)", "origin": "on an empty floor (no GPS)"}
+
+
+def log_room_import(sid, imp):
+    if not imp:
+        return
+    if imp.get("error"):
+        log(f"Session {sid}: not put on the plan:", imp["error"])
+        return
+    what = f"new outline for {imp['room']}" if imp.get("action") == "replaced" else f"added {imp['room']}"
+    where = {"room": f"over the drawn room ({round((imp.get('match') or 0) * 100)}% the same)"}.get(imp.get("placed")) or PLACED.get(imp.get("placed"), imp.get("placed"))
+    walls = f", lined up with {imp['snapped']} wall(s) nearby" if imp.get("snapped") else ""
+    log(f"Session {sid}: on the floor plan as revision r{imp['rev']}: {what}, {where}"
+        + (f" in {imp['building']}" if imp.get("building") else "") + walls + ".")
 
 
 def run_map_job(api, j, args):
@@ -333,7 +349,8 @@ def run_map_job(api, j, args):
         what = (f"added {', '.join(imp['added'])}" if imp.get("added") else "") + \
                (f"{'; ' if imp.get('added') else ''}updated {', '.join(imp['replaced'])}" if imp.get("replaced") else "")
         log(f"Session {sid}: on the floor plan as revision r{imp['rev']}, {PLACED.get(imp.get('placed'), imp.get('placed'))}"
-            + (f" in {imp['building']}" if imp.get("building") else "") + (f": {what}" if what else "") + ".")
+            + (f" in {imp['building']}" if imp.get("building") else "")
+            + (f", lined up with {imp['snapped']} wall(s) nearby" if imp.get("snapped") else "") + (f": {what}" if what else "") + ".")
 
 
 def main():

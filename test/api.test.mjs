@@ -215,9 +215,23 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
       assert.equal((await photo(j.body.job.photos[0].id)).status, 200, "the worker can fetch photos with its own key");
 
       assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result: { ...result, poly: [[0, 0]] } }, W)).status, 400);
-      assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result }, W)).status, 200);
+      const rev0 = (await call("plan", "GET")).body.plan.rev;
+      const done = await call(`jobs?session=${id}`, "PUT", { status: "done", result }, W);
+      assert.equal(done.status, 200);
       assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result }, W)).status, 409, "not claimed any more");
+      // The measured outline goes straight onto the drawn room, as a new plan revision
+      assert.equal(done.body.imported.action, "replaced");
+      assert.equal(done.body.imported.room, "B-03-01");
+      assert.equal(done.body.imported.placed, "room");
+      assert.equal(done.body.imported.rev, rev0 + 1);
+      const p1 = (await call("plan", "GET")).body;
+      assert.equal(p1.plan.rev, rev0 + 1);
+      const r1 = p1.plan.rooms.find(r => r.id === "B-03-01" && r.floor === 3);
+      assert.deepEqual(r1.poly, [[0, 0], [7.2, 0], [7.2, 5.4], [0, 5.4]]);
+      assert.equal(r1.height, 3);
+      assert.match((await call("versions", "GET")).body.versions[0].note, /Worker measured session/);
       const st = await call("state", "GET");
+      assert.equal(st.body.sessions.find(x => x._id === id).recon.result.imported.room, "B-03-01", "the outcome is kept with the measurement");
       const rec = st.body.sessions.find(x => x._id === id).recon;
       assert.equal(rec.status, "done");
       assert.equal(rec.result.area, 38.88);

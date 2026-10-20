@@ -7,6 +7,9 @@
 //                                   A finished map is added to the plan straight away (lib/mapimport.js), placed by
 //                                   the session's GPS; the plan's History keeps the version before it. Then the
 //                                   video is deleted to free database space, unless KEEP_VIDEOS=1.
+//                                   A measured room goes on the plan too: over the drawn room with the same ID, or
+//                                   where the session's GPS says, lined up with the walls around it (mergeScan).
+//                                   The response says what happened: {ok, imported}.
 //   GET    /api/jobs?session=ID     the full measurement, with wall points for the plan overlay
 //   DELETE /api/jobs?session=ID     forget the measurement so the session is measured again (edit key)
 // The worker authenticates with WORKER_KEY in x-worker-key.
@@ -14,7 +17,7 @@ import { json, readJson, route, requireKey, requireWorker, workerKeyOk } from ".
 import * as V from "../lib/validate.js";
 import { claimJob, dropVideo, finishJob, getPlan, getRecon, getSession, listPhotos, noteImport, resetRecon, savePlan, workerSeen } from "../lib/store.js";
 import { keepVideos, VIDEO_CHUNK } from "../lib/videos.js";
-import { importNote, mergeMap } from "../lib/mapimport.js";
+import { importNote, mergeMap, mergeScan, scanNote, Skip } from "../lib/mapimport.js";
 
 const sessionParam = req => {
   const v = new URL(req.url).searchParams.get("session");
@@ -49,29 +52,31 @@ export const PUT = route(async req => {
   const outcome = V.jobOutcome(await readJson(req), session.kind);
   const ok = await finishJob(id, outcome);
   if (!ok) return json({ error: "not_claimed", message: "That session isn't being processed by a worker." }, 409);
-  if (session.kind !== "map" || outcome.status !== "done") return json({ ok: true });
-  const imported = await addToPlan(session, outcome.result, session.recon?.worker);
+  if (outcome.status !== "done") return json({ ok: true });
+  const map = session.kind === "map", worker = session.recon?.worker;
+  const imported = await addToPlan(session, outcome.result, worker, map ? mergeMap : mergeScan, map ? importNote : scanNote, map ? "map" : "room");
   await noteImport(id, imported);
   // Keep the video if it couldn't be added, so Try again can map it again.
-  if (!imported.error && !keepVideos()) await dropVideo(id).catch(e => console.error(e));
+  if (map && !imported.error && !keepVideos()) await dropVideo(id).catch(e => console.error(e));
   return json({ ok: true, imported });
 });
 
-/** Add a finished map to the plan as a new revision, trying again if someone saves in between. */
-async function addToPlan(session, map, worker) {
+/** Add a finished map or room to the plan as a new revision, trying again if someone saves in between. */
+async function addToPlan(session, result, worker, merge, note, what) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const current = await getPlan();
     try {
-      const { plan, summary } = mergeMap(current, map, session);
+      const { plan, summary } = merge(current, result, session);
       const r = await savePlan({ data: V.plan(plan), author: `Worker ${worker || ""}`.trim().slice(0, 60),
-        note: importNote(session._id, summary).slice(0, 200), baseRev: current?.rev || 0, force: false });
+        note: note(session._id, summary).slice(0, 200), baseRev: current?.rev || 0, force: false });
       if (!r.conflict) return { rev: r.rev, ...summary };
     } catch (e) {
+      if (e instanceof Skip) return { error: e.message, skipped: true };
       console.error(e);
-      return { error: e instanceof V.Invalid ? `The map couldn't be added to the plan: ${e.message}` : "The map couldn't be added to the plan." };
+      return { error: e instanceof V.Invalid ? `The ${what} couldn't be added to the plan: ${e.message}` : `The ${what} couldn't be added to the plan.` };
     }
   }
-  return { error: "The plan kept changing while the map was being added. Use Try again." };
+  return { error: `The plan kept changing while the ${what} was being added. Use Try again.` };
 }
 
 export const GET = route(async req => {

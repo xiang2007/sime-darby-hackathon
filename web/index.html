@@ -1706,11 +1706,15 @@ function startGeo(){
   if (!navigator.geolocation){ C.geoOn=false; toast("This browser can't share your location."); renderCapture(); return; }
   geoWatch=navigator.geolocation.watchPosition(p=>{
       const g={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy};
-      // Keep the most accurate fix seen during the session.
+      // Keep the most accurate fix seen during the session, and all of them to average when it's submitted (walkGeo).
       if (!C.geo || g.acc<=C.geo.acc) C.geo=g;
+      (C.fixes||(C.fixes=[])).push(g); if (C.fixes.length>600) C.fixes.splice(0,C.fixes.length-600);
       if (live?.rec) { live.fixes.push(g); recHud(); }
       else if (live) liveHud($("#liveHint").textContent); else renderGeoLine();
-    },e=>{ stopGeo(); C.geoOn=false; C.geo=null; renderCapture();
+    },e=>{
+      // Indoors a fix often times out or drops for a moment: keep the fixes so far and keep watching.
+      if (e.code!==1 && C.geo) return;
+      stopGeo(); C.geoOn=false; C.geo=null; C.fixes=[]; renderCapture();
       toast(e.code===1?"Location access was blocked, so this session won't be tagged.":"Couldn't get a GPS fix. This session won't be tagged."); },
     {enableHighAccuracy:true,maximumAge:15000,timeout:30000});
 }
@@ -1782,7 +1786,7 @@ function renderCapture(){
   $("#cRoom").onchange=()=>renderCapture();
   $("#cConsent").onchange=e=>{C.consent=e.target.checked; renderCapture();};
   const sh=$("#cShare"); if(sh) sh.onchange=e=>{C.share=e.target.checked; renderCapture();};
-  $("#cGeo").onchange=e=>{ C.geoOn=e.target.checked; if(C.geoOn) startGeo(); else { stopGeo(); C.geo=null; } renderCapture(); };
+  $("#cGeo").onchange=e=>{ C.geoOn=e.target.checked; if(C.geoOn) startGeo(); else { stopGeo(); C.geo=null; C.fixes=[]; } renderCapture(); };
   const cl=$("#cClear"); if(cl) cl.onclick=()=>{ C.frames=[]; C.fromMarker=false; renderCapture(); };
   $("#cSubmit").onclick=submitSession;
   renderVideo();
@@ -1851,7 +1855,7 @@ async function uploadVideo(){
       videoProgress(Math.min(99,100*sent/f.size),`Uploading ${mb(sent)} of ${mb(f.size)}… keep this page open.`);
     }
     if (!last?.ready) throw new Error("The upload didn't finish. Try again.");
-    C.vid={file:null,consent:false,up:null}; C.geoOn=false; C.geo=null; stopGeo();
+    C.vid={file:null,consent:false,up:null}; C.geoOn=false; C.geo=null; C.fixes=[]; stopGeo();
     poll(true); setTab("sessions");
     toast(S.worker&&Date.now()-S.worker.seen<3*60e3?"Video uploaded. The worker will map it and add it to the Floor plan.":"Video uploaded. It'll be mapped and added to the Floor plan when a worker is running (see Sessions).");
   }catch(e){ if(C.vid) C.vid.up=null; renderVideo(); toast(e.message||"Couldn't upload the video."); }
@@ -1894,7 +1898,7 @@ async function submitSession(){
   const C=S.capture, sm=summary(), share=C.share && canShare() ? shareFrames() : [];
   const doc={at:Date.now(),by:S.meId,block:C.block,floor:C.floor,room:C.room,frames:sm.total,usable:sm.ok,gaps:sm.jumps,verdict:sm.verdict,
     reasons:sm.reasons,tally:sm.tally,marker:!!C.fromMarker,photos:share.length,
-    ...(C.geoOn&&C.geo?{geo:{lat:C.geo.lat,lng:C.geo.lng,acc:C.geo.acc}}:{}),
+    ...(C.geoOn&&C.geo?{geo:(g=>({lat:g.lat,lng:g.lng,acc:g.acc}))(walkGeo(C.fixes||[])||C.geo)}:{}),
     medians:{sharp:+median(C.frames.filter(f=>f.sharp!=null).map(f=>f.sharp)).toFixed(1),bright:+median(C.frames.filter(f=>f.bright!=null).map(f=>f.bright)).toFixed(1)}};
   $("#cSubmit").disabled=true;
   try{
@@ -1907,7 +1911,7 @@ async function submitSession(){
         poll(true);
       } }
     else if (S.db){ delete doc.photos; await S.db.collection("sessions").add(doc); } else { delete doc.photos; S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
-    C.frames=[]; C.consent=false; C.share=false; C.fromMarker=false; C.geoOn=false; C.geo=null; stopGeo();
+    C.frames=[]; C.consent=false; C.share=false; C.fromMarker=false; C.geoOn=false; C.geo=null; C.fixes=[]; stopGeo();
     toast(failed?`Session submitted, but ${failed} of ${share.length} photos didn't upload.`:sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":share.length?`Session and ${share.length} photos submitted. Thanks!`:"Session submitted. Thanks!");
     if(!S.db && !S.api){ updateCounts(); }
     setTab("sessions");
@@ -1963,11 +1967,22 @@ function workerState(){
   if (!w) return {cls:"idle",label:"No worker",note:S.api?"Run worker/worker.py on a computer to measure rooms (see README)":"Needs the server version of the app"};
   return Date.now()-w.seen<3*60e3 ? {cls:"ok",label:"Live",note:`“${w.name}” is checking for new photos`} : {cls:"idle",label:"Offline",note:`“${w.name}” last checked in ${ago(w.seen)}`};
 }
-const scanRoom=s=>{ const rs=S.plan.rooms.filter(r=>r.id===s.room); return rs.find(r=>r.floor===s.floor)||rs[0]||null; };
+// The room a measurement is for: the one the worker put it on (see mergeScan in lib/mapimport.js), else the session's tag.
+const scanRoom=s=>{ const imp=s.recon?.result?.imported, id=imp&&!imp.error?imp.room:s.room, fl=imp&&!imp.error?imp.floor:s.floor;
+  const rs=S.plan.rooms.filter(r=>r.id===id); return rs.find(r=>r.floor===fl)||rs[0]||null; };
 function scansFor(r){ return S.sessions.filter(s=>s.recon?.status==="done" && s.recon.result && scanRoom(s)===r).sort((a,b)=>b.recon.at-a.recon.at); }
-// Where the measured outline sits on the plan. The worker places it over the drawn room when it can.
-function scanShift(m,r){ if(m.aligned||!r) return [0,0]; const a=centroid(r.poly), b=centroid(m.poly); return [a[0]-b[0],a[1]-b[1]]; }
-const PLACED={gps:"placed by GPS",rooms:"lined up with rooms already there",beside:"beside the other rooms (no GPS)",origin:"on an empty floor"};
+// Where the measured outline sits on the plan: as the website put it there (turned k × 90°, then moved by t), else over
+// the drawn room (the worker lines it up when it can).
+function scanXf(m,r){
+  const xf=m.imported&&!m.imported.error&&m.imported.xf;
+  if (xf) return p=>{ let [x,y]=p; for(let i=0;i<xf.k;i++) [x,y]=[-y,x]; return [x+xf.t[0],y+xf.t[1]]; };
+  if (m.aligned||!r) return p=>p;
+  const a=centroid(r.poly), b=centroid(m.poly); return p=>[p[0]+a[0]-b[0],p[1]+a[1]-b[1]];
+}
+const PLACED={gps:"placed by GPS",rooms:"lined up with rooms already there",room:"over the drawn room",beside:"beside the other rooms (no GPS)",origin:"on an empty floor"};
+const wallsNote=n=>n?`, lined up with ${n} wall${n===1?"":"s"} nearby`:"";
+// OpenStreetMap buildings without a name are known by their ID (way/123)
+const bldg=b=>/^(way|relation)\/\d+$/.test(b)?"the building outline":b;
 function mapCell(s){
   const r=s.recon, ro=S.readOnly;
   if (!r) return s.video?.uploaded?`<span class="pill idle">Waiting for worker</span>`:`<span class="muted small">${Date.now()-s.at<2*3600e3?"Uploading…":"Upload didn't finish"}</span>`;
@@ -1978,7 +1993,7 @@ function mapCell(s){
   if (imp.error) return `<span class="pill bad">Not added</span><div class="small muted" style="margin:4px 0">${esc(imp.error)}</div>${ro?"":`<button class="btn sm" data-retry="${esc(s._id)}">Try again</button>`}`;
   const n=(imp.added||[]).length+(imp.replaced||[]).length;
   return `<span class="pill ok">On the plan</span> <span class="small muted">r${esc(imp.rev)}</span>
-    <div class="small" style="margin:4px 0">${imp.halls} hallway${imp.halls===1?"":"s"}, ${imp.rooms} room${imp.rooms===1?"":"s"}, ${imp.doors} door${imp.doors===1?"":"s"} · ${esc(PLACED[imp.placed]||imp.placed)}${imp.building?` in ${esc(imp.building)}`:""}${imp.placedBlock?". Block placed roughly on the map: fine-tune with Place on map":""}</div>
+    <div class="small" style="margin:4px 0">${imp.halls} hallway${imp.halls===1?"":"s"}, ${imp.rooms} room${imp.rooms===1?"":"s"}, ${imp.doors} door${imp.doors===1?"":"s"} · ${esc(PLACED[imp.placed]||imp.placed)}${imp.building?` in ${esc(bldg(imp.building))}`:""}${wallsNote(imp.snapped)}${imp.placedBlock?". Block placed roughly on the map: fine-tune with Place on map":""}</div>
     ${(m.notes||[]).length?`<details class="small muted"><summary>${m.notes.length} note${m.notes.length===1?"":"s"}</summary>${m.notes.map(esc).join("<br>")}</details>`:""}
     ${n?`<button class="btn sm" data-mapshow="${esc(s._id)}">Show on plan</button>`:""}`;
 }
@@ -1994,8 +2009,10 @@ function reconCell(s){
   if (!r) return s.photos>=MIN_RECON && s.verdict!=="rejected" ? `<span class="pill idle">Waiting for worker</span>` : `<span class="muted small">—</span>`;
   if (r.status==="processing") return `<span class="pill warn">Measuring…</span>`;
   if (r.status==="failed") return `<span class="pill bad">Failed</span><div class="small muted" style="margin:4px 0">${esc(r.error||"")}</div>${S.readOnly?"":`<button class="btn sm" data-retry="${esc(s._id)}">Try again</button>`}`;
-  const m=r.result, onPlan=!!scanRoom(s);
-  return `<span class="mono small">${m.size[0].toFixed(2)} × ${m.size[1].toFixed(2)} m</span>${m.height?`<span class="small muted"> · ${m.height.toFixed(2)} m high</span>`:""}
+  const m=r.result, onPlan=!!scanRoom(s), imp=m.imported;
+  const status=!imp?"":imp.error?`<div style="margin-top:4px"><span class="pill ${imp.skipped?"warn":"bad"}">Not put on the plan</span><div class="small muted" style="margin:4px 0">${esc(imp.error)}</div></div>`
+    :`<div style="margin-top:4px"><span class="pill ok">On the plan</span> <span class="small muted">r${esc(imp.rev)}</span><div class="small" style="margin-top:4px">${imp.action==="replaced"?`New outline for ${esc(imp.room)}`:`Added ${esc(imp.room)}${imp.type&&imp.type!=="other"?` as a ${esc(imp.type)}`:""}`} · ${esc(PLACED[imp.placed]||imp.placed)}${imp.building?` in ${esc(bldg(imp.building))}`:""}${wallsNote(imp.snapped)}${imp.placedBlock?". Block placed roughly on the map: fine-tune with Place on map":""}</div></div>`;
+  return `<span class="mono small">${m.size[0].toFixed(2)} × ${m.size[1].toFixed(2)} m</span>${m.height?`<span class="small muted"> · ${m.height.toFixed(2)} m high</span>`:""}${status}
     <div style="margin-top:4px">${onPlan?`<button class="btn sm" data-scan="${esc(s._id)}">Show on plan</button>`:S.readOnly?`<span class="small muted">Room isn't on the plan</span>`:`<button class="btn sm" data-addscan="${esc(s._id)}">Add room to plan</button>`}</div>`;
 }
 async function loadScan(id){
@@ -2007,16 +2024,16 @@ async function loadScan(id){
 function showScan(id){
   const s=S.sessions.find(x=>x._id===id), r=s&&scanRoom(s); if(!r) return;
   S.floor=r.floor; S.sel=r.k; S.scanView=id; loadScan(id); setTab("plan"); setSheet(false);
-  const [x0,y0,x1,y1]=bbox([...r.poly,...s.recon.result.poly]); S.view.cx=(x0+x1)/2; S.view.cy=(y0+y1)/2; renderPlan();
+  const xf=scanXf(s.recon.result,r), [x0,y0,x1,y1]=bbox([...r.poly,...s.recon.result.poly.map(xf)]); S.view.cx=(x0+x1)/2; S.view.cy=(y0+y1)/2; renderPlan();
 }
 function scanOverlay(fs){
   const s=S.scanView&&S.sessions.find(x=>x._id===S.scanView), m=s?.recon?.result, r=s&&scanRoom(s);
   if (!m || !r || r.floor!==S.floor) return "";
-  const [dx,dy]=scanShift(m,r), acc=css("--accent"), P=m.poly.map(p=>[p[0]+dx,p[1]+dy]), full=S.scanCache[s._id];
+  const xf=scanXf(m,r), acc=css("--accent"), P=m.poly.map(xf), full=S.scanCache[s._id];
   let g="";
-  if (full){ const w=2.5/S.view.scale; let d=""; full.wallPoints.forEach(([x,y])=>d+=`M${x+dx-w/2},${y+dy-w/2}h${w}v${w}h${-w}z`); g+=`<path d="${d}" fill="${css("--ink")}" fill-opacity=".45"/>`; }
+  if (full){ const w=2.5/S.view.scale; let d=""; full.wallPoints.forEach(q=>{ const [x,y]=xf(q); d+=`M${x-w/2},${y-w/2}h${w}v${w}h${-w}z`; }); g+=`<path d="${d}" fill="${css("--ink")}" fill-opacity=".45"/>`; }
   g+=`<polygon points="${P.map(p=>p.join(",")).join(" ")}" fill="${acc}" fill-opacity=".08" stroke="${acc}" stroke-width="2.5" stroke-dasharray="7 4" vector-effect="non-scaling-stroke"/>`;
-  if (m.marker){ const [x,y]=[m.marker[0]+dx,m.marker[1]+dy], w=8/S.view.scale; g+=`<rect x="${x-w/2}" y="${y-w/2}" width="${w}" height="${w}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke"/>`; }
+  if (m.marker){ const [x,y]=xf(m.marker), w=8/S.view.scale; g+=`<rect x="${x-w/2}" y="${y-w/2}" width="${w}" height="${w}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke"/>`; }
   const top=P.reduce((a,b)=>b[1]<a[1]||(b[1]===a[1]&&b[0]<a[0])?b:a);
   g+=`<text x="${top[0]}" y="${top[1]-fs*.4}" font-family="${css("--f-body")}" font-size="${fs*.8}" font-weight="600" fill="${acc}">Measured from photos</text>`;
   return `<g pointer-events="none">${g}</g>`;
@@ -2024,11 +2041,12 @@ function scanOverlay(fs){
 function scanPanel(r,ro){
   const list=scansFor(r); if(!list.length) return "";
   const s=list[0], m=s.recon.result, [x0,y0,x1,y1]=bbox(r.poly), on=S.scanView===s._id;
+  const [mx0,my0,mx1,my1]=bbox(m.poly.map(scanXf(m,r)));   // as it sits on the plan, so turned the same way as drawn
   const diff=(a,b)=>{ const d=a-b; return Math.abs(d)<.05?"":` <span class="${Math.abs(d)>=.25?"warn":"muted"}">${d>0?"+":"−"}${Math.abs(d).toFixed(2)}</span>`; };
   const src=m.scale.source==="marker"?"door marker":"phone height (rough)";
   return `<h3>Measured from photos</h3>
     <p class="small muted" style="margin:0 0 8px">${esc(ago(s.recon.at))}, from ${m.images.placed} of ${m.images.total||s.photos} photos${list.length>1?` · newest of ${list.length} measurements`:""}.</p>
-    <dl class="kv"><dt>Width × depth</dt><dd>${m.size[0].toFixed(2)} × ${m.size[1].toFixed(2)} m</dd>
+    <dl class="kv"><dt>Width × depth</dt><dd>${(mx1-mx0).toFixed(2)} × ${(my1-my0).toFixed(2)} m</dd>
       <dt>As drawn</dt><dd>${(x1-x0).toFixed(2)} × ${(y1-y0).toFixed(2)} m</dd>
       <dt>Area</dt><dd>${fmtArea(m.area)}${diff(m.area,area(r.poly))}</dd>
       <dt>Ceiling</dt><dd>${m.height?m.height.toFixed(2)+" m"+diff(m.height,r.height):"not measured"}</dd>
@@ -2044,7 +2062,7 @@ function remapDoors(oldPoly,doors,poly){
 }
 function applyScan(r,s){
   if (!s || S.readOnly) return;
-  const m=s.recon.result, [dx,dy]=scanShift(m,r), poly=m.poly.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]);
+  const m=s.recon.result, xf=scanXf(m,r), poly=m.poly.map(p=>xf(p).map(v=>+v.toFixed(2)));
   r.doors=remapDoors(r.poly,r.doors,poly); r.poly=poly;
   if (m.height) r.height=Math.max(2.2,Math.min(12,+m.height.toFixed(2)));
   S.scanView=s._id; edit(`Applied measured outline to ${r.id}`);
