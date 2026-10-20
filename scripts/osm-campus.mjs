@@ -10,7 +10,12 @@ import { fileURLToPath } from "node:url";
 // Paths from the repo root, so the script works from any folder
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const OUT = ROOT + "web/data/apu-campus.osm.json";
-const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter"];
+// Overpass turns away requests with Node's default headers (HTTP 406), so say who we are and what we want back
+const HEADERS = { "User-Agent": "UCampass-campus-snapshot/1.0 (github.com/xiang2007/sime-darby-hackathon)",
+  Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function query() {
   const html = readFileSync(ROOT + "web/index.html", "utf8");
@@ -22,12 +27,16 @@ function query() {
 
 async function fetchOsm() {
   const data = query();
-  for (const url of SERVERS) {
-    try {
-      const r = await fetch(url, { method: "POST", body: new URLSearchParams({ data }) });
-      if (r.ok) return await r.json();
-      console.warn(`${url}: HTTP ${r.status}`);
-    } catch (e) { console.warn(`${url}: ${e.message}`); }
+  for (let round = 0; round < 2; round++) {
+    if (round) { console.warn("Waiting 30 s, then trying each server once more…"); await sleep(30000); }
+    for (const url of SERVERS) {
+      try {
+        const r = await fetch(url, { method: "POST", headers: HEADERS, body: new URLSearchParams({ data }).toString() });
+        if (r.ok) return await r.json();
+        const why = (await r.text().catch(() => "")).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+        console.warn(`${url}: HTTP ${r.status}${why ? ` (${why})` : ""}`);
+      } catch (e) { console.warn(`${url}: ${e.message}`); }
+    }
   }
   throw new Error("Overpass didn't answer. Run the query on overpass-turbo.eu, export the raw JSON and pass the file here.");
 }
