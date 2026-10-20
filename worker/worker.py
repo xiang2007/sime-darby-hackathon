@@ -53,7 +53,7 @@ from video import VideoError, extract_frames  # noqa: E402
 from floormap import map_floor  # noqa: E402
 from walk import trace_walk  # noqa: E402
 
-VERSION = "3"
+VERSION = "4"
 
 
 def log(*a):
@@ -142,6 +142,10 @@ def process(files, room, marker, keep: Path | None = None):
             result["notes"].insert(0, f"Only {placed} of {total} photos could be linked together, so part of the room may be "
                                       "missing from the outline. Take photos closer together, especially when turning at corners.")
         result["worker"] = {"version": VERSION}
+        # Where each photo was taken in the room, by upload slot (the files are named 000.jpg, 001.jpg, ...). The
+        # website matches them with each photo's GPS fix to place and turn the room on the plan.
+        names = result.pop("cameraNames", [])
+        result["shots"] = [{"i": int(Path(n).stem), "xy": xy} for n, xy in zip(names, result["cameras"]) if Path(n).stem.isdigit()]
         if keep:
             keep.mkdir(parents=True, exist_ok=True)
             for f in ("preview.png",):
@@ -280,7 +284,8 @@ def run_server(args):
             if j.get("kind") == "map":
                 run_map_job(api, j, args)
             else:
-                log(f"Session {sid}: room {j['session']['room']}, {len(j['photos'])} photos")
+                tagged = sum(1 for p in j["photos"] if p.get("geo"))
+                log(f"Session {sid}: room {j['session']['room']}, {len(j['photos'])} photos" + (f", {tagged} with GPS" if tagged else ""))
                 files = [(f"{p['i']:03d}.jpg", api.call("GET", f"/api/photos?id={p['id']}", raw=True)) for p in j["photos"]]
                 result = process(files, j.get("room"), j.get("marker"))
                 r = api.call("PUT", f"/api/jobs?session={sid}", {"status": "done", "result": result})
@@ -310,7 +315,9 @@ def log_room_import(sid, imp):
         log(f"Session {sid}: not put on the plan:", imp["error"])
         return
     what = f"new outline for {imp['room']}" if imp.get("action") == "replaced" else f"added {imp['room']}"
-    where = {"room": f"over the drawn room ({round((imp.get('match') or 0) * 100)}% the same)"}.get(imp.get("placed")) or PLACED.get(imp.get("placed"), imp.get("placed"))
+    where = {"room": f"over the drawn room ({round((imp.get('match') or 0) * 100)}% the same)",
+             "gps": f"placed by the GPS of {imp.get('gpsPhotos')} photos" if imp.get("gpsPhotos") else None}.get(imp.get("placed")) \
+        or PLACED.get(imp.get("placed"), imp.get("placed"))
     walls = f", lined up with {imp['snapped']} wall(s) nearby" if imp.get("snapped") else ""
     log(f"Session {sid}: on the floor plan as revision r{imp['rev']}: {what}, {where}"
         + (f" in {imp['building']}" if imp.get("building") else "") + walls + ".")

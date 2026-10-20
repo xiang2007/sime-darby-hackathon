@@ -1594,7 +1594,10 @@ async function startLive(mode="photos"){
   try{ await v.play(); }catch(e){}
   if (mode==="video") return startRecording(stream);
   liveHud("Starting camera…");
-  if (S.capture.geoOn) startGeo();
+  // GPS goes on with the live camera: each photo kept is tagged with where it was taken, to place the room on the
+  // plan. Untick the GPS tag afterwards to submit without it.
+  if (!S.capture.geoOn){ S.capture.geoOn=true; renderCapture(); }
+  startGeo();
   live.timer=setInterval(liveTick,LIVE.every);
 }
 function stopLive(){
@@ -1685,6 +1688,8 @@ async function liveTick(){
     live.kept++; live.last=fr.thumb;
     if (mk){ live.markers++; live.lastMarker=now; }
     fr.name=`live-${String(live.kept).padStart(3,"0")}.jpg`; fr.file=blob;
+    // Where it was taken: the latest fix, if it's fresh
+    const fx=S.capture.lastFix; if (S.capture.geoOn && fx && now-fx.at<20000) fr.geo={lat:fx.lat,lng:fx.lng,acc:fx.acc};
     S.capture.frames.push(fr); scoreOverlap();
     navigator.vibrate?.(25);
     const fl=$("#liveFlash"); fl.classList.add("on"); requestAnimationFrame(()=>requestAnimationFrame(()=>fl.classList.remove("on")));
@@ -1709,12 +1714,13 @@ function startGeo(){
       // Keep the most accurate fix seen during the session, and all of them to average when it's submitted (walkGeo).
       if (!C.geo || g.acc<=C.geo.acc) C.geo=g;
       (C.fixes||(C.fixes=[])).push(g); if (C.fixes.length>600) C.fixes.splice(0,C.fixes.length-600);
+      C.lastFix={...g,at:Date.now()};
       if (live?.rec) { live.fixes.push(g); recHud(); }
       else if (live) liveHud($("#liveHint").textContent); else renderGeoLine();
     },e=>{
       // Indoors a fix often times out or drops for a moment: keep the fixes so far and keep watching.
       if (e.code!==1 && C.geo) return;
-      stopGeo(); C.geoOn=false; C.geo=null; C.fixes=[]; renderCapture();
+      stopGeo(); C.geoOn=false; C.geo=null; C.fixes=[]; C.lastFix=null; renderCapture();
       toast(e.code===1?"Location access was blocked, so this session won't be tagged.":"Couldn't get a GPS fix. This session won't be tagged."); },
     {enableHighAccuracy:true,maximumAge:15000,timeout:30000});
 }
@@ -1771,7 +1777,7 @@ function renderCapture(){
       <li><span>•</span><span>Blank wall <span class="mono">edge pixels ≥ ${+(QC.texture*100).toFixed(1)}%</span></span></li><li><span>•</span><span>Overlap with the previous frame <span class="mono">NCC ≥ ${QC.overlap}</span></span></li>
       <li><span>•</span><span>Session size <span class="mono">≥ ${QC.minFrames} usable, ${QC.goodFrames}+ preferred</span></span></li></ul>`}
     <label class="consent"><input type="checkbox" id="cConsent" ${C.consent?"checked":""} ${C.upload?"disabled":""}><span>I have permission to photograph this area, and no one can be identified in these photos.</span></label>
-    <label class="consent"><input type="checkbox" id="cGeo" ${C.geoOn?"checked":""} ${C.upload?"disabled":""}><span>Tag this session with my GPS location, to place the building on a map. Indoors it's usually only accurate to 10–50 m. Photos never carry it.</span></label>
+    <label class="consent"><input type="checkbox" id="cGeo" ${C.geoOn?"checked":""} ${C.upload?"disabled":""}><span>Tag this session with my GPS location, to place the building on a map. Indoors it's usually only accurate to 10–50 m. Each live camera photo is tagged with where it was taken, to place the room on the plan; the photo files never carry it.</span></label>
     ${C.geoOn?`<div class="geo-line muted mono" id="cGeoLine">${C.geo?esc(geoText(C.geo)):"Finding your location…"}</div>`:""}
     ${canShare()?`<label class="consent"><input type="checkbox" id="cShare" ${C.share?"checked":""} ${C.upload?"disabled":""}><span>Also upload the ${shareFrames().length||""} usable photo${shareFrames().length===1?"":"s"} so the room can be measured in 3D. They're resized to ${PHOTO_MAX}px and location data is removed.</span></label>
       ${C.share?`<div class="tipbox small"><b>For accurate measurements</b><ul><li>Start anywhere in the room. If there's a door marker, take 2–3 close photos of it from different angles: its printed size sets the scale.</li><li>Walk along the walls and turn slowly at corners, so photos overlap across each corner.</li><li>Add a few photos tilted up at the ceiling and down at the floor.</li></ul></div>`:""}`:""}
@@ -1786,7 +1792,7 @@ function renderCapture(){
   $("#cRoom").onchange=()=>renderCapture();
   $("#cConsent").onchange=e=>{C.consent=e.target.checked; renderCapture();};
   const sh=$("#cShare"); if(sh) sh.onchange=e=>{C.share=e.target.checked; renderCapture();};
-  $("#cGeo").onchange=e=>{ C.geoOn=e.target.checked; if(C.geoOn) startGeo(); else { stopGeo(); C.geo=null; C.fixes=[]; } renderCapture(); };
+  $("#cGeo").onchange=e=>{ C.geoOn=e.target.checked; if(C.geoOn) startGeo(); else { stopGeo(); C.geo=null; C.fixes=[]; C.lastFix=null; } renderCapture(); };
   const cl=$("#cClear"); if(cl) cl.onclick=()=>{ C.frames=[]; C.fromMarker=false; renderCapture(); };
   $("#cSubmit").onclick=submitSession;
   renderVideo();
@@ -1855,7 +1861,7 @@ async function uploadVideo(){
       videoProgress(Math.min(99,100*sent/f.size),`Uploading ${mb(sent)} of ${mb(f.size)}… keep this page open.`);
     }
     if (!last?.ready) throw new Error("The upload didn't finish. Try again.");
-    C.vid={file:null,consent:false,up:null}; C.geoOn=false; C.geo=null; C.fixes=[]; stopGeo();
+    C.vid={file:null,consent:false,up:null}; C.geoOn=false; C.geo=null; C.fixes=[]; C.lastFix=null; stopGeo();
     poll(true); setTab("sessions");
     toast(S.worker&&Date.now()-S.worker.seen<3*60e3?"Video uploaded. The worker will map it and add it to the Floor plan.":"Video uploaded. It'll be mapped and added to the Floor plan when a worker is running (see Sessions).");
   }catch(e){ if(C.vid) C.vid.up=null; renderVideo(); toast(e.message||"Couldn't upload the video."); }
@@ -1882,7 +1888,8 @@ async function uploadPhotos(sessionId, frames){
     for (let attempt=0;attempt<2&&!ok;attempt++){
       try{
         const {blob,w,h}=await photoJpeg(frames[i].file);
-        const res=await fetch(`/api/photos?session=${encodeURIComponent(sessionId)}&i=${i}&w=${w}&h=${h}`,{method:"POST",headers:hdr,body:blob,cache:"no-store"});
+        const g=C.geoOn&&frames[i].geo, at=g?`&lat=${g.lat.toFixed(7)}&lng=${g.lng.toFixed(7)}&acc=${Math.round(g.acc)}`:"";
+        const res=await fetch(`/api/photos?session=${encodeURIComponent(sessionId)}&i=${i}&w=${w}&h=${h}${at}`,{method:"POST",headers:hdr,body:blob,cache:"no-store"});
         ok=res.ok || res.status===409;   // 409: already stored on an earlier attempt
         if (!ok && res.status<500 && res.status!==429) break;
       }catch(e){}
@@ -1911,7 +1918,7 @@ async function submitSession(){
         poll(true);
       } }
     else if (S.db){ delete doc.photos; await S.db.collection("sessions").add(doc); } else { delete doc.photos; S.sessions.unshift({...doc,_id:uid()}); saveLocal(); }
-    C.frames=[]; C.consent=false; C.share=false; C.fromMarker=false; C.geoOn=false; C.geo=null; C.fixes=[]; stopGeo();
+    C.frames=[]; C.consent=false; C.share=false; C.fromMarker=false; C.geoOn=false; C.geo=null; C.fixes=[]; C.lastFix=null; stopGeo();
     toast(failed?`Session submitted, but ${failed} of ${share.length} photos didn't upload.`:sm.verdict==="rejected"?"Session logged as rejected. See the reasons and try again.":share.length?`Session and ${share.length} photos submitted. Thanks!`:"Session submitted. Thanks!");
     if(!S.db && !S.api){ updateCounts(); }
     setTab("sessions");
@@ -2011,7 +2018,7 @@ function reconCell(s){
   if (r.status==="failed") return `<span class="pill bad">Failed</span><div class="small muted" style="margin:4px 0">${esc(r.error||"")}</div>${S.readOnly?"":`<button class="btn sm" data-retry="${esc(s._id)}">Try again</button>`}`;
   const m=r.result, onPlan=!!scanRoom(s), imp=m.imported;
   const status=!imp?"":imp.error?`<div style="margin-top:4px"><span class="pill ${imp.skipped?"warn":"bad"}">Not put on the plan</span><div class="small muted" style="margin:4px 0">${esc(imp.error)}</div></div>`
-    :`<div style="margin-top:4px"><span class="pill ok">On the plan</span> <span class="small muted">r${esc(imp.rev)}</span><div class="small" style="margin-top:4px">${imp.action==="replaced"?`New outline for ${esc(imp.room)}`:`Added ${esc(imp.room)}${imp.type&&imp.type!=="other"?` as a ${esc(imp.type)}`:""}`} · ${esc(PLACED[imp.placed]||imp.placed)}${imp.building?` in ${esc(bldg(imp.building))}`:""}${wallsNote(imp.snapped)}${imp.placedBlock?". Block placed roughly on the map: fine-tune with Place on map":""}</div></div>`;
+    :`<div style="margin-top:4px"><span class="pill ok">On the plan</span> <span class="small muted">r${esc(imp.rev)}</span><div class="small" style="margin-top:4px">${imp.action==="replaced"?`New outline for ${esc(imp.room)}`:`Added ${esc(imp.room)}${imp.type&&imp.type!=="other"?` as a ${esc(imp.type)}`:""}`} · ${imp.gpsPhotos?`placed by the GPS of ${imp.gpsPhotos} photo${imp.gpsPhotos===1?"":"s"}`:esc(PLACED[imp.placed]||imp.placed)}${imp.building?` in ${esc(bldg(imp.building))}`:""}${wallsNote(imp.snapped)}${imp.placedBlock?". Block placed roughly on the map: fine-tune with Place on map":""}</div></div>`;
   return `<span class="mono small">${m.size[0].toFixed(2)} × ${m.size[1].toFixed(2)} m</span>${m.height?`<span class="small muted"> · ${m.height.toFixed(2)} m high</span>`:""}${status}
     <div style="margin-top:4px">${onPlan?`<button class="btn sm" data-scan="${esc(s._id)}">Show on plan</button>`:S.readOnly?`<span class="small muted">Room isn't on the plan</span>`:`<button class="btn sm" data-addscan="${esc(s._id)}">Add room to plan</button>`}</div>`;
 }

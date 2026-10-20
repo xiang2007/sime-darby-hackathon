@@ -105,3 +105,38 @@ test("room types from the outline", () => {
   assert.equal(guessType(rect(0, 0, 20, 2.4)), "corridor");
   assert.equal(guessType(rect(0, 0, 6, 4)), "other");
 });
+
+test("each photo's own GPS fix turns and places the room, where one averaged fix can't", () => {
+  const L = 3.0556, G = 101.7, M = 111320, kx = M * Math.cos(L * Math.PI / 180);
+  const plan0 = { block: "B", floors: [{ level: 3, name: "L3" }], rooms: [], geo: { x: 0, y: 0, lat: L, lng: G, rot: 0 } };
+  // A 24 m hallway, photographed every 2 m along it. In reality it runs north, its middle at plan (11.2, -12).
+  const xs = Array.from({ length: 11 }, (_, j) => 2 + 2 * j);
+  const s = scan({ poly: rect(0, 0, 24, 2.4), marker: null, cameras: xs.map(x => [x, 1.2]), shots: xs.map((x, i) => ({ i, xy: [x, 1.2] })) });
+  const noise = [3, -4, 2, -1, 4, -3, 1, -2, 3, -4, 2];   // metres, as indoor GPS wanders
+  const photoGeo = Object.fromEntries(xs.map((x, i) => [i, { lat: L + (x + noise[i]) / M, lng: G + (11.2 + noise[10 - i]) / kx, acc: 8 }]));
+  const mean = { lat: L + 12 / M, lng: G + 11.2 / kx, acc: 8 };
+  const { plan, summary } = mergeScan(plan0, s, { _id: "9", block: "B", floor: 3, room: "B-03-HALL", geo: mean, photoGeo }, { campus: null });
+  assert.equal(summary.placed, "gps");
+  assert.equal(summary.gpsPhotos, 11);
+  assert.equal(summary.turned, 270, "runs north, as the fixes do");
+  const r = plan.rooms[0];
+  assert.equal(r.type, "corridor");
+  const w = Math.max(...r.poly.map(p => p[0])) - Math.min(...r.poly.map(p => p[0]));
+  assert.ok(Math.abs(w - 2.4) < 0.01, "long side north-south");
+  assert.ok(Math.hypot(cx(r.poly) - 11.2, cy(r.poly) + 12) < 3, `middle within 3 m (${cx(r.poly).toFixed(1)}, ${cy(r.poly).toFixed(1)})`);
+  assert.match(scanNote("9", summary), /placed by the GPS of 11 photos/);
+  // With only the session's one fix there's nothing to say which way it runs
+  const one = mergeScan(plan0, s, { _id: "9", block: "B", floor: 3, room: "B-03-HALL", geo: mean }, { campus: null });
+  assert.equal(one.summary.turned, 0);
+  assert.equal(one.summary.gpsPhotos, undefined);
+});
+
+test("per-photo fixes without a session fix still place it; bad fixes are ignored", () => {
+  const L = 3.0556, G = 101.7;
+  const plan0 = { block: "B", floors: [], rooms: [], geo: { x: 0, y: 0, lat: L, lng: G, rot: 0 } };
+  const s = scan({ shots: [{ i: 0, xy: [2, 2] }, { i: 1, xy: [4, 2] }, { i: 5, xy: [3, 3] }] });
+  const photoGeo = { 0: { lat: L, lng: G, acc: 10 }, 1: { lat: L, lng: G, acc: 10 }, 5: { lat: L + 0.01, lng: G, acc: 500 } };
+  const { summary } = mergeScan(plan0, s, { _id: "3", floor: 3, room: "B-03-04", geo: null, photoGeo }, { campus: null });
+  assert.equal(summary.placed, "gps");
+  assert.equal(summary.gpsPhotos, 2, "the 500 m fix is left out");
+});

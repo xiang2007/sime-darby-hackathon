@@ -54,7 +54,9 @@ export const PUT = route(async req => {
   if (!ok) return json({ error: "not_claimed", message: "That session isn't being processed by a worker." }, 409);
   if (outcome.status !== "done") return json({ ok: true });
   const map = session.kind === "map", worker = session.recon?.worker;
-  const imported = await addToPlan(session, outcome.result, worker, map ? mergeMap : mergeScan, map ? importNote : scanNote, map ? "map" : "room");
+  // A room is placed by where each photo was taken (see mergeScan), so it needs the photos' GPS fixes.
+  const s = map ? session : { ...session, photoGeo: Object.fromEntries((await listPhotos(id)).filter(p => p.geo).map(p => [p.i, p.geo])) };
+  const imported = await addToPlan(s, outcome.result, worker, map ? mergeMap : mergeScan, map ? importNote : scanNote, map ? "map" : "room");
   await noteImport(id, imported);
   // Keep the video if it couldn't be added, so Try again can map it again.
   if (map && !imported.error && !keepVideos()) await dropVideo(id).catch(e => console.error(e));

@@ -58,7 +58,11 @@ test("photo validation", () => {
   assert.equal(V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 12, usable: 10, gaps: 0 }).photos, 0);
   assert.throws(() => V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 5, usable: 5, gaps: 0, photos: 6 }), V.Invalid);
   assert.throws(() => V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 999, usable: 5, gaps: 0, photos: 201 }), V.Invalid);
-  assert.deepEqual(V.photoParams("http://x/api/photos?session=4&i=0&w=2048&h=1536"), { session: 4, i: 0, w: 2048, h: 1536 });
+  assert.deepEqual(V.photoParams("http://x/api/photos?session=4&i=0&w=2048&h=1536"), { session: 4, i: 0, w: 2048, h: 1536, geo: null });
+  // where the photo was taken: all three or none
+  assert.deepEqual(V.photoParams("http://x/api/photos?session=4&i=0&w=1&h=1&lat=3.05545123&lng=101.7001&acc=8.6").geo, { lat: 3.055451, lng: 101.7001, acc: 9 });
+  assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=0&w=1&h=1&lat=3.05&lng=101.7"), V.Invalid);
+  assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=0&w=1&h=1&lat=93&lng=101.7&acc=5"), V.Invalid);
   assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=200&w=1&h=1"), V.Invalid);
   assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=-1&w=1&h=1"), V.Invalid);
   assert.throws(() => V.photoParams("http://x/api/photos?session=x&i=0&w=1&h=1"), V.Invalid);
@@ -164,12 +168,13 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.equal((await up(`session=${id}&i=2&w=4&h=3`)).status, 409, "beyond the reserved slots");
     assert.equal((await up(`session=99999&i=0&w=4&h=3`)).status, 404);
     assert.equal((await up(`session=${id}&i=1&w=4&h=3`, new Uint8Array([1, 2, 3, 4]))).status, 400, "not a JPEG");
-    assert.equal((await up(`session=${id}&i=1&w=4&h=3`)).status, 201);
+    assert.equal((await up(`session=${id}&i=1&w=4&h=3&lat=3.0554512&lng=101.7001234&acc=9`)).status, 201, "with where it was taken");
     const st = await call("state", "GET", undefined, { "if-none-match": etag });
     assert.equal(st.status, 200, "ETag changes when photos arrive");
     assert.equal(st.body.sessions.find(x => x._id === id).photos, 2);
     const list = await call(`photos?session=${id}`, "GET");
     assert.deepEqual(list.body.photos.map(p => [p.i, p.w, p.h, p.bytes]), [[0, 4, 3, 10], [1, 4, 3, 10]]);
+    assert.deepEqual(list.body.photos.map(p => p.geo), [null, { lat: 3.055451, lng: 101.700123, acc: 9 }]);
     const res = await (await api("photos")).GET(new Request(`http://x/api/photos?id=${list.body.photos[0].id}`, { headers: E }));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "image/jpeg");
