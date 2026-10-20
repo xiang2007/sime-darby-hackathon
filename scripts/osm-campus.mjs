@@ -5,12 +5,15 @@
 // The query lives in web/index.html (CAMPUS_QUERY), so the app and this script always ask the same thing.
 // Map data © OpenStreetMap contributors, ODbL: keep the credit wherever the data is shown.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
-const OUT = "web/data/apu-campus.osm.json";
+// Paths from the repo root, so the script works from any folder
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const OUT = ROOT + "web/data/apu-campus.osm.json";
 const SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 
 function query() {
-  const html = readFileSync("web/index.html", "utf8");
+  const html = readFileSync(ROOT + "web/index.html", "utf8");
   const bbox = html.match(/const CAMPUS_BBOX=\[([^\]]+)\]/)?.[1];
   const q = html.match(/const CAMPUS_QUERY=`([^`]+)`/)?.[1];
   if (!bbox || !q) throw new Error("CAMPUS_BBOX or CAMPUS_QUERY not found in web/index.html");
@@ -32,7 +35,7 @@ async function fetchOsm() {
 const osm = process.argv[2] ? JSON.parse(readFileSync(process.argv[2], "utf8")) : await fetchOsm();
 if (!Array.isArray(osm.elements)) throw new Error("Not Overpass JSON (no elements array)");
 const count = t => osm.elements.filter(t).length;
-mkdirSync("web/data", { recursive: true });
+mkdirSync(ROOT + "web/data", { recursive: true });
 writeFileSync(OUT, JSON.stringify({ ...osm, snapshot_at: new Date().toISOString() }));
 console.log(`Saved ${OUT}: ${count(e => e.tags?.amenity === "university" || e.tags?.landuse === "education")} campus areas, ` +
   `${count(e => e.tags?.building)} buildings, ${count(e => e.tags?.highway)} paths, ${count(e => e.tags?.entrance)} entrances.`);
