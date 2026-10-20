@@ -20,7 +20,7 @@ away, placed by the session's GPS, as Floor plan → Import walk or map would.
     python worker.py --photos session-42-B-03-02.zip [--plan plan.json] [--room B-03-02]
 
   Offline, on a walk-through video (frames are picked the way the app picks photos):
-    python worker.py --video walk.mp4 [--fps 2] [--max-frames 80] [--plan plan.json] [--room B-03-02]
+    python worker.py --video walk.mp4 [--fps 2] [--max-frames 250] [--plan plan.json] [--room B-03-02]
 
   Offline, trace a corridor from a walk along it (video or photos). Door signs become rooms.
   Import the walk.json it writes on the Floor plan tab (Import walk):
@@ -50,6 +50,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from floorplan import ReconError, measure, prepare_images, run_sfm  # noqa: E402
 from video import VideoError, extract_frames  # noqa: E402
+import colmap_gpu  # noqa: E402
 from floormap import map_floor  # noqa: E402
 from walk import trace_walk  # noqa: E402
 
@@ -223,7 +224,7 @@ def load_photos(src: Path):
 
 def run_offline(args):
     files, meta, times = [], {}, None
-    max_frames = args.max_frames or (360 if args.map else 150 if args.walk else 80)
+    max_frames = args.max_frames or (360 if args.map else 150 if args.walk else 250)
     fps = args.fps or (3.0 if args.map else 2.0)     # --map: more frames, so quick turns at doors don't break the walk
     if args.video:
         files, stats = extract_frames(args.video, fps=fps, max_frames=max_frames, ffmpeg=args.ffmpeg, log=log)
@@ -372,7 +373,7 @@ def main():
     ap.add_argument("--photos", help="offline: a zip or folder of photos")
     ap.add_argument("--video", help="offline: a walk-through video; frames are extracted with ffmpeg")
     ap.add_argument("--fps", type=float, default=None, help="offline video: frames to extract per second (default 2; 3 with --map)")
-    ap.add_argument("--max-frames", type=int, help="offline video: most frames to use (default 80 like Live camera, 150 with --walk, 360 with --map)")
+    ap.add_argument("--max-frames", type=int, help="offline video: most frames to use (default 250 like Live camera, 150 with --walk, 360 with --map)")
     ap.add_argument("--ffmpeg", help="offline video: path to ffmpeg if it isn't on PATH")
     ap.add_argument("--plan", help="offline: the plan JSON exported from the Floor plan tab")
     ap.add_argument("--room", help="offline: the room ID (default: from session.json in the zip)")
@@ -381,8 +382,12 @@ def main():
     ap.add_argument("--map", action="store_true", help="offline: map the hallways, the rooms off them and their doors from one walk")
     ap.add_argument("--floor", type=int, help="--walk: floor number (default: read from the door signs)")
     ap.add_argument("--block", help="--walk: block letter (default: read from the door signs)")
+    ap.add_argument("--colmap", help="find and match features on an NVIDIA GPU with COLMAP's own download "
+                    "(colmap-x64-windows-cuda.zip, same version as pycolmap): its folder or COLMAP.bat. "
+                    "Default: $COLMAP_PATH; without either, the CPU is used")
     ap.add_argument("--no-ocr", action="store_true", help="--walk: don't read printed door signs, only QR door markers")
     args = ap.parse_args()
+    colmap_gpu.setup(args.colmap)
     if (args.walk or args.map) and not (args.photos or args.video):
         ap.error("--walk and --map need --video or --photos")
     if args.walk and args.map:

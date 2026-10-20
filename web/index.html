@@ -1578,7 +1578,7 @@ function checkImage(bmp,W,H){
 
 /* ---------- live capture: the camera stays open and good frames are kept automatically ---------- */
 // moved: a frame is kept once it matches the last kept one less than this (NCC), so photos overlap but aren't repeats.
-const LIVE={every:400, moved:.8, max:80, markerShots:3, markerGap:1500};
+const LIVE={every:400, moved:.8, max:250, markerShots:3, markerGap:1500};
 let live=null;
 async function startLive(mode="photos"){
   if (live) return;

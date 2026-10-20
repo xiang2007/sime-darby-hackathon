@@ -23,6 +23,8 @@ import cv2
 import numpy as np
 import pycolmap
 
+import colmap_gpu
+
 GRID = 0.05            # metres per cell when carving free space
 PHONE_HEIGHT = 1.45    # typical height of a phone above the floor, for the fallback scale
 MARKER_MM = 64.0       # printed size of the marker's QR area, quiet zone included (see markerSvgFile in web/index.html)
@@ -44,6 +46,17 @@ def run_sfm(image_dir: Path, work: Path, log=print, sequential=False) -> list:
     db = work / "database.db"
     if db.exists():
         db.unlink()
+    exhaustive = len(names) <= 120 and not sequential
+    if colmap_gpu.enabled():
+        log(f"Finding features in {len(names)} photos on the GPU…")
+        try:
+            colmap_gpu.extract_and_match(db, image_dir, names, exhaustive, log)
+        except (OSError, RuntimeError) as e:
+            log(f"The GPU step failed, so the CPU is used instead. {e}")
+            if db.exists():
+                db.unlink()
+        else:
+            return _map(db, image_dir, work, names, log)
     sift = pycolmap.SiftExtractionOptions()
     sift.max_image_size = 2048
     sift.max_num_features = 8192
@@ -57,13 +70,17 @@ def run_sfm(image_dir: Path, work: Path, log=print, sequential=False) -> list:
     log("Matching photos…")
     match = pycolmap.SiftMatchingOptions()
     match.guided_matching = True
-    if len(names) <= 120 and not sequential:
+    if exhaustive:
         pycolmap.match_exhaustive(db, sift_options=match)
     else:
         seq = pycolmap.SequentialMatchingOptions()
         seq.overlap = 20
         seq.quadratic_overlap = True
         pycolmap.match_sequential(db, sift_options=match, matching_options=seq)
+    return _map(db, image_dir, work, names, log)
+
+
+def _map(db: Path, image_dir: Path, work: Path, names: list, log) -> list:
     log("Working out where each photo was taken…")
     out = work / "sparse"
     out.mkdir(exist_ok=True)

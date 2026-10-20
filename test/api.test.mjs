@@ -57,13 +57,13 @@ test("photo validation", () => {
   assert.equal(V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 12, usable: 10, gaps: 0, photos: 10 }).photos, 10);
   assert.equal(V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 12, usable: 10, gaps: 0 }).photos, 0);
   assert.throws(() => V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 5, usable: 5, gaps: 0, photos: 6 }), V.Invalid);
-  assert.throws(() => V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 999, usable: 5, gaps: 0, photos: 201 }), V.Invalid);
+  assert.throws(() => V.session({ block: "B", floor: 3, room: "r", verdict: "thin", frames: 999, usable: 5, gaps: 0, photos: 251 }), V.Invalid);
+  assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=250&w=1&h=1"), V.Invalid);
   assert.deepEqual(V.photoParams("http://x/api/photos?session=4&i=0&w=2048&h=1536"), { session: 4, i: 0, w: 2048, h: 1536, geo: null });
   // where the photo was taken: all three or none
   assert.deepEqual(V.photoParams("http://x/api/photos?session=4&i=0&w=1&h=1&lat=3.05545123&lng=101.7001&acc=8.6").geo, { lat: 3.055451, lng: 101.7001, acc: 9 });
   assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=0&w=1&h=1&lat=3.05&lng=101.7"), V.Invalid);
   assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=0&w=1&h=1&lat=93&lng=101.7&acc=5"), V.Invalid);
-  assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=200&w=1&h=1"), V.Invalid);
   assert.throws(() => V.photoParams("http://x/api/photos?session=4&i=-1&w=1&h=1"), V.Invalid);
   assert.throws(() => V.photoParams("http://x/api/photos?session=x&i=0&w=1&h=1"), V.Invalid);
   assert.equal(V.isJpeg(new Uint8Array([0xff, 0xd8, 0xff, 0xe0])), true);
