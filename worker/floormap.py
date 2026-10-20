@@ -34,6 +34,7 @@ NECK = 0.55        # half the widest doorway: passages narrower than 1.1 m are d
 OPEN = 1.0         # outlines drop stubs narrower than this, such as the doorway itself
 MIN_AREA = 2.0     # m², smaller parts are left out
 MAX_GAP = 0.6      # walls this close, facing each other, are one wall seen from both sides
+WALL_BAND = (0.3, 1.9)   # m above the floor: wall points here block the floor space (below door heads)
 DOOR_GAP = 0.3     # the app joins a door to a room with a wall this close (DOOR_GAP in web/index.html)
 HALL = {"max_width": 3.5, "min_ratio": 3.0, "lobby_area": 60.0, "lobby_fill": 0.6, "lobby_width": 6.0}   # HALL in web/index.html
 CIRCULATION = ("corridor", "lobby")
@@ -41,14 +42,27 @@ CIRCULATION = ("corridor", "lobby")
 
 # ---------------------------------------------------------------- floor space and doorways
 
-def free_space(count, cams, lo):
-    """Cells the frames saw through (at least twice), plus where the camera was, with small holes filled.
-    Only the part the walk went through is kept."""
+def wall_cells(pts, heights, shape, lo):
+    """Cells with wall points between knee and head height: below a door's head, so doorways stay open.
+    Thin walls between a room and the hallway are solid here even where the floor space either side nearly meets."""
+    sel = (heights > WALL_BAND[0]) & (heights < WALL_BAND[1])
+    ix = np.round((pts[sel] - lo) / GRID).astype(int)
+    ok = (ix[:, 0] >= 0) & (ix[:, 1] >= 0) & (ix[:, 0] < shape[1]) & (ix[:, 1] < shape[0])
+    n = np.zeros(shape, np.int32)
+    np.add.at(n, (ix[ok, 1], ix[ok, 0]), 1)
+    return cv2.dilate((n >= 2).astype(np.uint8), np.ones((3, 3), np.uint8))
+
+
+def free_space(count, cams, lo, walls=None):
+    """Cells the frames saw through (at least twice), plus where the camera was, less the walls, with small
+    holes filled. Only the part the walk went through is kept."""
     free = (count >= 2).astype(np.uint8)
     ci = np.round((cams - lo) / GRID).astype(int)
     for c in ci:
         cv2.circle(free, (int(c[0]), int(c[1])), int(round(0.3 / GRID)), 1, -1)
     free = cv2.morphologyEx(free, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    if walls is not None:                        # after closing, which would bridge a thin wall
+        free[walls > 0] = 0
     cs, hier = cv2.findContours(free, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     if hier is not None:
         for c, h in zip(cs, hier[0]):
@@ -291,8 +305,10 @@ def map_floor(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, 
         raise ReconError(f"The walk is only {length:.1f} m long. Walk along the hallway and into each room.")
 
     log("Carving out the floor space…")
-    count, lo = carve(cams, pts, F["obs_p"], F["obs_c"], F["band"])
-    free = free_space(count, cams, lo)
+    # every point counts for seeing through, the floor in front of the camera too, so the middle of a room
+    # walked round is filled in
+    count, lo = carve(cams, pts, F["obs_p"], F["obs_c"], F["heights"] > -0.3)
+    free = free_space(count, cams, lo, wall_cells(pts, F["heights"], count.shape, lo))
     lab = split(free)
     ways = doorways(lab, lo)
     log(f"Found {lab.max()} rooms and hallways, {len(ways)} doorway(s).")

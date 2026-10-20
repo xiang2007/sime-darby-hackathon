@@ -418,7 +418,7 @@ def walk_frame(recs, times=None):
     pts, cams = Pm @ Rm.T, Cm @ Rm.T
     wall_pts = pts[band]
     return dict(imgs=imgs, poses=poses, C=C, P=P, obs_p=obs_p, obs_c=obs_c, flat=flat, Rm=Rm, pts=pts, cams=cams,
-                band=band, wall_pts=wall_pts, scale=scale, notes=notes)
+                band=band, heights=Ph, wall_pts=wall_pts, scale=scale, notes=notes)
 
 
 def trace_walk(recs, image_dir: Path, *, times=None, ocr=True, floor_level=None, block=None, work: Path | None = None, log=print):

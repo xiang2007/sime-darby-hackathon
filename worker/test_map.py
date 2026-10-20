@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 from floorplan import GRID
-from floormap import DOOR_GAP, align_walls, doorways, outline, place_doors, shape_of, split
+from floormap import DOOR_GAP, align_walls, doorways, free_space, outline, place_doors, shape_of, split, wall_cells
 
 # A 20 × 2.4 m corridor with 15 cm walls; room A (5 × 5) and room B (5.85 × 4) to the north, room C (6 × 5) to the
 # south, each through a 0.9 m door. Plan coordinates, metres.
@@ -70,6 +70,38 @@ class Split(unittest.TestCase):
             for d in r["doors"]:
                 self.assertLessEqual(d["gap"], DOOR_GAP)
                 self.assertAlmostEqual(d["w"], 0.9, delta=0.15)
+
+
+class FreeSpace(unittest.TestCase):
+    def test_thin_walls_stay_solid(self):
+        """Sight lines from either side reach the wall, so the floor space nearly meets through it. The wall
+        points keep it apart; the points above a door, over head height, don't block the doorway."""
+        m = np.zeros((int(15 / GRID), int(22 / GRID)), np.uint8)
+        box = lambda x0, y0, x1, y1: cv2.rectangle(m, tuple(np.round((np.array([x0, y0]) - LO) / GRID).astype(int)),
+                                                   tuple(np.round((np.array([x1, y1]) - LO) / GRID).astype(int) - 1), 1, -1)
+        box(*CORRIDOR)
+        for (x0, y0, x1, y1), _ in ROOMS.values():
+            box(x0, y0 - (0.05 if y1 <= 0 else 0), x1, y1 + (0.05 if y1 <= 0 else 0))
+            box(x0, -0.15, x1, 0) if y1 <= 0 else box(x0, 2.4, x1, 2.55)      # 1 cell short of meeting at most
+        count = m.astype(np.int32) * 5
+        pts, hs = [], []
+        for (x0, y0, x1, y1), (d0, d1) in ROOMS.values():
+            wy = -0.075 if y1 <= 0 else 2.475
+            for x in np.arange(x0, x1, 0.02):
+                pts.append([x, wy])
+                hs.append(2.3 if d0 <= x <= d1 else 1.0)
+        for y in np.arange(-4.15, -0.15, 0.02):        # the wall rooms A and B share
+            pts.append([7.075, y])
+            hs.append(1.0)
+        pts, hs = np.array(pts), np.array(hs)
+        cams = np.array([[x, 1.2] for x in np.arange(1, 19, 0.5)] +
+                        [[(d0 + d1) / 2, y] for (_, y0, _, y1), (d0, d1) in ROOMS.values()
+                         for y in ((-1.0, -0.075, 0.5) if y1 <= 0 else (1.9, 2.475, 3.5))])
+        self.assertEqual(split(free_space(count, cams, LO)).max(), 1, "without walls it's one space")
+        free = free_space(count, cams, LO, wall_cells(pts, hs, count.shape, LO))
+        lab = split(free)
+        self.assertEqual(lab.max(), 4)
+        self.assertEqual(len(doorways(lab, LO)), 3)
 
 
 class Shape(unittest.TestCase):
