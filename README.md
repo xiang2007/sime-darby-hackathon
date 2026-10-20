@@ -151,6 +151,14 @@ python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY
 
 It checks for new sessions every 20 seconds and keeps running until you stop it with Ctrl+C. The Sessions tab shows the worker as **Live** while it runs. A session is measured once its upload is finished, if it has at least 8 photos and wasn't rejected. Measuring takes about 4–8 minutes for 50–80 photos on a 4-core laptop.
 
+**Faster on an NVIDIA graphics card (Windows).** The two slowest steps, finding and matching features, can run on the GPU through COLMAP's own Windows download, since the `pycolmap` package from pip is CPU-only on Windows. Download `colmap-x64-windows-cuda.zip` for **3.12.6** (the same version as `pycolmap` in `requirements.txt`) from [COLMAP's releases](https://github.com/colmap/colmap/releases/tag/3.12.6), unzip it, and point the worker at the folder:
+
+```sh
+python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY --colmap C:\colmap
+```
+
+or set `COLMAP_PATH=C:\colmap` once and leave the flag off. The worker says "Finding and matching features on the GPU" when it starts. If the GPU step fails, or the download has no GPU support, it uses the CPU as before. Placing the photos afterwards still runs on the CPU. On the GPU, COLMAP uses plain SIFT features, without the slant estimation the CPU path uses for walls seen at a sharp angle, so compare a room or two with the CPU result the first time.
+
 - `--once` measures one session, then stops.
 - `--session 42` measures session 42 again.
 - **Try again** on the Sessions tab re-queues a failed session.

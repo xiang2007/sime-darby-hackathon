@@ -43,6 +43,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from floorplan import ReconError, measure, prepare_images, run_sfm  # noqa: E402
 from video import VideoError, extract_frames  # noqa: E402
+import colmap_gpu  # noqa: E402
 from floormap import map_floor  # noqa: E402
 from walk import trace_walk  # noqa: E402
 
@@ -268,8 +269,12 @@ def main():
     ap.add_argument("--map", action="store_true", help="offline: map the hallways, the rooms off them and their doors from one walk")
     ap.add_argument("--floor", type=int, help="--walk: floor number (default: read from the door signs)")
     ap.add_argument("--block", help="--walk: block letter (default: read from the door signs)")
+    ap.add_argument("--colmap", help="find and match features on an NVIDIA GPU with COLMAP's own download "
+                    "(colmap-x64-windows-cuda.zip, same version as pycolmap): its folder or COLMAP.bat. "
+                    "Default: $COLMAP_PATH; without either, the CPU is used")
     ap.add_argument("--no-ocr", action="store_true", help="--walk: don't read printed door signs, only QR door markers")
     args = ap.parse_args()
+    colmap_gpu.setup(args.colmap)
     if (args.walk or args.map) and not (args.photos or args.video):
         ap.error("--walk and --map need --video or --photos")
     if args.walk and args.map:
