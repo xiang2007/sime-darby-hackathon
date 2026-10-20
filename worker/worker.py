@@ -15,7 +15,7 @@ shows up on the Floor plan tab, where someone can compare it with the drawn room
     python worker.py --photos session-42-B-03-02.zip [--plan plan.json] [--room B-03-02]
 
   Offline, on a walk-through video (frames are picked the way the app picks photos):
-    python worker.py --video walk.mp4 [--fps 2] [--max-frames 80] [--plan plan.json] [--room B-03-02]
+    python worker.py --video walk.mp4 [--fps 2] [--max-frames 250] [--plan plan.json] [--room B-03-02]
 
   Offline, trace a corridor from a walk along it (video or photos). Door signs become rooms.
   Import the walk.json it writes on the Floor plan tab (Import walk):
@@ -174,7 +174,7 @@ def load_photos(src: Path):
 
 def run_offline(args):
     files, meta, times = [], {}, None
-    max_frames = args.max_frames or (360 if args.map else 150 if args.walk else 80)
+    max_frames = args.max_frames or (360 if args.map else 150 if args.walk else 250)
     fps = args.fps or (3.0 if args.map else 2.0)     # --map: more frames, so quick turns at doors don't break the walk
     if args.video:
         files, stats = extract_frames(args.video, fps=fps, max_frames=max_frames, ffmpeg=args.ffmpeg, log=log)
@@ -260,7 +260,7 @@ def main():
     ap.add_argument("--photos", help="offline: a zip or folder of photos")
     ap.add_argument("--video", help="offline: a walk-through video; frames are extracted with ffmpeg")
     ap.add_argument("--fps", type=float, default=None, help="offline video: frames to extract per second (default 2; 3 with --map)")
-    ap.add_argument("--max-frames", type=int, help="offline video: most frames to use (default 80 like Live camera, 150 with --walk, 360 with --map)")
+    ap.add_argument("--max-frames", type=int, help="offline video: most frames to use (default 250 like Live camera, 150 with --walk, 360 with --map)")
     ap.add_argument("--ffmpeg", help="offline video: path to ffmpeg if it isn't on PATH")
     ap.add_argument("--plan", help="offline: the plan JSON exported from the Floor plan tab")
     ap.add_argument("--room", help="offline: the room ID (default: from session.json in the zip)")

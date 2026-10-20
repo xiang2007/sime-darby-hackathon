@@ -68,7 +68,7 @@ def find_ffmpeg(given=None):
                          "(https://ffmpeg.org/download.html), or pass --ffmpeg /path/to/ffmpeg.") from None
 
 
-def extract_frames(video, *, fps=2.0, max_frames=80, ffmpeg=None, log=print):
+def extract_frames(video, *, fps=2.0, max_frames=250, ffmpeg=None, log=print):
     """Returns (files, stats): files is [(name, jpeg bytes)] ready for floorplan.prepare_images.
     stats["times"] maps each file name to its time in the video, in seconds."""
     video = Path(video)
