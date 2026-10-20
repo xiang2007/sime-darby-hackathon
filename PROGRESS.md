@@ -58,7 +58,32 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 
 ---
 
-## 3. Next steps
+## 3. Plan: campus outline from OpenStreetMap (OSM)
+
+**Why:** blocks are placed by hand ("Place on map") on plain OSM tiles, and nothing shows where the campus ends or how buildings connect outside. OSM already maps many campuses: the boundary, building footprints and footpaths. Using that data gives a clear campus perimeter, a check on block placement, and outdoor routes between blocks. It doesn't help indoors; corridors still come from walks.
+
+**What to fetch** (one Overpass query around APU, Technology Park Malaysia, Bukit Jalil):
+| OSM data | Tags | Use |
+|---|---|---|
+| Campus boundary | `amenity=university` (way/relation), `landuse=education` | Perimeter outline on the map and in 3D |
+| Building footprints | `building=*` inside the boundary, with `name` / `ref` | Snap blocks to real outlines; label blocks |
+| Footpaths and roads | `highway=footway\|path\|pedestrian\|steps\|service`, `covered=yes` | Outdoor routing between block entrances |
+| Entrances | `entrance=*` nodes | Join indoor and outdoor routes |
+
+**Steps:**
+1. **Check coverage (P0, 1 h).** Open the area on openstreetmap.org or overpass-turbo.eu. If the boundary or blocks are missing, trace them in the OSM editor (ODbL licence; credit "© OpenStreetMap contributors", already shown on the map).
+2. **Snapshot script (`tools/osm_campus.py`).** Run the Overpass query once and save `web/data/apu-campus.geojson` (boundary, buildings, paths, entrances). The app loads a static file, so there's no runtime dependency on Overpass and it works offline.
+3. **Show the perimeter.** Draw the boundary and footprints as a Leaflet layer in "Place on map", and as a faint ground outline in the 3D view.
+4. **Snap blocks.** In "Place on map", pick a footprint; the block's position and rotation are fitted to it (rotation from the footprint's longest edge, the same 4-way search as `place()` in `floorplan.py`). The fitted `geo` is saved as it is now.
+5. **Outdoor routing (later).** Turn footpaths into a graph, link it to each block's ground-floor entrance doors, and let Directions route between blocks.
+
+**Done when:** "Place on map" shows the APU boundary and block outlines, a block can be snapped to its footprint, and the GeoJSON export includes the perimeter.
+
+**Risks:** OSM coverage of APU is unverified (Overpass was blocked in the dev sandbox); footprints can be a few metres off; covered walkways are often missing from OSM.
+
+---
+
+## 4. Next steps
 
 | Priority | Task | Why |
 |---|---|---|
@@ -67,12 +92,13 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 | P1 | Merge overlapping corridors into one polygon | More walks → better map |
 | P1 | "Walk" session in Live camera (ordered, timestamped frames) + server-mode `--walk` | No laptop step for contributors |
 | P2 | F6: R2/S3 media storage | Video uploads at scale |
-| P2 | OSM building footprints and footpaths (fetch once, store as GeoJSON) | Block placement, outdoor routes |
+| P1 | OSM campus outline: check coverage, snapshot GeoJSON, show perimeter, snap blocks (§3) | Clear campus perimeter, accurate block placement |
+| P2 | Outdoor routing over OSM footpaths (§3 step 5) | Directions between blocks |
 | P3 | MASt3R/DUSt3R for blank corridors; visual place recognition | Robustness, markerless "you are here" |
 
 ---
 
-## 4. Quick reference
+## 5. Quick reference
 
 ```sh
 # Setup (Python 3.10–3.13); ffmpeg and OCR come with the requirements
