@@ -8,6 +8,7 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 
 ## What's new
 
+- **Map a floor, with its doors, from one video.** Film one walk along the hallway that steps into each room, run `python worker.py --map --video floor.mp4`, then **Import walk or map** on the Floor plan tab. The hallway and every room you stepped into come out where they really are relative to each other, with a door in each doorway you walked through, so Directions routes room to room through the hallway. Rooms named by a door sign ("B-04-02") replace the jagged outline already on the plan. [How it works](#mapping-a-floor-from-one-walk)
 - **Hallways found from their shape.** Rooms measured from photos used to all arrive as **Other**. Now **Add room to plan** sets a long, narrow scan (under 3.5 m wide and at least 3 times as long as it is wide) to **Corridor**, and a big open area that branches out to **Lobby**. For rooms already on the plan, **Mark as hallways** on the Floor plan tab (no room selected) lists the **Other** rooms that look like hallways and changes them in one click, and a room's panel suggests the change too. Directions prefers corridors and lobbies, so routes keep to the hallways. [How it's measured](#hallways-from-the-shape)
 - **Map a corridor by walking it.** Film a slow walk along a corridor, run `python worker.py --walk --video corridor.mp4`, then **Import walk** on the Floor plan tab. The corridor appears with its real shape and width, a door wherever the video shows a room sign like "B-03-02", and a placeholder room behind each door, so Directions can route between those rooms straight away. No QR markers or hand drawing needed. [How it works](#mapping-corridors-from-a-walk)
 - **Directions.** The new **Directions** tab gives students a route from one room to another, across floors: a line on the floor plan plus steps like "Turn left into Main corridor and walk 10 m". Tap rooms on the plan or pick them from the lists, or **Scan marker** to start from the door marker you're standing at. **Step-free** keeps to lifts. Links like `/?from=B-03-01&to=B-04-02` open a route directly. [How routes are found](#directions)
@@ -73,13 +74,13 @@ api/             Vercel serverless functions
 lib/             database, validation and HTTP helpers
 scripts/         Vercel build and local dev server
 test/            API tests
-worker/          the 3D measuring worker, run on your own computer (Python); video.py picks frames from a video, walk.py traces corridors
+worker/          the 3D measuring worker, run on your own computer (Python); video.py picks frames from a video, walk.py traces corridors, floormap.py maps a floor's rooms, hallways and doors
 ```
 
 - **Front end:** a single HTML page using Three.js. It checks the server for changes every 4 seconds.
 - **Back end:** Vercel functions on Postgres. Six tables (`plan`, `versions`, `sessions`, `photos`, `recon`, `workers`) are created automatically on first use.
 - **Photos:** opt-in. The phone resizes each usable photo to 2048 px and re-encodes it, which strips GPS and other EXIF data, then uploads them one at a time. They're stored as JPEG bytes in the `photos` table of the same Neon database, and only served back through `/api/photos`. At about 0.5–1 MB a photo, Neon's free 0.5 GB holds roughly 500–1,000 photos. Each session reserves its number of photos up front; uploads beyond that, or more than 2 hours later, are refused.
-- **3D measuring:** a worker on your own computer measures each room from its uploaded photos. See [Measuring rooms from photos](#measuring-rooms-from-photos). It can also trace a corridor and its doors from a walk-through video. See [Mapping corridors from a walk](#mapping-corridors-from-a-walk).
+- **3D measuring:** a worker on your own computer measures each room from its uploaded photos. See [Measuring rooms from photos](#measuring-rooms-from-photos). It can also trace a corridor and its doors from a walk-through video, or map a whole floor: hallways, rooms and the doors between them. See [Mapping corridors from a walk](#mapping-corridors-from-a-walk) and [Mapping a floor from one walk](#mapping-a-floor-from-one-walk).
 - **Saving:** each save includes the version it was based on. If someone else saved first, the server rejects it and the app merges room by room.
 - **Who can do what:** everyone can view the plan, get directions and contribute (submit capture sessions and upload their photos). Only editors, who enter `EDIT_KEY` under their name, can draw or change rooms, place the block on the map, import walks or restore versions. Without `EDIT_KEY` set, nobody can edit the shared plan.
 - **Safety:** all input is checked field by field before it's stored.
@@ -207,6 +208,40 @@ It hasn't been run on a real corridor yet.
 - Pan gently from side to side, so both walls are filmed.
 - Slow down at each door sign, so it's sharp in a few frames.
 - Turn slowly at corners. One corridor per video is easiest to check.
+
+---
+
+## Mapping a floor from one walk
+
+Rooms measured one at a time from photos don't line up with each other or with the hallway, so Directions can't get from one to the next. `--map` builds the hallway, the rooms off it and the doors between them from **one** video, so they're placed relative to each other the way they really are.
+
+```sh
+cd worker && source .venv/bin/activate
+python worker.py --map --video floor.mp4        # writes map.json and preview.png
+```
+
+Then on the **Floor plan** tab, with no room selected, use **Import walk or map** under **Walks** and pick `map.json`.
+
+**Filming.** Start a few steps into the hallway. Walk along it, and at each room, slow down by its door sign, walk in through the door, walk once round the room, and come back out the same way. Then carry on down the hallway. Turn slowly. One floor, or one wing of it, per video.
+
+**How it works** (`worker/floormap.py`)
+
+1. COLMAP places every frame in one 3D model, so everything comes out in one frame of reference. Up, the floor and the scale are found as for `--walk`. Video is read at 3 frames a second, since a quick turn at a door can otherwise lose frames and bend the rest of the walk.
+2. **Floor space:** every sight line from a camera to a point it saw is marked on a 5 cm grid. Wall points between knee and head height are solid, so a thin wall between a room and the hallway stays a wall. Points above a door's head don't count, so doorways stay open. Points that the other frames see straight through, left by a frame COLMAP placed badly, don't count either.
+3. **Doorways** are where the floor space narrows to under 1.1 m. Each wider part is grown from its middle until it meets its neighbours, so neighbouring parts meet in the doorway.
+4. Each part's outline is squared up and snapped to its walls. Walls facing each other across a gap under 0.6 m are put on one line, so a room and the hallway share a wall.
+5. A **door** goes in each doorway, on the room's side. Long, narrow parts become **Corridor** and big branching open ones **Lobby**, the same rule as **Mark as hallways**.
+6. **Door signs** name the room behind the door they're beside. Each sign's sight line is followed to its wall, and the nearest door gets the vote.
+
+**Importing.** A room whose sign matches a room already on the plan gets the new outline and doors (the old one stays in History). When two or more rooms match, the map is lined up with them; otherwise it goes beside the other rooms, and **Move** puts it in place. Rooms without a readable sign arrive as `B-04-R1`, `B-04-R2` and so on, the hallway as `B-04-HALL`.
+
+**Tested accuracy.** On a rendered floor (a 20 × 2.4 m hallway with rooms of 5 × 5, 5.85 × 4 and 6 × 5 m off it through 0.9 m doors, 15 cm walls, a door sign at each), an 89-second walk at 3 frames a second gave:
+- All 238 frames placed, within 0.10 m of where they were taken (median).
+- One hallway and three rooms, with every room wall within 0.18 m and every door within 0.09 m of where it really is. All three signs read and matched to the right room.
+- The hallway's first 2.1 m, behind and beside where filming started, was missed. The camera never saw it.
+- After **Import walk or map**, Directions routed between all three rooms through the hallway, with the right turns.
+
+At 2 frames a second, the same video lost three frames at one door, and COLMAP put the rest of the walk up to 5 m out, which joined one room to the hallway. It hasn't been run on a real floor yet.
 
 ---
 

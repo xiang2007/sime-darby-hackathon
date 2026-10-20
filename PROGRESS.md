@@ -21,6 +21,7 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 | Worker: measure one room from photos or video (COLMAP) | Rendered rooms only |
 | Worker `--walk`: trace a corridor from a walk video | Working on a rendered corridor; not yet on a real one (F1) |
 | Floor plan → Walks → Import walk | Working |
+| **Worker `--map`: map a floor's hallway, rooms and the doors between them from one walk; Import walk or map** | **New**, working on a rendered floor; not yet on a real one (F1) |
 | **OSM campus snapshot** (`web/data/apu-campus.osm.json`) | **New**, real APU data, 2026-10-20 |
 | **Campus outline on "Place on map"; Snap to building** | **New**, working (turn only for APU, see §3) |
 | **Campus backdrop under the Floor plan and in 3D; corners snap to the building outline** | **New**, working |
@@ -34,6 +35,29 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 3. **Import a walk** (from `worker.py --walk` on a phone video), then use **Move**: drag the corridor and its rooms into place, turn ±5° or ±90°, or **Line up with building**. Group corners snap to building corners.
 4. **3D** shows the campus buildings as see-through outlines up to their roof (OSM `building:levels`, else 3; ground = level 1), with the rooms at their real floor height inside.
 5. **Place on map** (optional, more exact): fixes the block's real position. Until then the backdrop uses a rough frame, with the plan's centre at the main building's centre and its walls square to the grid.
+
+### How `--map` works (`worker/floormap.py`)
+- **One model:** every frame goes into one COLMAP model (3 frames a second), so the hallway and the rooms are placed relative to each other. Up, floor and scale as for `--walk` (shared `walk_frame`).
+- **Floor space:** sight lines from cameras to the points they saw, on a 5 cm grid, including floor points. Wall points 0.3–1.9 m up are solid unless other frames see straight through them (stray points from a badly placed frame); points above door heads don't count, so doorways stay open.
+- **Split at doorways:** parts wider than 1.1 m are grown from their middles until they meet, so they meet in the doorways. Outlines are squared, snapped to walls, and facing walls under 0.6 m apart go on one line.
+- **Doors and types:** a door in each doorway, on the room side; Corridor/Lobby by shape (same rule as the app). Door signs name the room behind the nearest door.
+- **Import:** same-ID rooms get the new outline and doors (old one in History). With 2+ matches the map is lined up with them, else placed beside; new rooms are `B-04-R1`…, `B-04-HALL`.
+
+### Test results for `--map` (rendered floor: 20 × 2.4 m hallway, rooms 5 × 5, 5.85 × 4, 6 × 5 m, 0.9 m doors, 89 s walk)
+| Check | Result |
+|---|---|
+| Frames placed (3/s) | 238 / 238 (28 blurry of 266 dropped first), median 0.10 m from the truth |
+| Parts | 1 corridor + 3 rooms, 3 doorways |
+| Room walls | within 0.18 m |
+| Doors | within 0.09 m; 0.75–0.8 m wide (true 0.9) |
+| Signs | 3 / 3 matched to the right room |
+| Hallway | first 2.1 m (unseen, beside where filming started) missing |
+| Import → Directions (headless Chromium) | all 3 room-to-room routes through the hallway, correct turns, no errors |
+| At 2 frames/s | 3 frames lost at a door; COLMAP bent the rest by up to 5 m and one room joined the hallway |
+| Run time | 19m28s for 238 frames on this sandbox's CPU |
+| Unit tests | `python -m unittest test_map`: 4 pass (doorway split, shared walls and doors, thin walls kept, shapes) |
+
+Two bugs in the test renderer were found and fixed on the way: both faces of a wall showed the same texture (COLMAP matched the hallway side to the room side), and two rooms drew their shared wall twice in the same place (flicker).
 
 ### How `--walk` works (`worker/walk.py`)
 - **Path and scale:** COLMAP with sequential matching gives the camera path. "Up" comes from the walk's plane. Scale comes from phone height (1.45 m), checked against walking pace (1.25 m/s).
@@ -67,6 +91,8 @@ Last updated: 2026-10-20 · Live on `main` (Vercel)
 | F10 | A sign seen only side-on was missed | Missing rooms on fast walks | Slow down at signs, or `--fps 3` |
 | F11 | Walks aren't joined | Two walks of one hallway overlap | Merge at shared signs/junctions |
 | F12 | APU's main building is one OSM outline | Snap to building only turns a block; its position inside is by hand | Map `building:part` per block in OSM, then refresh the snapshot |
+| F14 | `--map` misses the hallway behind and beside where filming starts | First 1–2 m of the hallway short | Start filming facing back down the hallway, or draw the end by hand |
+| F15 | `--map` needs the whole walk in one COLMAP model; a bad stretch can join a room to the hallway | Room merged with the hallway on the import | Film more slowly; 3 frames/s by default; fix on the Floor plan |
 | F13 | No entrances in OSM | No outdoor routing between buildings yet | Add `entrance=*` nodes for the main doors in OSM |
 
 F4 and F8 from earlier reports are unchanged and not blocking.
@@ -110,6 +136,7 @@ F4 and F8 from earlier reports are unchanged and not blocking.
 
 | Priority | Task | Why |
 |---|---|---|
+| P0 | Film one real APU floor (hallway plus each room), run `--map`, import; it replaces the jagged B-04-xx scans with connected rooms and doors | Proves `--map` on a real floor |
 | P0 | F1: film 2–3 real APU corridors, run `--walk`, import, place them in the outline with Move; tune OCR confidence and `SIGN` regex to APU signs | Proves the video pipeline outside the renderer |
 | P0 | Use the backdrop to place Block B (and its walks) inside the main building, then **Place on map** to fix its real position | Gives every later walk a correct frame |
 | P1 | Align a walk to existing rooms by shared door signs (4-way rotation search, as `place()` in `floorplan.py`) | Walks join the plan without hand placement (F9) |
@@ -132,6 +159,9 @@ pip install -r requirements.txt
 # Trace a corridor, then Floor plan → Import walk
 python worker.py --walk --video corridor.mp4 [--floor 3] [--block B] [--no-ocr]
 
+# Map a floor (hallway, rooms, doors), then Floor plan → Import walk or map
+python worker.py --map --video floor.mp4 [--floor 4] [--block B] [--no-ocr]
+
 # Measure one room
 python worker.py --video walk.mp4 --plan plan.json --room B-03-02
 python worker.py --photos session-42-B-03-02.zip --plan plan.json
@@ -140,7 +170,7 @@ python worker.py --photos session-42-B-03-02.zip --plan plan.json
 python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY
 
 # Tests
-python -m unittest test_walk          # worker (in worker/)
+python -m unittest test_walk test_map # worker (in worker/)
 npm test                              # API validation + campus outline
 
 # OSM campus snapshot (normal internet connection; not the cloud sandbox), then commit web/data/apu-campus.osm.json
