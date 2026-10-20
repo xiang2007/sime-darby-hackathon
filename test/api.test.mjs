@@ -72,7 +72,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
   const { query, closeDb } = await import("../lib/db.js");
   after(closeDb);
   await query("SELECT 1");
-  await query("TRUNCATE plan, versions, sessions, photos, recon, workers RESTART IDENTITY");
+  await query("TRUNCATE plan, versions, sessions, photos, video_chunks, recon, workers RESTART IDENTITY");
   const KEY = "open sesame", E = { "x-edit-key": KEY };
   process.env.EDIT_KEY = KEY;
   after(() => { delete process.env.EDIT_KEY; });
@@ -237,6 +237,82 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     } finally { delete process.env.WORKER_KEY; }
   });
 
+  await t.test("walk videos: upload, worker maps it, the map is added to the plan by GPS", async () => {
+    const W = { "x-worker-key": "worker secret" };
+    const video = (method, q, body, headers = {}) => call("videos" + q, method, body, headers);
+    const start = { by: "Ana", block: "B", floor: 7, bytes: 9_000_000, type: "video/mp4", name: "floor.mp4", geo: { lat: 3.05545, lng: 101.70012, acc: 12 } };
+    // Raw pieces of the video, the way the browser sends them
+    const part = (id, i, bytes, headers = {}) => import("../api/videos.js").then(m => m.PUT(new Request(`http://x/api/videos?session=${id}&i=${i}`,
+      { method: "PUT", headers: { "content-type": "application/octet-stream", ...E, ...headers }, body: bytes })))
+      .then(async r => ({ status: r.status, body: await r.json() }));
+    const getPart = (id, i, headers) => import("../api/videos.js").then(m => m.GET(new Request(`http://x/api/videos?session=${id}&i=${i}`, { headers })));
+    const fill = (n, v) => new Uint8Array(n).fill(v);
+    process.env.WORKER_KEY = "worker secret";
+    try {
+      assert.equal((await call("health", "GET")).body.videos, true, "on whenever a database is connected");
+      const s = await video("POST", "", start, { "x-edit-key": "" });
+      assert.equal(s.status, 201, "contributors don't need the edit key");
+      assert.equal(s.body.kind, "map");
+      assert.deepEqual(s.body.video, { bytes: 9_000_000, type: "video/mp4", parts: 3, uploaded: false, deleted: false, file: "floor.mp4" });
+      const id = s.body._id;
+      assert.equal((await video("POST", "", { ...start, type: "image/png" })).status, 400);
+      assert.equal((await video("POST", "", { ...start, bytes: 900_000_000 })).status, 400, "too big for the database");
+
+      assert.equal((await part(id, 0, fill(10, 1))).status, 400, "pieces are 4 MB but the last");
+      assert.equal((await part(id, 3, fill(1_000_000, 1))).status, 400, "only 3 pieces");
+      assert.equal((await part("99999", 0, fill(10, 1))).status, 404);
+      let p = await part(id, 0, fill(4_000_000, 1), { "x-edit-key": "" });
+      assert.equal(p.status, 200);
+      assert.deepEqual([p.body.received, p.body.ready], [1, false]);
+      assert.equal((await part(id, 2, fill(1_000_000, 3))).body.ready, false, "out of order is fine");
+      assert.equal((await call("jobs", "POST", { name: "pc" }, W)).status, 204, "not uploaded yet");
+      assert.equal((await getPart(id, 0, W)).status, 404, "not until it's all there");
+      p = await part(id, 1, fill(4_000_000, 2));
+      assert.deepEqual([p.body.received, p.body.ready], [3, true]);
+      assert.equal((await part(id, 1, fill(4_000_000, 2))).status, 409, "no second upload");
+      assert.equal((await getPart(id, 1, { "x-edit-key": "" })).status, 401, "viewers can't fetch videos");
+      const info = await video("GET", `?session=${id}`, undefined, W);
+      assert.deepEqual([info.body.parts, info.body.chunk, info.body.ready], [3, 4_000_000, true]);
+      const got = new Uint8Array(await (await getPart(id, 1, W)).arrayBuffer());
+      assert.equal(got.length, 4_000_000);
+      assert.equal(got[123], 2);
+
+      const j = await call("jobs", "POST", { name: "pc", version: "1" }, W);
+      assert.equal(j.status, 200);
+      assert.equal(j.body.job.kind, "map");
+      assert.equal(j.body.job.session._id, id);
+      assert.deepEqual(j.body.job.session.geo, start.geo);
+      const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      const result = { kind: "map", floor: null, block: null, length: 30,
+        regions: [{ id: null, type: "corridor", poly: rect(0, 5, 20, 7.4), doors: [{ e: 0, t: 0.25, w: 0.9 }] },
+          { id: "B-07-02", type: "other", poly: rect(3, 0, 8, 5), doors: [{ e: 2, t: 0.5, w: 0.9 }] }],
+        path: [[1, 6], [5, 6], [5, 2], [5, 6], [19, 6]], scale: { source: "phone_height", confidence: "medium" },
+        images: { placed: 90, total: 92 }, notes: ["A note"], worker: { version: "1" } };
+      assert.equal((await call(`jobs?session=${id}`, "PUT", { status: "done", result: { ...result, kind: "walk" } }, W)).status, 400);
+      const before = (await call("state", "GET")).body.plan;
+      const done = await call(`jobs?session=${id}`, "PUT", { status: "done", result }, W);
+      assert.equal(done.status, 200);
+      assert.equal(done.body.imported.placed, "gps");
+      assert.equal(done.body.imported.rev, before.rev + 1);
+      const st = (await call("state", "GET")).body;
+      assert.equal(st.plan.rev, before.rev + 1);
+      assert.ok(st.plan.rooms.some(r => r.id === "B-07-HALL" && r.floor === 7 && r.type === "corridor"));
+      assert.ok(st.plan.rooms.some(r => r.id === "B-07-02" && r.doors.length === 1));
+      assert.ok(st.plan.floors.some(f => f.level === 7));
+      assert.match(st.versions[0].note, /Worker mapped session \d+/);
+      assert.equal(st.versions[0].by, "Worker pc");
+      const rec = st.sessions.find(x => x._id === id).recon;
+      assert.equal(rec.status, "done");
+      assert.equal(rec.result.imported.rev, before.rev + 1);
+      assert.equal(rec.result.regions, undefined, "outlines stay out of /api/state");
+      assert.equal((await call(`jobs?session=${id}`, "GET")).body.recon.result.regions.length, 2);
+      // Once it's on the plan, the video is deleted to free database space
+      assert.equal(st.sessions.find(x => x._id === id).video.deleted, true);
+      assert.equal((await getPart(id, 0, W)).status, 410);
+      assert.equal((await call(`jobs?session=${id}`, "DELETE")).status, 409, "can't be mapped again without the video");
+    } finally { delete process.env.WORKER_KEY; }
+  });
+
   await t.test("edit key: only editors change the plan, anyone can contribute", async () => {
     const V0 = { "x-edit-key": "" };
     const no = await call("plan", "PUT", { plan: plan(), baseRev: 4 }, V0);
@@ -249,7 +325,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
       { method: "POST", headers: { "content-type": "image/jpeg" }, body: jpeg }));
     assert.equal(up.status, 201, "and upload their photos");
     assert.equal((await call("plan", "GET", undefined, V0)).status, 200, "and view the plan");
-    const yes = await call("plan", "PUT", { plan: plan(), baseRev: 4 });
+    const yes = await call("plan", "PUT", { plan: plan(), baseRev: (await call("plan", "GET")).body.plan.rev });
     assert.equal(yes.status, 200);
     assert.equal((await call("photos?session=1", "GET", undefined, V0)).status, 401, "viewing photos needs the key");
     assert.equal((await call("jobs?session=1", "DELETE", undefined, V0)).status, 401, "so does resetting a measurement");

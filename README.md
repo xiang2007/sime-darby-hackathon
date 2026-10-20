@@ -222,6 +222,16 @@ python worker.py --map --video floor.mp4        # writes map.json and preview.pn
 
 Then on the **Floor plan** tab, with no room selected, use **Import walk or map** under **Walks** and pick `map.json`.
 
+**Or let the website do it all.** On **Capture**, under **Map a whole floor from one video**, turn on the GPS tag, pick the video and press **Upload video for mapping**. Leave a worker running with `python worker.py --server https://your-app.vercel.app --key YOUR_WORKER_KEY`. It:
+
+1. downloads the video from the website. It's kept in the Neon database in 4 MB pieces, since a Vercel function takes at most 4.5 MB per request, so no other storage is needed;
+2. maps the floor, as `--map` does;
+3. sends the map back, and the website adds it to the floor plan as a new revision (the one before stays in History), without anyone pressing Import;
+4. places it by the session's GPS fix: the middle of the walk goes where the GPS says, then it's turned in 90° steps and nudged (within the GPS accuracy, up to 40 m) to fit inside that building's OpenStreetMap outline without covering rooms already on the floor. If two or more rooms on the map match rooms already on the floor by their door signs, it's lined up with those instead. If the block has never been placed on the map, it's placed roughly at the main building first;
+5. deletes the video to free database space (set `KEEP_VIDEOS=1` in Vercel to keep it).
+
+Sessions shows each video's progress, and **Show on plan** once it's added. Videos can be up to 400 MB (about 2 minutes at 1080p), since Neon's free tier holds 0.5 GB in all. If the site is behind Vercel Deployment Protection (preview deployments usually are), give the worker the project's **Protection Bypass for Automation** secret with `--bypass SECRET`, or use the production address.
+
 **Filming.** Start a few steps into the hallway. Walk along it, and at each room, slow down by its door sign, walk in through the door, walk once round the room, and come back out the same way. Then carry on down the hallway. Turn slowly. One floor, or one wing of it, per video.
 
 **How it works** (`worker/floormap.py`)
@@ -233,7 +243,7 @@ Then on the **Floor plan** tab, with no room selected, use **Import walk or map*
 5. A **door** goes in each doorway, on the room's side. Long, narrow parts become **Corridor** and big branching open ones **Lobby**, the same rule as **Mark as hallways**.
 6. **Door signs** name the room behind the door they're beside. Each sign's sight line is followed to its wall, and the nearest door gets the vote.
 
-**Importing.** A room whose sign matches a room already on the plan gets the new outline and doors (the old one stays in History). When two or more rooms match, the map is lined up with them; otherwise it goes beside the other rooms, and **Move** puts it in place. Rooms without a readable sign arrive as `B-04-R1`, `B-04-R2` and so on, the hallway as `B-04-HALL`.
+**Importing** (by hand, or automatically as above). A room whose sign matches a room already on the plan gets the new outline and doors (the old one stays in History). When two or more rooms match, the map is lined up with them; otherwise it goes beside the other rooms, and **Move** puts it in place. Rooms without a readable sign arrive as `B-04-R1`, `B-04-R2` and so on, the hallway as `B-04-HALL`.
 
 **Tested accuracy.** On a rendered floor (a 20 × 2.4 m hallway with rooms of 5 × 5, 5.85 × 4 and 6 × 5 m off it through 0.9 m doors, 15 cm walls, a door sign at each), an 89-second walk at 3 frames a second gave:
 - All 238 frames placed, within 0.10 m of where they were taken (median).

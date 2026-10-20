@@ -166,6 +166,10 @@ aside.inspector{border-left:1px solid var(--rule);background:var(--sheet);overfl
 .cap-intro{grid-area:intro;min-width:0}
 #capSide{grid-area:side;position:sticky;top:76px}
 #frames{grid-area:frames;min-width:0}
+.vid-card{margin-top:18px}
+.vid-card h3{margin:0 0 6px;font-size:1rem}
+.vid-card .vid-pick{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.vid-card ol{margin:6px 0 10px;padding-left:20px}
 .drop{border:2px dashed var(--rule);border-radius:10px;padding:26px 18px;text-align:center;background:var(--sheet);cursor:pointer}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .drop strong{font-family:var(--f-display);font-weight:600;font-size:1.1rem;color:#fff}
@@ -647,6 +651,7 @@ img.mk{object-fit:contain;background:#fff}
             <input type="file" id="fileIn" accept="image/*" multiple hidden>
           </div>
           <div class="live-start"><button class="btn primary" id="liveBtn">Live camera</button><span class="small muted">Keep the camera open and walk slowly. A photo is kept whenever the view is sharp and has moved on from the last one.</span></div>
+          <div class="card vid-card" id="vidCard" hidden></div>
         </div>
         <div class="card" id="capSide"></div>
         <div class="frames" id="frames"></div>
@@ -1658,7 +1663,7 @@ function startGeo(){
 }
 function stopGeo(){ if(geoWatch!=null){ navigator.geolocation.clearWatch(geoWatch); geoWatch=null; } }
 function geoText(g){ return `${g.lat.toFixed(5)}, ${g.lng.toFixed(5)} · ±${Math.round(g.acc)} m`; }
-function renderGeoLine(){ const el=$("#cGeoLine"); if(el) el.textContent=S.capture.geo?geoText(S.capture.geo):"Finding your location…"; }
+function renderGeoLine(){ const t=S.capture.geo?geoText(S.capture.geo):"Finding your location…", el=$("#cGeoLine"), v=$("#vGeo"); if(el) el.textContent=t; if(v) v.textContent=S.capture.geo?`GPS ${t}.`:t; }
 const mapLink=g=>`https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lng}#map=19/${g.lat}/${g.lng}`;
 function ncc(a,b){ let ma=0,mb=0; for(let i=0;i<a.length;i++){ma+=a[i];mb+=b[i];} ma/=a.length; mb/=b.length;
   let n=0,da=0,db=0; for(let i=0;i<a.length;i++){ const x=a[i]-ma,y=b[i]-mb; n+=x*y; da+=x*x; db+=y*y; } return n/Math.sqrt(da*db||1); }
@@ -1727,6 +1732,76 @@ function renderCapture(){
   $("#cGeo").onchange=e=>{ C.geoOn=e.target.checked; if(C.geoOn) startGeo(); else { stopGeo(); C.geo=null; } renderCapture(); };
   const cl=$("#cClear"); if(cl) cl.onclick=()=>{ C.frames=[]; C.fromMarker=false; renderCapture(); };
   $("#cSubmit").onclick=submitSession;
+  renderVideo();
+}
+/* ---------- walk videos: one walk through a floor, mapped by the worker (worker.py --map) ----------
+   The video goes to the site's Neon database in 4 MB pieces (api/videos.js). Once every piece is in, a connected
+   worker downloads it, maps the hallway, rooms and doors, and the site adds them to the floor plan by itself, placed
+   by this session's GPS fix. The video is then deleted to save space. */
+const VIDEO_TYPES={mp4:"video/mp4",m4v:"video/x-m4v",mov:"video/quicktime",webm:"video/webm"}, VIDEO_MAX=400e6, VIDEO_CHUNK=4e6;
+const videoType=f=>Object.values(VIDEO_TYPES).includes(f.type)?f.type:VIDEO_TYPES[(f.name.split(".").pop()||"").toLowerCase()]||null;
+const mb=n=>n>=1e9?(n/1e9).toFixed(1)+" GB":Math.max(1,Math.round(n/1e6))+" MB";
+function renderVideo(){
+  const el=$("#vidCard"); if(!el) return;
+  el.hidden=!(S.api && S.videoStore && !S.noContrib);
+  if (el.hidden) return;
+  const C=S.capture, V=C.vid||(C.vid={file:null,consent:false,up:null});
+  const f=V.file, bad=f&&(!videoType(f)?"Pick an MP4, MOV or WebM video.":f.size>VIDEO_MAX?`That's ${mb(f.size)}; the most is ${mb(VIDEO_MAX)}. Film one floor or wing at a time.`:null);
+  const can=f&&!bad&&V.consent&&!V.up&&!C.upload;
+  el.innerHTML=`<h3>Map a whole floor from one video</h3>
+    <p class="small muted" style="margin:0">Film one walk along the hallway that steps into each room. A worker computer maps the hallway, rooms and doors, and they're added to the Floor plan by themselves, placed where your GPS says.</p>
+    <ol class="small muted"><li>Start a few steps into the hallway, phone at chest height, tilted a little down.</li><li>At each room, pause by its door sign, walk in, go once round, and come back out the same door.</li><li>Walk slowly and turn slowly. One floor, or one wing, per video.</li></ol>
+    <div class="vid-pick"><button class="btn sm" id="vPick" ${V.up?"disabled":""}>${f?"Choose another video":"Choose video"}</button><input type="file" id="vIn" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm" hidden>
+      ${f?`<span class="small mono">${esc(f.name)} · ${mb(f.size)}</span>`:`<span class="small muted">MP4, MOV or WebM, up to ${mb(VIDEO_MAX)}</span>`}</div>
+    ${bad?`<p class="small warn" style="margin:0 0 8px">${esc(bad)}</p>`:""}
+    <p class="small muted" style="margin:0 0 8px">For <b>Block ${esc(C.block||"?")}</b>, <b>floor ${esc(C.floor)}</b> (change them under Session). ${C.geoOn?`<span id="vGeo">${C.geo?`GPS ${esc(geoText(C.geo))}.`:"Finding your location…"}</span>`:`<b>Turn on the GPS tag</b> under Session so the map lands in the right place; without it, it's put beside the rooms already on the floor.`}</p>
+    <label class="consent"><input type="checkbox" id="vConsent" ${V.consent?"checked":""} ${V.up?"disabled":""}><span>I have permission to film this area, and no one can be identified in the video. It's kept on this site's database until it's mapped, then deleted.</span></label>
+    ${V.up?`<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(V.up.pct)}"><i style="width:${V.up.pct}%"></i></div>
+      <p class="small" style="margin:0 0 10px" id="vUpText">${esc(V.up.text)}</p>`:""}
+    <button class="btn primary" id="vSend" ${can?"":"disabled"}>Upload video for mapping</button>`;
+  const inp=$("#vIn");
+  $("#vPick").onclick=()=>inp.click();
+  inp.onchange=()=>{ V.file=inp.files[0]||null; inp.value=""; renderVideo(); };
+  $("#vConsent").onchange=e=>{ V.consent=e.target.checked; renderVideo(); };
+  $("#vSend").onclick=uploadVideo;
+}
+function videoProgress(pct,text){ const V=S.capture.vid; if(!V?.up) return; V.up={pct,text};
+  const bar=$("#vidCard .progress i"), t=$("#vUpText"); if(bar&&t){ bar.style.width=pct+"%"; t.textContent=text; } else renderVideo(); }
+// Send piece i of the video, trying again a few times if the connection drops.
+async function sendVideoPart(id,i,blob){
+  for (let attempt=0;;attempt++){
+    try{
+      const h=apiHeaders(); h["content-type"]="application/octet-stream";
+      const r=await fetch(`/api/videos?session=${encodeURIComponent(id)}&i=${i}`,{method:"PUT",headers:h,body:blob});
+      if (r.ok) return r.json();
+      if (r.status<500 || attempt>=3) throw await apiError(r);
+    }catch(e){ if (e.api || attempt>=3) throw e; }
+    await new Promise(res=>setTimeout(res,1000*2**attempt));
+  }
+}
+async function uploadVideo(){
+  const C=S.capture, V=C.vid, f=V?.file, type=f&&videoType(f);
+  if (!f || !type || !V.consent || V.up) return;
+  V.up={pct:0,text:"Starting the upload…"}; renderVideo();
+  addEventListener("beforeunload",warnLeave);
+  try{
+    const res=await apiSend("POST","/api/videos",{by:S.meId||"",block:C.block||"",floor:C.floor,bytes:f.size,type,name:f.name.slice(0,120),
+      ...(C.geoOn&&C.geo?{geo:{lat:C.geo.lat,lng:C.geo.lng,acc:C.geo.acc}}:{})});
+    if (!res.ok) throw await apiError(res);
+    // The video goes to the site's database in pieces: a Vercel function takes at most 4.5 MB per request.
+    const sess=await res.json(), parts=sess.video.parts, chunk=VIDEO_CHUNK;
+    let last=null;
+    for (let i=0;i<parts;i++){
+      last=await sendVideoPart(sess._id,i,f.slice(i*chunk,Math.min(f.size,(i+1)*chunk)));
+      const sent=Math.min(f.size,(i+1)*chunk);
+      videoProgress(Math.min(99,100*sent/f.size),`Uploading ${mb(sent)} of ${mb(f.size)}… keep this page open.`);
+    }
+    if (!last?.ready) throw new Error("The upload didn't finish. Try again.");
+    C.vid={file:null,consent:false,up:null}; C.geoOn=false; C.geo=null; stopGeo();
+    poll(true); setTab("sessions");
+    toast(S.worker&&Date.now()-S.worker.seen<3*60e3?"Video uploaded. The worker will map it and add it to the Floor plan.":"Video uploaded. It'll be mapped and added to the Floor plan when a worker is running (see Sessions).");
+  }catch(e){ if(C.vid) C.vid.up=null; renderVideo(); toast(e.message||"Couldn't upload the video."); }
+  finally{ removeEventListener("beforeunload",warnLeave); }
 }
 /* Photo upload (only on the server backend with photo storage, and only when the contributor opts in). */
 const PHOTO_MAX=2048, PHOTO_LIMIT=200, PHOTO_BYTES=3_900_000;
@@ -1811,6 +1886,7 @@ async function renderSessions(){
       <div class="stage"><b>Capture</b><span class="pill ok">Live</span><div class="small muted">Photos and door markers, in this app</div></div>
       <div class="stage"><b>Quality check</b><span class="pill ok">Live</span><div class="small muted">Blur, exposure, blank wall, overlap</div></div>
       <div class="stage"><b>Photo storage</b>${S.photoStore?`<span class="pill ok">Live</span><div class="small muted">Opt-in upload of usable photos, kept in the database</div>`:`<span class="pill idle">Off</span><div class="small muted">${S.api?"Turned off on this deployment (PHOTO_UPLOAD=off)":"Needs the server version of the app"}</div>`}</div>
+      <div class="stage"><b>Walk videos</b>${S.videoStore?`<span class="pill ok">Live</span><div class="small muted">Floor walk videos in the database, mapped and placed on the plan by GPS by the worker</div>`:`<span class="pill idle">Off</span><div class="small muted">${S.api?"Turned off on this deployment (VIDEO_UPLOAD=off)":"Needs the server version of the app"}</div>`}</div>
       ${(()=>{ const w=workerState(); return `<div class="stage"><b>3D measuring</b><span class="pill ${w.cls}">${w.label}</span><div class="small muted">${esc(w.note)}</div></div>`; })()}
       <div class="stage"><b>Rooms + review</b><span class="pill ok">Live</span><div class="small muted">Floor plan editor and History</div></div>
     </div>
@@ -1820,9 +1896,9 @@ async function renderSessions(){
     <h3 class="sec">All sessions</h3>
     <div class="tbl-wrap">${ss.length?`<table class="cards"><thead><tr><th>When</th><th>Contributor</th><th>Room</th><th>Verdict</th><th style="text-align:right">Frames</th><th style="text-align:right">Usable</th><th style="text-align:right">Gaps</th><th>Notes</th><th>Photos</th><th>3D measurement</th></tr></thead><tbody>
       ${ss.map(s=>{ const [c,l]=VERDICT[s.verdict]||["idle",s.verdict]; const known=rooms.some(r=>r.id===s.room);
-        return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${s.room?esc(s.room):`<span class="muted">No room tag</span>`}${s.marker?` <span class="pill idle">marker</span>`:""}${known||!s.room?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">${s.block?`Block ${esc(s.block)} · `:""}L${esc(s.floor)}${s.geo?` · <a href="${esc(mapLink(s.geo))}" target="_blank" rel="noopener" style="white-space:nowrap" title="${esc(geoText(s.geo))}">GPS ±${esc(s.geo.acc)} m</a>`:""}</span></td>
+        return `<tr><td data-l="When">${esc(ago(s.at))}</td><td data-l="By">${who(s.by)}</td><td class="mono wide first">${s.kind==="map"?`<span style="font-family:var(--f-body)">Floor walk video</span>`:s.room?esc(s.room):`<span class="muted">No room tag</span>`}${s.marker?` <span class="pill idle">marker</span>`:""}${known||!s.room||s.kind==="map"?"":` <span class="pill warn" title="No room with this ID on the plan">not on plan</span>`}<br><span class="small muted">${s.block?`Block ${esc(s.block)} · `:""}L${esc(s.floor)}${s.geo?` · <a href="${esc(mapLink(s.geo))}" target="_blank" rel="noopener" style="white-space:nowrap" title="${esc(geoText(s.geo))}">GPS ±${esc(s.geo.acc)} m</a>`:""}</span></td>
         <td data-l="Verdict"><span class="pill ${c}">${l}</span></td><td class="num" data-l="Frames">${s.frames}</td><td class="num" data-l="Usable">${s.usable}</td><td class="num" data-l="Gaps">${s.gaps}</td>
-        <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Photos">${s.photos?`<button class="btn sm" data-gal="${esc(s._id)}" data-room="${esc(s.room)}">View ${s.photos}</button>`:`<span class="muted small">${s.photoSlots&&Date.now()-s.at<2*3600e3?"Uploading…":"Kept on phone"}</span>`}</td><td data-l="3D measurement" class="${!s.recon&&!(s.photos>=MIN_RECON&&s.verdict!=="rejected")?"none":"wide"}">${reconCell(s)}</td></tr>`;}).join("")}
+        <td class="small wide ${(s.reasons||[]).length?"":"none"}" data-l="Notes">${(s.reasons||[]).map(esc).join("<br>")||'<span class="muted">—</span>'}</td><td data-l="Photos">${s.kind==="map"?`<span class="small">${s.video?.deleted?`<span class="muted">Video deleted after mapping</span>`:s.video?.uploaded?`Video, ${mb(s.video.bytes)}`:`<span class="muted">Video not uploaded</span>`}</span>`:s.photos?`<button class="btn sm" data-gal="${esc(s._id)}" data-room="${esc(s.room)}">View ${s.photos}</button>`:`<span class="muted small">${s.photoSlots&&Date.now()-s.at<2*3600e3?"Uploading…":"Kept on phone"}</span>`}</td><td data-l="3D measurement" class="${s.kind!=="map"&&!s.recon&&!(s.photos>=MIN_RECON&&s.verdict!=="rejected")?"none":"wide"}">${reconCell(s)}</td></tr>`;}).join("")}
       </tbody></table>`:`<div class="empty">No sessions yet. Open <b>Contribute</b> to check and submit your first set of photos.</div>`}</div>`;
 }
 
@@ -1837,7 +1913,29 @@ const scanRoom=s=>{ const rs=S.plan.rooms.filter(r=>r.id===s.room); return rs.fi
 function scansFor(r){ return S.sessions.filter(s=>s.recon?.status==="done" && s.recon.result && scanRoom(s)===r).sort((a,b)=>b.recon.at-a.recon.at); }
 // Where the measured outline sits on the plan. The worker places it over the drawn room when it can.
 function scanShift(m,r){ if(m.aligned||!r) return [0,0]; const a=centroid(r.poly), b=centroid(m.poly); return [a[0]-b[0],a[1]-b[1]]; }
+const PLACED={gps:"placed by GPS",rooms:"lined up with rooms already there",beside:"beside the other rooms (no GPS)",origin:"on an empty floor"};
+function mapCell(s){
+  const r=s.recon, ro=S.readOnly;
+  if (!r) return s.video?.uploaded?`<span class="pill idle">Waiting for worker</span>`:`<span class="muted small">${Date.now()-s.at<2*3600e3?"Uploading…":"Upload didn't finish"}</span>`;
+  if (r.status==="processing") return `<span class="pill warn">Mapping…</span><div class="small muted" style="margin-top:4px">About 20 minutes for a 90 s video</div>`;
+  if (r.status==="failed") return `<span class="pill bad">Failed</span><div class="small muted" style="margin:4px 0">${esc(r.error||"")}</div>${ro?"":`<button class="btn sm" data-retry="${esc(s._id)}">Try again</button>`}`;
+  const m=r.result||{}, imp=m.imported;
+  if (!imp) return `<span class="pill warn">Mapped</span><div class="small muted">Not added to the plan yet</div>`;
+  if (imp.error) return `<span class="pill bad">Not added</span><div class="small muted" style="margin:4px 0">${esc(imp.error)}</div>${ro?"":`<button class="btn sm" data-retry="${esc(s._id)}">Try again</button>`}`;
+  const n=(imp.added||[]).length+(imp.replaced||[]).length;
+  return `<span class="pill ok">On the plan</span> <span class="small muted">r${esc(imp.rev)}</span>
+    <div class="small" style="margin:4px 0">${imp.halls} hallway${imp.halls===1?"":"s"}, ${imp.rooms} room${imp.rooms===1?"":"s"}, ${imp.doors} door${imp.doors===1?"":"s"} · ${esc(PLACED[imp.placed]||imp.placed)}${imp.building?` in ${esc(imp.building)}`:""}${imp.placedBlock?". Block placed roughly on the map: fine-tune with Place on map":""}</div>
+    ${(m.notes||[]).length?`<details class="small muted"><summary>${m.notes.length} note${m.notes.length===1?"":"s"}</summary>${m.notes.map(esc).join("<br>")}</details>`:""}
+    ${n?`<button class="btn sm" data-mapshow="${esc(s._id)}">Show on plan</button>`:""}`;
+}
+function showMapSession(id){
+  const s=S.sessions.find(x=>x._id===id), imp=s?.recon?.result?.imported; if(!imp) return;
+  const ids=[...(imp.added||[]),...(imp.replaced||[])], rs=S.plan.rooms.filter(r=>r.floor===imp.floor&&ids.includes(r.id));
+  S.floor=imp.floor; S.sel=rs[0]?.k||null; setTab("plan"); renderFloors(); fit();
+  if (!rs.length) toast("Those rooms aren't on the plan any more.");
+}
 function reconCell(s){
+  if (s.kind==="map") return mapCell(s);
   const r=s.recon;
   if (!r) return s.photos>=MIN_RECON && s.verdict!=="rejected" ? `<span class="pill idle">Waiting for worker</span>` : `<span class="muted small">—</span>`;
   if (r.status==="processing") return `<span class="pill warn">Measuring…</span>`;
@@ -2039,8 +2137,9 @@ $("#galZip").onclick=async()=>{
   finally{ b.textContent="Download all (.zip)"; b.disabled=false; }
 };
 $("#sessionsPad").addEventListener("click",e=>{
-  const b=e.target.closest("[data-gal],[data-scan],[data-retry],[data-addscan]"); if(!b) return;
+  const b=e.target.closest("[data-gal],[data-scan],[data-retry],[data-addscan],[data-mapshow]"); if(!b) return;
   if (b.dataset.gal) openGallery(b.dataset.gal,b.dataset.room);
+  else if (b.dataset.mapshow) showMapSession(b.dataset.mapshow);
   else if (b.dataset.scan) showScan(b.dataset.scan);
   else if (b.dataset.addscan) addScanRoom(b.dataset.addscan);
   else retryScan(b.dataset.retry,b);
@@ -2095,7 +2194,7 @@ const apiSend=(method,path,body)=>fetch(path,{method,headers:apiHeaders(),body:b
 async function apiError(res){ const d=await res.json().catch(()=>({})); return Object.assign(new Error(d.message||"Request failed"),{api:true,status:res.status}); }
 
 async function connectApi(h){
-  S.api=true; S.meId=lsGet(NAME_KEY)||null; S.editKey=true; S.editKeySet=h.editKeySet!==false; S.maxVersions=200; S.photoStore=!!h.photos;
+  S.api=true; S.meId=lsGet(NAME_KEY)||null; S.editKey=true; S.editKeySet=h.editKeySet!==false; S.maxVersions=200; S.photoStore=!!h.photos; S.videoStore=!!h.videos;
   S.readOnly=!h.keyOk;     // only editors (with the edit key) can change the plan; everyone can view and contribute
   if (S.readOnly) setMode("select");
   renderMe(); setSync("saving","Loading shared plan…");
