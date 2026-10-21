@@ -733,29 +733,68 @@ const ago = t => { if (!t) return ""; const s = (Date.now() - t) / 1000;
   if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + " min ago"; if (s < 86400) return Math.floor(s/3600) + " h ago";
   return new Date(t).toLocaleDateString(undefined, {day:"numeric", month:"short"}); };
 
-/* ---------- example plan (shown only while the shared plan is empty) ---------- */
+/* ---------- example plan (shown only while the shared plan is empty) ----------
+   Mock data for Block B, Levels 3 and 4, laid out inside the west wing of APU's main building (OpenStreetMap
+   way/541804093). geo pins the plan's (0, 0) to the wing's north-west corner, square to its walls, so the rooms
+   sit inside the real outline. The wing is about 70 × 68 m; the rooms fill x 0.5–70.5, y 0.5–68.
+   Each floor: a cross-shaped corridor, a lift lobby with two lifts, two stairwells (one by the lifts, one at the
+   west end), toilets, and teaching rooms around them. Stairwells and lifts are in the same place on both floors,
+   so Directions can go between them. */
 function rect(x0,y0,x1,y1){ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]; }
-function exampleRoom(id,name,type,poly,doors,floor=3){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t])=>({e,t,w:DOOR_W}))}; }
+function exampleRoom(id,name,type,poly,doors,floor=3,extra){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t])=>({e,t,w:DOOR_W})),...extra}; }
+const EXAMPLE_GEO={x:117.75,y:46.34,lat:3.0556056,lng:101.6999959,rot:27.43,osm:"way/541804093"};
+// Rectangle doors: edge 0 north, 1 east, 2 south, 3 west. t runs clockwise along the edge.
+function exampleFloor(f,rooms){
+  const id=n=>`B-${String(f).padStart(2,"0")}-${String(n).padStart(2,"0")}`, R=(n,name,type,poly,doors,extra)=>exampleRoom(id(n),name,type,poly,doors,f,extra);
+  const lift={kind:"lift",dir:0,mirror:false};
+  return [
+    // the cross-shaped corridor: east–west at y 32–35, north–south at x 34–37. Its east end runs on into the main building.
+    R(0,"Main corridor","corridor",[[34,.5],[37,.5],[37,32],[70.5,32],[70.5,35],[37,35],[37,68],[34,68],[34,35],[.5,35],[.5,32],[34,32]],[[3,.5]]),
+    R(20,"Lift lobby","lobby",rect(37,22,43,32),[[2,.5],[3,.3]]),
+    R(21,"Lift 1","stairs",rect(43,22,46,25.5),[[3,.5]],{stair:lift}),
+    R(22,"Lift 2","stairs",rect(43,25.5,46,29),[[3,.5]],{stair:lift}),
+    R(23,"Accessible toilet","toilet",rect(43,29,46,32),[[2,.5]]),
+    R(24,"Stairwell A","stairs",rect(46,22,51,32),[[2,.5]]),
+    R(25,"Toilets (male)","toilet",rect(51,22,54,32),[[2,.5]]),
+    R(26,"Toilets (female)","toilet",rect(54,22,57,32),[[2,.5]]),
+    R(27,"Stairwell B","stairs",rect(.5,35,5.5,45),[[0,.5]]),
+    ...rooms(R)
+  ];
+}
 function examplePlan(){
-  return { block:"B", floors:[{level:3,name:"Level 3"},{level:4,name:"Level 4"}], rev:0, rooms:[
-    exampleRoom("B-03-00","Main corridor","corridor",rect(0,8,40,11)),
-    exampleRoom("B-03-01","Lecture Theatre 1","lecture",rect(0,11,12,19),[[0,.25],[0,.8]]),
-    exampleRoom("B-03-02","Computer Lab 2","lab",rect(12,11,22,19),[[0,.5]]),
-    exampleRoom("B-03-03","Engineering Lab 3","lab",rect(22,11,32,19),[[0,.5]]),
-    exampleRoom("B-03-04","Faculty office","office",rect(32,11,40,19),[[0,.3]]),
-    exampleRoom("B-03-05","Toilets","toilet",rect(0,2,5,8),[[2,.5]]),
-    exampleRoom("B-03-06","Stairwell","stairs",rect(5,2,10,8),[[2,.5]]),
-    exampleRoom("B-03-07","Lift lobby","lobby",rect(10,2,16,8),[[2,.35]]),
-    exampleRoom("B-03-08","Lecture Theatre 8","lecture",rect(16,0,30,8),[[2,.2],[2,.8]]),
-    exampleRoom("B-03-09","Student services","office",rect(30,2,40,8),[[2,.5]]),
-    exampleRoom("B-04-00","Main corridor","corridor",rect(0,8,40,11),null,4),
-    exampleRoom("B-04-01","Seminar Room 1","lecture",rect(0,11,14,19),[[0,.5]],4),
-    exampleRoom("B-04-02","Design Studio","lab",rect(14,11,28,19),[[0,.3],[0,.7]],4),
-    exampleRoom("B-04-03","Meeting room","office",rect(28,11,40,19),[[0,.5]],4),
-    exampleRoom("B-04-05","Toilets","toilet",rect(0,2,5,8),[[2,.5]],4),
-    exampleRoom("B-04-06","Stairwell","stairs",rect(5,2,10,8),[[2,.5]],4),
-    exampleRoom("B-04-07","Lift lobby","lobby",rect(10,2,16,8),[[2,.35]],4),
-    exampleRoom("B-04-08","Library annex","other",rect(16,2,40,8),[[2,.2],[2,.8]],4),
+  return { block:"B", floors:[{level:3,name:"Level 3"},{level:4,name:"Level 4"}], geo:{...EXAMPLE_GEO}, rev:0, rooms:[
+    ...exampleFloor(3,R=>[
+      R(1,"Lecture Theatre 1","lecture",rect(.5,.5,20,32),[[2,.25],[2,.75]]),
+      R(2,"Computer Lab 2","lab",rect(20,.5,34,11),[[1,.5]]),
+      R(3,"Computer Lab 3","lab",rect(20,11,34,21.5),[[1,.5]]),
+      R(4,"Tutorial Room 4","lecture",rect(20,21.5,34,32),[[1,.4],[2,.5]]),
+      R(5,"Lecture Theatre 5","lecture",[[5.5,35],[20,35],[20,68],[.5,68],[.5,45],[5.5,45]],[[0,.3],[0,.8]]),
+      R(6,"Faculty office","office",rect(20,35,34,46),[[0,.5],[1,.5]]),
+      R(7,"Meeting room","office",rect(20,46,34,57),[[1,.5]]),
+      R(8,"Staff room","office",rect(20,57,34,68),[[1,.5]]),
+      R(9,"Engineering Lab 9","lab",rect(37,35,55,50),[[0,.5],[3,.5]]),
+      R(10,"Student Services Centre","office",rect(55,35,70.5,68),[[0,.3],[0,.75]]),
+      R(11,"Project Studio","lab",rect(37,50,55,68),[[3,.5]]),
+      R(12,"Computer Lab 12","lab",rect(37,.5,50,11),[[3,.5]]),
+      R(13,"Computer Lab 13","lab",rect(37,11,50,22),[[3,.5]]),
+      R(14,"Library annex","other",[[50,.5],[70.5,.5],[70.5,32],[57,32],[57,22],[50,22]],[[2,.5]]),
+    ]),
+    ...exampleFloor(4,R=>[
+      R(1,"Auditorium","lecture",rect(.5,.5,20,32),[[2,.25],[2,.75]]),
+      R(2,"Discussion Room 1","office",rect(20,.5,34,11),[[1,.5]]),
+      R(3,"Discussion Room 2","office",rect(20,11,34,21.5),[[1,.5]]),
+      R(4,"Seminar Room 4","lecture",rect(20,21.5,34,32),[[1,.4],[2,.5]]),
+      R(5,"Design Studio","lab",[[5.5,35],[20,35],[20,68],[.5,68],[.5,45],[5.5,45]],[[0,.3],[0,.8]]),
+      R(6,"Seminar Room 6","lecture",rect(20,35,34,46),[[0,.5],[1,.5]]),
+      R(7,"Seminar Room 7","lecture",rect(20,46,34,57),[[1,.5]]),
+      R(8,"Lecturer offices","office",rect(20,57,34,68),[[1,.5]]),
+      R(9,"Cyber Security Lab","lab",rect(37,35,55,50),[[0,.5],[3,.5]]),
+      R(10,"Student lounge","lobby",rect(55,35,70.5,68),[[0,.3],[0,.75]]),
+      R(11,"IoT Lab","lab",rect(37,50,55,68),[[3,.5]]),
+      R(12,"Data Science Lab","lab",rect(37,.5,50,11),[[3,.5]]),
+      R(13,"Robotics Lab","lab",rect(37,11,50,22),[[3,.5]]),
+      R(14,"Admin office","office",[[50,.5],[70.5,.5],[70.5,32],[57,32],[57,22],[50,22]],[[2,.5]]),
+    ]),
   ]};
 }
 
@@ -769,7 +808,7 @@ const S = {
   api: false, etag: null, conflict: null, editKey: false, failedNote: "", serverNote: null, maxVersions: MAX_VERSIONS,
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
   worker: null, scanView: null, scanCache: {},
-  view: {cx: 20, cy: 9.5, scale: 18},
+  view: {cx: 35.5, cy: 34, scale: 8},
   capture: {frames: [], block: null, floor: null, room: "", consent: false, share: false, busy: false, upload: null, geoOn: false, geo: null}
 };
 
@@ -909,7 +948,7 @@ function renderBanner(){
   if (S.readOnly){ b.hidden=true; return; }
   if (S.example && S.loaded){
     b.hidden=false;
-    b.innerHTML=bannerHTML(`<b>Example layout.</b> <span class="more">A sample of Block B, Levels 3–4.</span> Nothing is saved until you edit it.${S.serverNote?` <span class="more">No database yet, so edits stay in this browser.</span>`:""}`,
+    b.innerHTML=bannerHTML(`<b>Example layout.</b> <span class="more">Mock data for Block B, Levels 3–4, in the west wing of the main building.</span> Nothing is saved until you edit it.${S.serverNote?` <span class="more">No database yet, so edits stay in this browser.</span>`:""}`,
       `<button class="btn sm primary" id="keepEx">Use this example</button><button class="btn sm" id="blankEx">Start blank</button>`);
     $("#keepEx").onclick=()=>{ S.example=false; scheduleSave("Started from the example layout",0); renderAll(); };
     $("#blankEx").onclick=()=>{ S.plan={block:"B",floors:[{level:1,name:"Level 1"}],rooms:[],rev:0}; S.floor=1; S.sel=null; S.example=false; scheduleSave("Started a blank plan",0); fit(); renderAll(); };
@@ -1209,7 +1248,7 @@ function uniqueId(id){ let x=id,i=2; while(S.plan.rooms.some(r=>r.id===x)) x=id+
 function deleteRoom(k){ const r=roomByK(k); if(!r) return; S.plan.rooms=S.plan.rooms.filter(x=>x.k!==k); S.sel=null; edit("Deleted room "+r.id); }
 
 /* ---------- inspector ---------- */
-let delArm=false, lastInsp=null;
+let delArm=false, exArm=false, lastInsp=null;
 function setSheet(open){ S.sheet=open; $("#insp").classList.toggle("open",open); $("#sheetHandle").setAttribute("aria-expanded",String(open)); $("#sheetCue").textContent=open?"Close":"Details"; }
 $("#sheetHandle").onclick=()=>setSheet(!S.sheet);
 function renderInspector(){
@@ -1236,6 +1275,8 @@ function renderInspector(){
       <button class="btn sm" id="markHalls">Mark as hallways</button>`:""}
       <h3>Rooms on this floor</h3>
       ${rs.length?`<ul class="roomlist">${rs.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:`<p class="muted small">Nothing drawn yet.</p>`}
+      ${S.readOnly?"":`<h3>Sample data</h3><p class="small muted" style="margin:0 0 8px">Replace the whole plan with mock data for Block B, Levels 3–4, placed in the west wing of the main building, with stairwells and lifts. The current plan stays in History.</p>
+      <button class="btn sm" id="loadEx">${exArm?"Confirm: replace the plan":"Load sample building"}</button>`}
       ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
     el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
     const mh=$("#markHalls"); if(mh) mh.onclick=()=>{ halls.forEach(h=>{ h.r.type=h.g.kind; });
@@ -1245,11 +1286,13 @@ function renderInspector(){
     const wi=$("#walkImport"), wf=$("#walkIn"); if(wi){ wi.onclick=()=>wf.click(); wf.onchange=()=>{ const f=wf.files[0]; wf.value=""; if(f) importWalk(f); }; }
     const blk=$("#blk"); if(blk) blk.onchange=()=>{ S.plan.block=blk.value.trim().toUpperCase(); edit("Renamed block to "+S.plan.block); };
     const fn=$("#flName"); if(fn) fn.onchange=()=>{ fl.name=fn.value.trim()||"Level "+S.floor; edit("Renamed L"+S.floor); };
+    const le=$("#loadEx"); if(le) le.onclick=()=>{ if(!exArm){exArm=true;renderInspector();return;} exArm=false;
+      S.plan={...examplePlan(),rev:S.plan.rev}; S.floor=3; S.sel=null; edit("Loaded the sample building (Block B, Levels 3–4)"); fit(); };
     const df=$("#delFloor"); if(df) df.onclick=()=>{ if(!delArm){delArm=true;renderInspector();return;} delArm=false;
       const lv=S.floor; S.plan.floors=S.plan.floors.filter(f=>f.level!==lv); S.plan.rooms=S.plan.rooms.filter(r=>r.floor!==lv); S.floor=S.plan.floors[0].level; edit("Deleted floor L"+lv); fit(); };
     return;
   }
-  delArm=false;
+  delArm=false; exArm=false;
   const dup=S.plan.rooms.some(x=>x!==r && x.id===r.id), n=cov[r.id]||0, ro=S.readOnly?"disabled":"";
   const g0=r.type==="other"?shapeOf(r.poly):null, hint=g0&&g0.kind?g0:null;
   el.innerHTML=`<h2>${esc(r.id)}</h2>
