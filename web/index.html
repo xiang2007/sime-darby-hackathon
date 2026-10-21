@@ -797,7 +797,7 @@ function exampleFloor(f){
   fire(B,"Fire stair B2",rect(.5,51.5,10,55),[2,.15],2);
   fire(B,"Fire stair B3",rect(60.5,13,70.5,16.5),[0,.85],2);
   fire(B,"Fire stair B4",rect(60.5,51.5,70.5,55),[2,.15],2);
-  B("Lift lobby B","lobby",rect(31,13,39.5,19),[[0,.25],[0,.75]]);
+  B("Lift lobby B","lobby",rect(31,13,39.5,19),[],{open:true});
   lift(B,"Lift B1",rect(31,19,33.83,21.5),[0,.5]);
   lift(B,"Lift B2",rect(33.83,19,36.67,21.5),[0,.5]);
   lift(B,"Lift B3",rect(36.67,19,39.5,21.5),[0,.5]);
@@ -808,7 +808,7 @@ function exampleFloor(f){
   /* ---- Block A: the main lift core north of the atrium, and the annex around a corridor that runs from the link
      to Block C, with a leg south. */
   fire(A,"Fire stair A1",rect(71,-10,74.5,.5),[2,.5],3);
-  A("Lift lobby A","lobby",rect(74.5,-7,86.5,.5),[[2,.25],[2,.75]]);
+  A("Lift lobby A","lobby",rect(74.5,-7,86.5,.5),[],{open:true});
   lift(A,"Lift A1",rect(74.5,-10,77.5,-7),[2,.5]);
   lift(A,"Lift A2",rect(77.5,-10,80.5,-7),[2,.5]);
   lift(A,"Lift A3",rect(80.5,-10,83.5,-7),[2,.5]);
@@ -819,7 +819,7 @@ function exampleFloor(f){
   A("Annex corridor","corridor",[[19.5,76],[36,76],[36,68],[39,68],[39,76],[72.8,76],[72.8,79],[66.5,79],[66.5,115],[63.5,115],[63.5,79],[19.5,79]],[[5,.5]]);
   fire(A,"Fire stair A2",rect(19.5,68,23,76),[2,.5],3);
   fire(A,"Fire stair A3",rect(57.5,111,63.5,115),[1,.5],2);
-  A("Lift lobby (annex)","lobby",rect(46,71.5,52,76),[[2,.5]]);
+  A("Lift lobby (annex)","lobby",rect(46,71.5,52,76),[],{open:true});
   lift(A,"Lift A5",rect(46,68,49,71.5),[2,.5]);
   lift(A,"Lift A6",rect(49,68,52,71.5),[2,.5]);
   A("Male toilet","toilet",rect(52,68,56,76),[[2,.5]]);
@@ -835,7 +835,7 @@ function exampleFloor(f){
   C("Block C south-west corridor","corridor",urect(113,13,116.5,76),[[0,.5]]);
   C("Block C south-east corridor","corridor",urect(146,13,149,50.5),[[0,.5]]);
   C("Passage to annex","corridor",[onX(45.5),uv(113,45.5),uv(113,48.5),onX(48.5)],[[1,.5]]);
-  C("Lift lobby C (west)","lobby",urect(104,-10,112,10),[[0,.5],[2,.5]]);
+  C("Lift lobby C (west)","lobby",urect(104,-10,112,10),[],{open:true});
   lift(C,"Lift C1",urect(100,-6,104,-3),[1,.5]);
   lift(C,"Lift C2",urect(100,-3,104,0),[1,.5]);
   lift(C,"Lift C3",urect(112,-6,116,-3),[3,.5]);
@@ -846,7 +846,7 @@ function exampleFloor(f){
   fire(C,"Fire stair C1",urect(100,3,104,10),[1,.15],1);
   C("Cleaner's store","other",urect(112,0,116,3),[[3,.5]]);
   C("Surau (prayer room)","other",urect(112,3,116,10),[[3,.5],[2,.5]]);
-  C("Lift lobby C (east)","lobby",urect(176,-10,182,10),[[0,.5],[2,.5]]);
+  C("Lift lobby C (east)","lobby",urect(176,-10,182,10),[],{open:true});
   lift(C,"Lift C5",urect(172,-6,176,-3),[1,.5]);
   lift(C,"Lift C6",urect(172,-3,176,0),[1,.5]);
   C("Male toilet","toilet",urect(172,-10,176,-6),[[0,.5]]);
@@ -863,7 +863,7 @@ function exampleFloor(f){
 
   if (L3){
     // Block B
-    A("Central atrium","lobby",[[70.5,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,38),[70.5,68]]);   
+    A("Central atrium","lobby",[[70.5,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,38),[70.5,68]],[],{open:true});
     rowU(B,rect,[.5,12,22,32,42,52,61,70.5],.5,10,2,[K.lab,K.cls,K.cls,K.cls,K.cls,K.cls,["Faculty office","office"]]);
     rowV(B,rect,[16.5,25.5,34,42.5,51.5],.5,10,1,[K.cls,K.cls,K.cls,K.cls]);
     rowV(B,rect,[16.5,25.5,34,42.5,51.5],60.5,70.5,3,[K.dr,K.dr,["Lecturer offices","office"],["Student lounge","lobby"]]);
@@ -914,8 +914,8 @@ function exampleFloor(f){
     rowU(C,urect,[166.5,178,189],13,21.5,0,[K.cls,K.cls]);
   } else {
     // Block A on Level 4: galleries round the atrium, which is open to Level 3 (nothing drawn there)
-    A("Atrium gallery (west)","lobby",[[70.5,.5],[89,.5],[89,4],[74,4],uv(92,34.45),uv(92,38),[70.5,68]]);
-    A("Atrium gallery (east)","lobby",[[89,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,34.45),uv(88.5,25.13),uv(88.5,-20),[89,4]],[[7,.5],[4,.5]]);
+    A("Atrium gallery (west)","lobby",[[70.5,.5],[89,.5],[89,4],[74,4],uv(92,34.45),uv(92,38),[70.5,68]],[],{open:true});
+    A("Atrium gallery (east)","lobby",[[89,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,34.45),uv(88.5,25.13),uv(88.5,-20),[89,4]],[],{open:true});
     // Block B: faculty offices along the north, an auditorium in the middle
     B("Faculty of Computing","office",rect(.5,.5,30,10),[[2,.15],[2,.5],[2,.85]]);
     rowU(B,rect,[30,38,46,56,70.5],.5,10,2,[["Meeting room","office"],["Meeting room","office"],["Dean's office","office"],["Lecturer offices","office"]]);
@@ -965,6 +965,7 @@ function exampleFloor(f){
     C("Mac Lab","lab",urect(149,45,166.3,56.5),[[3,.7]]);
     rowU(C,urect,[166.5,174,181.5,189],13,21.5,0,[K.dr,K.dr,K.dr]);
   }
+  dropOpenDoors(rooms);   // corridor doors that led into an open lobby or the atrium
   return rooms;
 }
 function examplePlan(){
@@ -1109,6 +1110,32 @@ function stairSymbol(r,fs){
 }
 
 const floorRooms = f => S.plan.rooms.filter(r => r.floor === f);
+
+/* ---------- open-plan lobbies and atriums ----------
+   A lobby or corridor marked open has no wall or door where it meets a corridor or another open lobby: the two
+   floors run into each other. A lobby that isn't marked open (a student lounge, say) keeps its walls. openMap(rooms) finds those stretches: spans maps a room's k to a list per edge of [t0, t1] cut out
+   of that edge, and segs lists each opening once, as {a, b, p0, p1} with a and b the two rooms' k. */
+function isHall(r){ return r.type==="corridor" || r.type==="lobby"; }
+function openMap(rs){
+  const spans=new Map(), segs=[];
+  const put=(r,e,t0,t1)=>{ if(!spans.has(r.k)) spans.set(r.k,r.poly.map(()=>[])); spans.get(r.k)[e].push([t0,t1]); };
+  rs.forEach(r=>{ if(!r.open || !isHall(r)) return;
+    rs.forEach(o=>{ if(o===r || o.floor!==r.floor || !(o.type==="corridor" || o.open&&isHall(o)) || (o.open && o.k<r.k)) return;   // two open rooms: once
+      r.poly.forEach((_,e)=>{ const [a,b]=edgeOf(r.poly,e), L=dist(a,b); if(L<.3) return;
+        const ux=(b[0]-a[0])/L, uy=(b[1]-a[1])/L, off=p=>Math.abs((p[0]-a[0])*uy-(p[1]-a[1])*ux), at=p=>((p[0]-a[0])*ux+(p[1]-a[1])*uy)/L;
+        o.poly.forEach((_,f)=>{ const [c,d]=edgeOf(o.poly,f); if(off(c)>.15 || off(d)>.15) return;
+          const t0=Math.max(0,Math.min(at(c),at(d))), t1=Math.min(1,Math.max(at(c),at(d))); if((t1-t0)*L<.3) return;
+          const p0=lerp(a,b,t0), p1=lerp(a,b,t1), s0=projT(p0,[c,d]), s1=projT(p1,[c,d]);
+          put(r,e,t0,t1); put(o,f,Math.min(s0,s1),Math.max(s0,s1)); segs.push({a:r.k,b:o.k,p0,p1}); }); }); }); });
+  return {spans,segs};
+}
+// is point p in one of the openings? (a door there is left over from before the room was opened)
+function inOpening(p,om){ return om.segs.some(s=>segDist(p,[s.p0,s.p1])<.2); }
+// drop doors that sit in an opening; returns how many went
+function dropOpenDoors(rs){ const om=openMap(rs); let n=0;
+  rs.forEach(r=>{ const keep=r.doors.filter(d=>!inOpening(doorCenter(r,d),om)); n+=r.doors.length-keep.length; r.doors=keep; }); return n; }
+// the edge's wall as [t0, t1] pieces with the openings cut out
+function wallRuns(spans){ const out=[]; let s=0; [...spans].sort((x,y)=>x[0]-y[0]).forEach(([a,b])=>{ if(a>s) out.push([s,a]); s=Math.max(s,b); }); if(s<1) out.push([s,1]); return out; }
 const roomByK = k => S.plan.rooms.find(r => r.k === k);
 
 /* coverage = accepted sessions tagged with this room id */
@@ -1350,12 +1377,16 @@ function renderPlan(){
   // hatch for unscanned
   let defs=`<defs><pattern id="hatch" width=".6" height=".6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".6" height=".6" fill="${css("--cov0")}"/><line x1="0" y1="0" x2="0" y2=".6" stroke="${css("--ink-2")}" stroke-opacity=".35" stroke-width=".12"/></pattern></defs>`;
   const rs=floorRooms(S.floor); let rooms="",labels="",doors="",handles="",stairs="";
-  const fs=Math.max(.35,Math.min(.9,13/S.view.scale));
+  const fs=Math.max(.35,Math.min(.9,13/S.view.scale)), om=openMap(rs);
   rs.forEach(r=>{
     const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel||(S.mode==="move"&&S.moveKeys?.includes(r.k));
     const unscanned=S.overlay==="coverage" && !(cov[r.id]>0);
     const fc=S.fac.size&&S.fac.has(facOf(r))?FAC[facOf(r)].color:null, faded=S.fac.size&&!fc&&!sel&&!navMark(r);   // facilities on: the rest fades
-    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":fc||roomFill(r,cov)}" fill-opacity="${faded?.08:fc?.42:S.overlay==="coverage"&&!S.nav?.9:.28}" stroke="${sel||navMark(r)?acc:fc||ink}" stroke-opacity="${faded?.45:1}" stroke-width="${sel||navMark(r)||fc?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    const stroke=`stroke="${sel||navMark(r)?acc:fc||ink}" stroke-opacity="${faded?.45:1}" stroke-width="${sel||navMark(r)||fc?3:2}" vector-effect="non-scaling-stroke"`;
+    const sp=!sel && om.spans.get(r.k);   // open to a corridor: draw the walls only, with gaps for the openings
+    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":fc||roomFill(r,cov)}" fill-opacity="${faded?.08:fc?.42:S.overlay==="coverage"&&!S.nav?.9:.28}" ${sp?`stroke="none"`:stroke} style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    if (sp){ let d=""; r.poly.forEach((_,e)=>{ const [a,b]=edgeOf(r.poly,e); wallRuns(sp[e]).forEach(([t0,t1])=>{ const p=lerp(a,b,t0), q=lerp(a,b,t1); d+=`M${p[0]},${p[1]}L${q[0]},${q[1]}`; }); });
+      if (d) rooms+=`<path d="${d}" fill="none" ${stroke} stroke-linecap="square" pointer-events="none"/>`; }
     stairs+=stairSymbol(r,fs);
     const [cx,cy]=centroid(r.poly);
     if (S.view.scale>6){
@@ -1363,6 +1394,7 @@ function renderPlan(){
       if (S.view.scale>12) labels+=`<text x="${cx}" y="${cy+fs*.95}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*.8}" fill="${css("--ink-2")}" pointer-events="none">${esc(S.overlay==="coverage"?COV_LABEL[covLevel(cov[r.id]||0)]:(r.name||TYPES[r.type]?.label||""))} · ${area(r.poly).toFixed(0)} m²</text>`;
     }
     r.doors.forEach((d,di)=>{
+      if (om.segs.length && inOpening(doorCenter(r,d),om)) return;
       const [a,b]=edgeOf(r.poly,d.e), L=dist(a,b)||1, half=(d.w/L)/2, p0=lerp(a,b,Math.max(0,d.t-half)), p1=lerp(a,b,Math.min(1,d.t+half));
       doors+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${paper}" stroke-width="6" vector-effect="non-scaling-stroke"/>`;
       // swing arc into the room
@@ -1576,6 +1608,7 @@ function renderInspector(){
     <div class="field"><label for="rName">Name</label><input id="rName" value="${esc(r.name)}" maxlength="60" placeholder="e.g. Lecture Theatre 4" ${ro}></div>
     <div class="row2"><div class="field"><label for="rType">Type</label><select id="rType" ${ro}>${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===r.type?"selected":""}>${t.label}</option>`).join("")}</select></div>
     <div class="field"><label for="rH">Ceiling height (m)</label><input id="rH" type="number" min="2.2" max="12" step="0.1" value="${r.height}" ${ro}></div></div>
+    ${isHall(r)?`<label class="consent" style="margin:-2px 0 10px"><input type="checkbox" id="rOpen" ${r.open?"checked":""} ${ro}><span>Open plan: no walls or doors where it meets a corridor or another open-plan lobby</span></label>`:""}
     ${hint?`<p class="small muted" style="margin:-4px 0 10px">Looks like a ${TYPES[hint.kind].label.toLowerCase()} from its shape: ${esc(hallNote(hint))}. ${ro?"":`<button class="btn sm" id="rHall">Set as ${TYPES[hint.kind].label.toLowerCase()}</button>`}</p>`:""}
     <dl class="kv"><dt>Area</dt><dd>${fmtArea(area(r.poly))}</dd><dt>Corners</dt><dd>${r.poly.length}</dd><dt>Doors</dt><dd>${r.doors.length}</dd><dt>Floor</dt><dd>L${r.floor}</dd>
       <dt>Coverage</dt><dd><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${COV_LABEL[covLevel(n)]}</span></dd></dl>
@@ -1591,7 +1624,8 @@ function renderInspector(){
   const bind=(id,fn)=>{ const e=$(id); if(e) e.onchange=fn; };
   bind("#rId",e=>{ const v=e.target.value.trim(); if(!v) return renderInspector(); const old=r.id; r.id=v; edit(`Renamed ${old} to ${v}`); });
   bind("#rName",e=>{ r.name=e.target.value.trim(); edit("Renamed "+r.id); });
-  bind("#rType",e=>{ r.type=e.target.value; if(r.type!=="stairs") delete r.stair; edit(`Set ${r.id} to ${TYPES[r.type].label}`); });
+  bind("#rOpen",e=>{ if(e.target.checked){ r.open=true; const n=dropOpenDoors(floorRooms(r.floor)); edit(`Opened ${r.id} to the corridors`+(n?`, removing ${n} door${n===1?"":"s"}`:"")); } else { delete r.open; edit(`Walled ${r.id} off from the corridors. Add doors to it in Doors mode`); } });
+  bind("#rType",e=>{ r.type=e.target.value; if(r.type!=="stairs") delete r.stair; if(!isHall(r)) delete r.open; edit(`Set ${r.id} to ${TYPES[r.type].label}`); });
   bind("#sKind",e=>{ r.stair={...stairOf(r),kind:e.target.value}; edit(`Set ${r.id} to ${STAIR_KINDS[r.stair.kind].toLowerCase()}`); });
   const sT=$("#sTurn"); if(sT) sT.onclick=()=>{ const st=stairOf(r); r.stair={...st,dir:(st.dir+1)%4}; edit("Turned the stair in "+r.id); };
   const sM=$("#sFlip"); if(sM) sM.onclick=()=>{ const st=stairOf(r); r.stair={...st,mirror:!st.mirror}; edit("Mirrored the stair in "+r.id); };
@@ -1704,7 +1738,7 @@ function build3D(){
   T.picks=[]; const cov=coverage(), wallCol=new THREE.Color(css("--ink")), sel=S.sel;
   const floors=S.scope==="one"?[S.floor]:[...new Set(S.plan.floors.map(f=>f.level))];
   const minL=Math.min(...S.plan.floors.map(f=>f.level));
-  let bb=new THREE.Box3();
+  let bb=new THREE.Box3(); const OM=new Map(), om=f=>OM.get(f)||OM.set(f,openMap(floorRooms(f))).get(f);
   S.plan.rooms.filter(r=>floors.includes(r.floor)).forEach(r=>{
     const base=(r.floor-minL)*FLOOR_H, dim = S.scope==="all" && r.floor!==S.floor;
     const L=stairLayout(r), lowest=r.floor===minL;
@@ -1722,7 +1756,8 @@ function build3D(){
       stair3D(r,L,base+.12,sm,wm,{floorLanding:!lowest,topLanding:!above,car:lowest}).forEach(m=>{ m.userData.k=r.k; T.group.add(m); T.picks.push(m); });
       if (L.up){ const p=L.P(0,0); bb.expandByPoint(new THREE.Vector3(p[0],base+L.rise,p[1])); }
     }
-    r.poly.forEach((_,e)=>wallPieces(r,e,wallH).forEach(([s0,s1,z0,z1])=>{
+    const sp=om(r.floor).spans.get(r.k);
+    r.poly.forEach((_,e)=>wallPieces(r,e,wallH,sp?.[e]).forEach(([s0,s1,z0,z1])=>{
       const [a,b]=edgeOf(r.poly,e), n=inwardNormal(r,e), L=dist(a,b);
       const p0=lerp(a,b,s0/L), p1=lerp(a,b,s1/L), len=s1-s0; if(len<.02) return;
       const g=new THREE.BoxGeometry(len,z1-z0,WALL_T), mesh=new THREE.Mesh(g,wm.clone());
@@ -1787,15 +1822,16 @@ function stair3D(r,L,y0,mat,railMat,o){
   });
   return out;
 }
-/* split an edge into wall boxes, leaving openings for this room's doors and any other room's door on the same wall line */
-function wallPieces(r,e,h=r.height){
-  const [a,b]=edgeOf(r.poly,e), L=dist(a,b), gaps=[];
+/* split an edge into wall boxes, leaving openings for this room's doors and any other room's door on the same wall line,
+   and no wall at all along open stretches (spans, from openMap) */
+function wallPieces(r,e,h=r.height,spans=[]){
+  const [a,b]=edgeOf(r.poly,e), L=dist(a,b), gaps=spans.map(([t0,t1])=>[t0*L,t1*L,true]);
   r.doors.filter(d=>d.e===e).forEach(d=>gaps.push([d.t*L-d.w/2,d.t*L+d.w/2]));
   floorRooms(r.floor).forEach(o=>{ if(o===r) return; o.doors.forEach(d=>{ const c=doorCenter(o,d), t=projT(c,[a,b]), p=lerp(a,b,t);
     const [oa,ob]=edgeOf(o.poly,d.e), par=Math.abs(((b[0]-a[0])*(ob[1]-oa[1])-(b[1]-a[1])*(ob[0]-oa[0]))/((L||1)*(dist(oa,ob)||1)));
     if(dist(c,p)<.15 && par<.05 && t>0 && t<1) gaps.push([t*L-d.w/2,t*L+d.w/2]); }); });
   gaps.sort((x,y)=>x[0]-y[0]); const out=[]; let s=0;
-  gaps.forEach(([g0,g1])=>{ g0=Math.max(0,g0); g1=Math.min(L,g1); if(g0>s) out.push([s,g0,0,h]); out.push([g0,g1,DOOR_H,h]); s=Math.max(s,g1); });
+  gaps.forEach(([g0,g1,open])=>{ g0=Math.max(0,g0); g1=Math.min(L,g1); if(g0>s) out.push([s,g0,0,h]); if(!open && g1>s) out.push([Math.max(s,g0),g1,DOOR_H,h]); s=Math.max(s,g1); });
   if (s<L) out.push([s,L,0,h]); return out;
 }
 $("#floorScope").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.scope=b.dataset.scope; $("#floorScope").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); if(T){T.framed=false; build3D();} });
@@ -2733,6 +2769,10 @@ function navGraph(stepFree){
     link(ia,dn,dist(N[ia].p,c)); link(dn,ib,dist(c,N[ib].p));
     inRoom.get(r.k).push(ia); inRoom.get(o.k).push(ib); doors.push({a:r.k,b:o.k,c,node:dn});
   }));
+  // open-plan lobbies: a crossing every 3 m or so along each opening, marked open so directions don't say "door"
+  [...new Set(rooms.map(r=>r.floor))].forEach(f=>openMap(rooms.filter(r=>r.floor===f)).segs.forEach(sg=>{
+    const m=Math.max(1,Math.round(dist(sg.p0,sg.p1)/3));   // one point on the line, walked to straight from either room
+    for (let i=0;i<m;i++){ const dn=add(lerp(sg.p0,sg.p1,(i+.5)/m),f,{door:true,open:true,a:sg.a,b:sg.b}); inRoom.get(sg.a).push(dn); inRoom.get(sg.b).push(dn); } }));
   rooms.forEach(r=>{ const p=r.poly, s=Math.sign(signed(p))||1;   // inside corners of L-shaped rooms
     p.forEach((v,i)=>{ const j=(i+p.length-1)%p.length, a=p[j], b=p[(i+1)%p.length];
       if (((v[0]-a[0])*(b[1]-v[1])-(v[1]-a[1])*(b[0]-v[0]))*s>=0) return;
@@ -2773,7 +2813,8 @@ function describeRoute(G,path,via,from,to,opt){
   const P=i=>G.N[path[i]], legs=[]; let leg={k:P(0).room||null,f:P(0).f,pts:[P(0).p]};
   for (let i=1;i<path.length;i++){ const n=P(i), e=via[path[i]];
     if (e.via){ legs.push(leg); legs.push({move:e.via,from:P(i-1).f,to:n.f}); leg={k:n.room,f:n.f,pts:[n.p]}; continue; }
-    if (n.door){ leg.pts.push(n.p); legs.push(leg); leg={k:null,f:n.f,pts:[n.p]}; continue; }
+    if (leg.k==null && e.room) leg.k=e.room;   // a room crossed between two openings has only their points
+    if (n.door){ leg.pts.push(n.p); leg.outOpen=!!n.open; legs.push(leg); leg={k:null,f:n.f,pts:[n.p]}; continue; }
     if (leg.k==null) leg.k=n.room;
     leg.pts.push(n.p);
   }
@@ -2796,13 +2837,19 @@ function describeRoute(G,path,via,from,to,opt){
       say(`Leave ${B(r)} through the door${d>5?`, ${metres(d)} away`:""}.`, l.f, pts[0]);
       continue;
     } else if (i===0 || (legs[i-1] && !legs[i-1].move)){
-      // walked in through a door at pts[0]: which way to turn, how far, any corners, then the door out
-      const inner=pts.slice(1, leavesBy?-1:undefined), first=inner.length>1?turnOf(heading(pts[0],pts[1]),heading(inner[0],inner[1])):"straight";
+      // walked in at pts[0]: which way to turn, how far, any corners, then the way out. Through a door, the turn is
+      // taken just inside it; through an opening, from the way we were already walking.
+      const open=i>0 && legs[i-1].outOpen, q=open&&legs[i-1].pts;
+      const inner=pts.slice(open?0:1, leavesBy&&!l.outOpen?-1:undefined);   // out through an opening: walk right up to it
+      const first=open?(pts.length>1?turnOf(heading(q[q.length-2],q[q.length-1]),heading(pts[0],pts[1])):"straight")
+        :inner.length>1?turnOf(heading(pts[0],pts[1]),heading(inner[0],inner[1])):"straight";
       const runs=[]; let run=0;
       for (let j=1;j<inner.length;j++){ run+=dist(inner[j-1],inner[j]);
         if (j<inner.length-1){ const t=turnOf(heading(inner[j-1],inner[j]),heading(inner[j],inner[j+1])); if(t!=="straight"){ runs.push({d:run,t,at:inner[j]}); run=0; } } }
       runs.push({d:run});
-      const lead = i===0 ? `Start at the door of <b>${esc(roomName(from))}</b> and walk` : first==="straight" ? `Go straight into ${B(r)} and walk` : first==="back" ? `Turn around in ${B(r)} and walk` : `Turn ${first} into ${B(r)} and walk`;
+      const lead = i===0 ? `Start at the door of <b>${esc(roomName(from))}</b> and walk`
+        : open ? (first==="straight" ? `Carry on into ${B(r)} and walk` : first==="back" ? `Turn around into ${B(r)} and walk` : `Turn ${first} into ${B(r)} and walk`)
+        : first==="straight" ? `Go straight into ${B(r)} and walk` : first==="back" ? `Turn around in ${B(r)} and walk` : `Turn ${first} into ${B(r)} and walk`;
       say(runs[0].d<1.5?lead.replace(/ and walk$/,"."):`${lead} ${metres(runs[0].d)}${i===0?` through ${B(r)}`:""}.`, l.f, pts[0]);
       for (let j=0;j<runs.length-1;j++){ const nx=runs[j+1]; say(nx.d<1.5?`Turn ${runs[j].t}.`:`Turn ${runs[j].t} and walk ${metres(nx.d)}.`, l.f, runs[j].at); }
     } else if (legs[i-1]?.move){
@@ -2813,7 +2860,8 @@ function describeRoute(G,path,via,from,to,opt){
       const side=turnOf(heading(pts[pts.length-3],pts[pts.length-2]),heading(pts[pts.length-2],pts[pts.length-1]));
       const where=side==="straight"?"ahead":side==="back"?"behind you":`on your ${side}`;
       const isEnd=legs[i+1].k===to.k && i+1===legs.length-1;
-      say(isEnd?`${B(nextRoom)} is ${where}. You've arrived.`:`Go through the door ${where} into ${B(nextRoom)}.`, l.f, pts[pts.length-1]);
+      if (isEnd) say(`${B(nextRoom)} is ${where}. You've arrived.`, l.f, pts[pts.length-1]);
+      else if (!l.outOpen) say(`Go through the door ${where} into ${B(nextRoom)}.`, l.f, pts[pts.length-1]);   // an opening: the next step names the room
     }
   }
   const secs=total/WALK_MPS+changes*30;
