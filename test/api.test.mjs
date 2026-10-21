@@ -27,6 +27,12 @@ test("plan validation keeps the map placement", () => {
   assert.throws(() => V.plan({ ...plan(), geo: { x: 0, y: 0, lat: 3, lng: 101, rot: 0, osm: "node/1" } }), V.Invalid);
 });
 
+test("plan validation keeps emergency exits on doors", () => {
+  const p = V.plan(plan([room({ doors: [{ e: 0, t: 0.5, w: 0.9, exit: true }, { e: 1, t: 0.5, w: 0.9, exit: "yes" }] })]));
+  assert.equal(p.rooms[0].doors[0].exit, true);
+  assert.equal("exit" in p.rooms[0].doors[1], false);
+});
+
 test("plan validation rejects bad input", () => {
   assert.throws(() => V.plan(plan([room({ type: "dungeon" })])), V.Invalid);
   assert.throws(() => V.plan(plan([room({ poly: [[0, 0], [1, 1]] })])), V.Invalid);

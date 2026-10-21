@@ -103,6 +103,19 @@ body.page-only .banner{display:none!important}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--rule);background:var(--paper)}
 .toolbar .grow{flex:1}
 .ovl{position:absolute;left:12px;top:12px;box-shadow:0 1px 3px rgb(0 0 0 / .08)}
+.fac{position:absolute;left:12px;top:54px;box-shadow:0 1px 3px rgb(0 0 0 / .08);max-width:calc(100% - 24px);overflow-x:auto}
+.fac.solo{top:12px}
+.fac button{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fac button[aria-pressed="true"]{background:var(--fac);color:#fff}
+.fac-list{display:grid;gap:4px;margin-bottom:6px}
+.fac-row{display:flex;align-items:center;gap:8px}
+.fac-t{flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:1px solid transparent;background:none;border-radius:7px;padding:5px 6px;cursor:pointer;text-align:left;font-size:.86rem;color:inherit}
+.fac-t:hover{background:var(--paper)}
+.fac-t[aria-pressed="true"]{border-color:var(--rule);background:var(--paper)}
+.fi{flex:none}
+.fac-items{list-style:none;margin:0 0 4px 30px;padding:0;display:grid;gap:1px}
+.fac-items button{border:0;background:none;padding:4px 6px;border-radius:5px;cursor:pointer;font-size:.82rem;text-align:left;width:100%;color:inherit}
+.fac-items button:hover{background:var(--paper)}
 .hint button{pointer-events:auto}
 .hint{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .hint .acts{display:flex;gap:6px}
@@ -603,6 +616,7 @@ img.mk{object-fit:contain;background:#fff}
             <button data-ov="type" aria-pressed="true">Room type</button>
             <button data-ov="coverage" aria-pressed="false">Coverage</button>
           </div>
+          <div class="seg fac" id="facil" aria-label="Show facilities on the plan"></div>
           <div class="legend" id="legend"></div>
           <div class="hint" id="hint"></div>
           <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Fit plan" style="font-size:.7rem">FIT</button><button id="zall" aria-label="Show the whole campus" title="Show the whole campus" style="font-size:.62rem">ALL</button><button id="zcampus" aria-label="Campus outline from OpenStreetMap" title="Campus outline from OpenStreetMap" aria-pressed="true" style="font-size:.62rem">OSM</button></div>
@@ -742,14 +756,15 @@ const ago = t => { if (!t) return ""; const s = (Date.now() - t) / 1000;
    same place on both floors, so Directions can go between them. Stairs are drawn square to the plan (they are laid
    out in their room's bounding rectangle) and keep the same direction on both floors. */
 function rect(x0,y0,x1,y1){ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]; }
-function exampleRoom(id,name,type,poly,doors,floor=3,extra){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t])=>({e,t,w:DOOR_W})),...extra}; }
+function exampleRoom(id,name,type,poly,doors,floor=3,extra){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t,exit])=>({e,t,w:DOOR_W,...(exit?{exit:true}:{})})),...extra}; }
 const EXAMPLE_GEO={x:117.75,y:46.34,lat:3.0556056,lng:101.6999959,rot:27.43,osm:"way/541804093"};
 const WING_T=20.6*Math.PI/180, WC=Math.cos(WING_T), WS=Math.sin(WING_T);
 const uv=(u,v)=>[+(u*WC-v*WS).toFixed(3),+(u*WS+v*WC).toFixed(3)];   // Block C's grid: u along the wing (east), v across it (south)
 const urect=(u0,v0,u1,v1)=>[uv(u0,v0),uv(u1,v0),uv(u1,v1),uv(u0,v1)];
 const onX=v=>uv((72.8+v*WS)/WC,v);   // the point at v on the line x = 72.8, where Block C meets Block A's annex
 // The rooms both floors share, in the same place: stairwells, lifts and the lift lobbies they open onto.
-// Rectangle doors: edge 0 north, 1 east, 2 south, 3 west; t runs clockwise along the edge.
+// Rectangle doors: edge 0 north, 1 east, 2 south, 3 west; t runs clockwise along the edge; a third value 1 marks an
+// emergency exit (the stairwell doors: on these upper floors the fire stairs are the way out).
 const EX_LIFT={kind:"lift",dir:0,mirror:false}, exStair=dir=>({kind:"switchback",dir,mirror:false});
 function exampleCores(f,doorB){
   const B=(n,name,type,poly,doors,extra)=>exampleRoom(exId("B",f,n),name,type,poly,doors,f,extra);
@@ -759,9 +774,9 @@ function exampleCores(f,doorB){
     B(21,"Lift 1","stairs",rect(43,22,46,25.5),[[3,.5]],{stair:EX_LIFT}),
     B(22,"Lift 2","stairs",rect(43,25.5,46,29),[[3,.5]],{stair:EX_LIFT}),
     B(23,"Accessible toilet","toilet",rect(43,29,46,32),[[2,.5]]),
-    B(24,"Stairwell A","stairs",rect(46,22,51,32),[[2,.5]],{stair:exStair(3)}),
+    B(24,"Stairwell A","stairs",rect(46,22,51,32),[[2,.5,1]],{stair:exStair(3)}),
     B(27,"Stairwell B","stairs",rect(.5,35,5.5,45),[doorB],{stair:exStair(1)}),
-    A(1,"Stairwell C","stairs",rect(70.5,14,76.5,24),[[1,.5]],{stair:exStair(2)}),
+    A(1,"Stairwell C","stairs",rect(70.5,14,76.5,24),[[1,.5,1]],{stair:exStair(2)}),
     A(2,"Lift 3","stairs",rect(70.5,24,73.5,27.5),[[1,.5]],{stair:EX_LIFT}),
     A(3,"Lift 4","stairs",rect(70.5,27.5,73.5,31),[[1,.5]],{stair:EX_LIFT}),
   ];
@@ -777,7 +792,7 @@ function exampleBuilders(f){
 function exampleLevel3(){
   const {A,B,C}=exampleBuilders(3);
   return [
-    ...exampleCores(3,[0,.5]),
+    ...exampleCores(3,[0,.5,1]),
     // Block B. The corridor's east end opens onto the central atrium, its south end onto the annex corridor.
     B(0,"Main corridor","corridor",[[34,.5],[37,.5],[37,32],[70.5,32],[70.5,35],[37,35],[37,68],[34,68],[34,35],[.5,35],[.5,32],[34,32]],[[3,.5],[6,.5]]),
     B(1,"Lecture Theatre 1","lecture",rect(.5,.5,20,32),[[2,.25],[2,.75]]),
@@ -851,7 +866,7 @@ function exampleLevel4(){
   const {A,B,C}=exampleBuilders(4);
   const gTop=uv(92,6), gBot=uv(92,22), cEdge=uv(92,-19.62);   // where the gallery and Block A meet Block C's grid
   return [
-    ...exampleCores(4,[1,.1]),   // Stairwell B: the door by its landing, as on Level 3
+    ...exampleCores(4,[1,.1,1]),   // Stairwell B: the door by its landing, as on Level 3
     // Block B: hallways at y 19–22 and y 45–48, joined by a hallway at x 5.5–8.5
     B(0,"North hallway","corridor",[[.5,19],[70.5,19],[70.5,22],[8.5,22],[8.5,45],[70.5,45],[70.5,48],[.5,48],[.5,45],[5.5,45],[5.5,22],[.5,22]],[[1,.5],[5,.5]]),
     B(1,"Seminar Room 1","lecture",rect(.5,.5,16,19),[[2,.5]]),
@@ -1048,6 +1063,88 @@ function coverage(){ const m={}; S.sessions.forEach(s=>{ if(s.verdict!=="rejecte
 const covLevel = n => n>=3?3:n>=2?2:n>=1?1:0;
 const COV_LABEL = ["Unscanned","Low (1 session)","Medium (2)","High (3+)"];
 
+/* ---------- facilities: toilets, stairs, lifts and emergency exits ----------
+   The buttons over the plan highlight every toilet, stairwell, lift or emergency exit on the floor and fade the rest.
+   Toilets, stairwells and lifts come from the room type (a "Stairs / lift" room set to Lift is a lift). Emergency
+   exits are doors marked as such in Doors mode; on upper floors these are usually the doors into the fire stairs.
+   In Directions, "Nearest" routes to the closest one from where you are. */
+const FAC={
+  toilet:{label:"Toilets",one:"toilet",color:"#8b5cf6",
+    icon:`<circle cx="-4.5" cy="-6.5" r="2.1" fill="#fff"/><path d="M-7.5-3.4h6v5.4h-1.3v6.4h-3.4V2h-1.3z" fill="#fff"/><circle cx="4.5" cy="-6.5" r="2.1" fill="#fff"/><path d="M4.5-3.6 8.2 4.2H6.3v4.2H2.7V4.2H.8z" fill="#fff"/>`},
+  stairs:{label:"Stairs",one:"stairwell",color:"#475569",
+    icon:`<path d="M-8.5 7.5h4.2V3.3h4.2V-.9h4.2v-4.2h4.4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`},
+  lift:{label:"Lifts",one:"lift",color:"#0e7490",
+    icon:`<path d="M-4.6-1.4 0-7.6l4.6 6.2zM-4.6 1.4 0 7.6l4.6-6.2z" fill="#fff"/>`},
+  exit:{label:"Exits",one:"emergency exit",color:"#15803d",
+    icon:`<path d="M-8.5-8.5h8v17h-8z" fill="none" stroke="#fff" stroke-width="2"/><path d="M1.5 0h7M5.2-3.6 8.8 0 5.2 3.6" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`},
+};
+S.fac=new Set(); try{ JSON.parse(localStorage.getItem("apu-fac")||"[]").forEach(c=>FAC[c]&&S.fac.add(c)); }catch(e){}
+function saveFac(){ try{ localStorage.setItem("apu-fac",JSON.stringify([...S.fac])); }catch(e){} }
+function facOf(r){ return r.type==="toilet"?"toilet":r.type==="stairs"?(stairOf(r).kind==="lift"?"lift":"stairs"):null; }
+// Everything of one kind on a floor: {r, at} for rooms; exits are doors, so {r, d, at} with at the door's centre.
+function facItems(cat,f){
+  const rs=floorRooms(f);
+  if (cat==="exit") return rs.flatMap(r=>r.doors.filter(d=>d.exit).map(d=>({r,d,at:doorCenter(r,d)})));
+  return rs.filter(r=>facOf(r)===cat).map(r=>({r,at:roomPoint(r)}));
+}
+const facCount=cat=>S.plan.floors.reduce((n,f)=>n+facItems(cat,f.level).length,0);
+// A badge of a constant size on screen, centred on p
+function facBadge(cat,p,px=13){ const k=px/12/S.view.scale;
+  return `<g transform="translate(${p[0]} ${p[1]}) scale(${k})" pointer-events="none"><rect x="-12" y="-12" width="24" height="24" rx="6" fill="${FAC[cat].color}" stroke="#fff" stroke-width="2"/>${FAC[cat].icon}</g>`; }
+function facIcon(cat,size=16){ return `<svg class="fi" viewBox="-12 -12 24 24" width="${size}" height="${size}" aria-hidden="true"><rect x="-12" y="-12" width="24" height="24" rx="6" fill="${FAC[cat].color}"/>${FAC[cat].icon}</svg>`; }
+function facOverlay(){
+  if (!S.fac.size) return "";
+  let s="";
+  [...S.fac].forEach(cat=>facItems(cat,S.floor).forEach(it=>{
+    if (cat!=="exit"){ const [x0,y0,x1,y1]=bbox(it.r.poly);   // smaller badges in small rooms, so lifts side by side don't overlap
+      return s+=facBadge(cat,it.at,Math.max(7,Math.min(13,Math.min(x1-x0,y1-y0)*S.view.scale*.42))); }
+    // the exit sign sits just outside the door, on the side people come from
+    const n=inwardNormal(it.r,it.d.e), off=20/S.view.scale;
+    s+=`<circle cx="${it.at[0]}" cy="${it.at[1]}" r="${7/S.view.scale}" fill="none" stroke="${FAC.exit.color}" stroke-width="3" vector-effect="non-scaling-stroke" pointer-events="none"/>`+facBadge("exit",[it.at[0]-n[0]*off,it.at[1]-n[1]*off],12);
+  }));
+  return s;
+}
+let facKey="";
+function renderFacBar(){
+  const el=$("#facil"); el.classList.toggle("solo",!!S.nav);
+  const key=[...S.fac].join()+"|"+S.floor+"|"+S.plan.rev+"|"+S.plan.rooms.length; if (key===facKey) return; facKey=key;
+  el.innerHTML=Object.entries(FAC).map(([c,f])=>{ const n=facItems(c,S.floor).length;
+    return `<button data-fac="${c}" aria-pressed="${S.fac.has(c)}" style="--fac:${f.color}" title="${f.label} on this floor: ${n}">${facIcon(c,14)}<span>${f.label}</span></button>`; }).join("");
+  el.querySelectorAll("[data-fac]").forEach(b=>b.onclick=()=>toggleFac(b.dataset.fac));
+}
+function toggleFac(cat,on){ if (on ?? !S.fac.has(cat)) S.fac.add(cat); else S.fac.delete(cat); saveFac(); facKey=""; navKey=""; renderPlan(); }
+// The Facilities part of the side panel: counts, the ones on this floor, and in Directions the Nearest buttons
+function facilitiesHTML(nav){
+  const from=nav&&S.go.from&&roomByK(S.go.from);
+  return `<h3>Facilities</h3>
+    ${nav?`<p class="small muted" style="margin:0 0 8px">${from?`Find the nearest one from <b>${esc(roomName(from))}</b>.`:"Pick where you are (From) to find the nearest one."}</p>`:""}
+    <div class="fac-list">${Object.entries(FAC).map(([c,f])=>{ const here=facItems(c,S.floor), all=facCount(c), on=S.fac.has(c);
+      return `<div class="fac-row"><button class="fac-t" data-ft="${c}" aria-pressed="${on}" title="${on?"Hide":"Show"} ${f.label.toLowerCase()} on the plan">${facIcon(c)}<span><b>${f.label}</b><span class="muted"> · ${here.length} on L${S.floor}${all!==here.length?`, ${all} in all`:""}</span></span></button>
+        ${nav?`<button class="btn sm" data-near="${c}" ${from&&all?"":"disabled"}>Nearest</button>`:""}</div>
+        ${on&&here.length?`<ul class="fac-items">${here.map((it,i)=>`<li><button data-fi="${c}:${i}">${esc(roomName(it.r))} <span class="mono muted">${esc(it.r.id)}</span></button></li>`).join("")}</ul>`:""}`; }).join("")}</div>
+    ${!nav&&!facCount("exit")&&!S.readOnly?`<p class="small muted" style="margin:6px 0 0">No emergency exits yet. In Doors mode, pick Emergency exit and tap a door to mark it.</p>`:""}`;
+}
+function bindFacilities(el,nav){
+  el.querySelectorAll("[data-ft]").forEach(b=>b.onclick=()=>toggleFac(b.dataset.ft));
+  el.querySelectorAll("[data-fi]").forEach(b=>b.onclick=()=>{ const [c,i]=b.dataset.fi.split(":"), it=facItems(c,S.floor)[+i]; if(!it) return;
+    S.view.cx=it.at[0]; S.view.cy=it.at[1]; S.view.scale=Math.max(S.view.scale,14); if(!nav) S.sel=it.r.k; if(TOUCH) setSheet(false); renderPlan(); });
+  el.querySelectorAll("[data-near]").forEach(b=>b.onclick=()=>nearestFacility(b.dataset.near));
+}
+/* Route to the closest toilet, stairwell, lift or exit (by walking route, across floors) and show it */
+function nearestFacility(cat){
+  const g=S.go, from=g.from&&roomByK(g.from), f=FAC[cat];
+  if (!from){ toast("Pick where you are first (From)."); return; }
+  if (cat==="exit"?from.doors.some(d=>d.exit):facOf(from)===cat){ toast(cat==="exit"?`${roomName(from)} has an emergency exit.`:`You're already in a ${f.one}.`); return; }
+  const cands=[...new Set(S.plan.floors.flatMap(fl=>facItems(cat,fl.level).map(it=>it.r)))].filter(r=>r!==from);
+  let best=null;
+  cands.forEach(r=>{ const R=navRoute(from,r,{stepFree:g.stepFree&&cat!=="exit",fromDoor:g.fromDoor}); if(R && (!best||R.total<best.R.total)) best={r,R}; });
+  if (!best){ toast(`No ${f.one} can be reached from here${g.stepFree?" step-free":""}.`); return; }
+  g.to=best.r.k; S.fac.add(cat); saveFac(); facKey=""; navUpdate();
+  if (g.route && !routeFloors().has(S.floor)){ S.floor=g.route.lines[0].f; fit(); }
+  renderFloors(); renderPlan();
+  toast(`Nearest ${f.one}: ${roomName(best.r)} (${best.r.id}), ${metres(best.R.total)}${best.r.floor!==from.floor?` on L${best.r.floor}`:""}.`);
+}
+
 /* ---------- toast & sync ---------- */
 let toastT;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
@@ -1204,7 +1301,8 @@ function renderPlan(){
   rs.forEach(r=>{
     const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel||(S.mode==="move"&&S.moveKeys?.includes(r.k));
     const unscanned=S.overlay==="coverage" && !(cov[r.id]>0);
-    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":roomFill(r,cov)}" fill-opacity="${S.overlay==="coverage"?.9:.28}" stroke="${sel||navMark(r)?acc:ink}" stroke-width="${sel||navMark(r)?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    const fc=S.fac.size&&S.fac.has(facOf(r))?FAC[facOf(r)].color:null, faded=S.fac.size&&!fc&&!sel&&!navMark(r);   // facilities on: the rest fades
+    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":fc||roomFill(r,cov)}" fill-opacity="${faded?.08:fc?.42:S.overlay==="coverage"&&!S.nav?.9:.28}" stroke="${sel||navMark(r)?acc:fc||ink}" stroke-opacity="${faded?.45:1}" stroke-width="${sel||navMark(r)||fc?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
     stairs+=stairSymbol(r,fs);
     const [cx,cy]=centroid(r.poly);
     if (S.view.scale>6){
@@ -1217,11 +1315,11 @@ function renderPlan(){
       // swing arc into the room
       const n=inwardNormal(r,d.e), rad=d.w, e1=[p0[0]+n[0]*rad,p0[1]+n[1]*rad];
       const sweep = (( (p1[0]-p0[0])*n[1]-(p1[1]-p0[1])*n[0]) > 0) ? 0 : 1;
-      doors+=`<path d="M${p0[0]},${p0[1]} L${e1[0]},${e1[1]} A${rad},${rad} 0 0 ${sweep} ${p1[0]},${p1[1]}" fill="none" stroke="${ink}" stroke-opacity=".55" stroke-width="1" vector-effect="non-scaling-stroke" data-door="${r.k}:${di}" pointer-events="${S.mode==="door"?"visibleStroke":"none"}"/>`;
+      doors+=`<path d="M${p0[0]},${p0[1]} L${e1[0]},${e1[1]} A${rad},${rad} 0 0 ${sweep} ${p1[0]},${p1[1]}" fill="none" stroke="${d.exit?FAC.exit.color:ink}" stroke-opacity="${d.exit?1:.55}" stroke-width="${d.exit?2.5:1}" vector-effect="non-scaling-stroke" data-door="${r.k}:${di}" pointer-events="${S.mode==="door"?"visibleStroke":"none"}"/>`;
     });
     if (sel && S.mode==="select" && !S.readOnly && !S.nav) r.poly.forEach((p,i)=>handles+=`<rect data-h="${i}" x="${p[0]-6/S.view.scale}" y="${p[1]-6/S.view.scale}" width="${12/S.view.scale}" height="${12/S.view.scale}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke" style="cursor:move"/>`);
   });
-  let overlay=S.nav?navOverlay(fs):scanOverlay(fs);
+  let overlay=facOverlay()+(S.nav?navOverlay(fs):scanOverlay(fs));
   if (S.mode==="door" && S.hoverEdge){ const r=roomByK(S.hoverEdge.k); if(r){ const [a,b]=edgeOf(r.poly,S.hoverEdge.e); const c=lerp(a,b,S.hoverEdge.t);
     overlay+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${acc}" stroke-width="4" vector-effect="non-scaling-stroke" stroke-opacity=".6"/><circle cx="${c[0]}" cy="${c[1]}" r="${DOOR_W/2}" fill="${acc}" fill-opacity=".25" stroke="${acc}" vector-effect="non-scaling-stroke"/>`; } }
   if (S.mode==="draw" && S.draft.length){
@@ -1237,7 +1335,7 @@ function renderPlan(){
   const scale=`<g pointer-events="none"><line x1="${sx}" y1="${sy}" x2="${sx+sb}" y2="${sy}" stroke="${ink}" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${sx+sb/2}" y="${sy-.25}" font-family="${css("--f-mono")}" font-size="${fs*.75}" fill="${ink}" text-anchor="middle">${sb} m</text></g>`;
   const empty = !rs.length ? `<text x="${S.view.cx}" y="${S.view.cy}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*1.1}" fill="${css("--ink-2")}">No rooms on L${S.floor} yet. Pick “Draw room” and click the corners.</text>` : "";
   svg.innerHTML=defs+`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${paper}" data-bg="1"/>`+g+campusSvg()+rooms+stairs+doors+labels+overlay+handles+scale+empty;
-  renderHint(); renderLegend(); renderInspector();
+  renderHint(); renderLegend(); renderFacBar(); renderInspector();
 }
 function inwardNormal(r,e){ const [a,b]=edgeOf(r.poly,e), dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1, s=signed(r.poly)>0?1:-1; return [-dy/L*s, dx/L*s]; }
 
@@ -1249,11 +1347,13 @@ function renderHint(){
       :TOUCH?"Tap a room to edit it · drag to pan · pinch to zoom":"Click a room to edit it · drag corner handles to reshape · drag to pan",
     draw:n?(TOUCH?`${n} corner${n===1?"":"s"} · tap to add more, or tap the first corner to close`:"Click to add corners (right angles snap; Shift for free angles) · click the first corner or press Enter to close")
       :`${tap} to place the first corner. Points snap to a 0.5 m grid.`,
-    door:`${tap} a wall to add a 0.9 m door · ${tap.toLowerCase()} a door to remove it`,
+    door:S.doorKind==="exit"?`${tap} a door to mark it as an emergency exit, or to unmark it · ${tap.toLowerCase()} a wall to add an exit door`
+      :`${tap} a wall to add a 0.9 m door · ${tap.toLowerCase()} a door to remove it`,
     move:S.moveKeys?.length?`${S.moveKeys.length} room${S.moveKeys.length===1?"":"s"} picked · drag to move${S.showCampus?" (corners snap to the building outline)":""} · turn them here`
       :`${tap} or drag a room to move it with every room joined to it, such as an imported walk`}[S.mode]
     +(S.mode==="draw"&&!n&&S.showCampus&&S.campus?" Corners snap to the building outline.":"");
-  const acts = S.mode==="draw" && n ? `<span class="acts"><button class="btn sm" data-d="undo">Undo</button><button class="btn sm primary" data-d="done" ${n<3?"disabled":""}>Finish room</button><button class="btn sm" data-d="cancel">Cancel</button></span>`
+  const acts = S.mode==="door" && !S.readOnly ? `<span class="acts"><span class="seg"><button data-dk="door" aria-pressed="${S.doorKind!=="exit"}">Door</button><button data-dk="exit" aria-pressed="${S.doorKind==="exit"}">Emergency exit</button></span></span>`
+    : S.mode==="draw" && n ? `<span class="acts"><button class="btn sm" data-d="undo">Undo</button><button class="btn sm primary" data-d="done" ${n<3?"disabled":""}>Finish room</button><button class="btn sm" data-d="cancel">Cancel</button></span>`
     : S.mode==="move" && S.moveKeys?.length && !S.readOnly ? `<span class="acts"><button class="btn sm" data-m="-90" title="Turn 90° anticlockwise">⟲ 90°</button><button class="btn sm" data-m="-5">⟲ 5°</button><button class="btn sm" data-m="5">⟳ 5°</button><button class="btn sm" data-m="90" title="Turn 90° clockwise">⟳ 90°</button>${S.showCampus&&S.campus?`<button class="btn sm primary" data-m="align" title="Turn to line up with the building's walls">Line up with building</button>`:""}</span>` : "";
   const key=h+acts; if (key===hintKey) return; hintKey=key;
   const el=$("#hint"); el.innerHTML=`<span>${esc(h)}</span>${acts}`;
@@ -1261,10 +1361,12 @@ function renderHint(){
     if (d==="undo") S.draft.pop(); if (d==="cancel") S.draft=[]; S.cursor=null;
     if (d==="done" && S.draft.length>=3) return closeDraft(); renderPlan(); });
   el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>b.dataset.m==="align"?alignGroup():rotateGroup(+b.dataset.m));
+  el.querySelectorAll("[data-dk]").forEach(b=>b.onclick=()=>{ S.doorKind=b.dataset.dk; if(S.doorKind==="exit") toggleFac("exit",true); else renderPlan(); });
 }
 function renderLegend(){
   const l=$("#legend");
-  if (S.overlay==="coverage") l.innerHTML=COV_LABEL.map((t,i)=>`<span><i class="sw" style="background:var(${["--cov0","--cov1","--cov2","--cov3"][i]})"></i>${t}</span>`).join("");
+  if (S.fac.size) l.innerHTML=[...S.fac].map(c=>`<span><i class="sw" style="background:${FAC[c].color}"></i>${FAC[c].label} · ${facItems(c,S.floor).length}</span>`).join("");
+  else if (S.overlay==="coverage" && !S.nav) l.innerHTML=COV_LABEL.map((t,i)=>`<span><i class="sw" style="background:var(${["--cov0","--cov1","--cov2","--cov3"][i]})"></i>${t}</span>`).join("");
   else { const used=new Set(floorRooms(S.floor).map(r=>r.type)); l.innerHTML=Object.entries(TYPES).filter(([k])=>used.has(k)).map(([,t])=>`<span><i class="sw" style="background:var(${t.v})"></i>${t.label}</span>`).join(""); }
   l.hidden = !l.innerHTML;
 }
@@ -1331,10 +1433,12 @@ function tapAt(ev,t){
   }
   if (S.mode==="door"){
     const hit=t.dataset.door ? t.dataset.door.split(":") : nearestDoor(pt,TOUCH?.6:.35);
+    if (hit && S.doorKind==="exit"){ const r=roomByK(hit[0]), d=r.doors[+hit[1]];
+      if (d.exit){ delete d.exit; edit("Unmarked an emergency exit on "+r.id); } else { d.exit=true; edit("Marked an emergency exit on "+r.id); } return; }
     if (hit){ const r=roomByK(hit[0]); r.doors.splice(+hit[1],1); edit("Removed a door from "+r.id); return; }
     const he=nearestEdge(pt); if(!he) return;
     const r=roomByK(he.k), L=dist(...edgeOf(r.poly,he.e)); if (L<DOOR_W+.1){ toast("That wall is too short for a door."); return; }
-    const half=DOOR_W/2/L; r.doors.push({e:he.e,t:Math.max(half,Math.min(1-half,he.t)),w:DOOR_W}); edit("Added a door to "+r.id);
+    const half=DOOR_W/2/L, ex=S.doorKind==="exit"; r.doors.push({e:he.e,t:Math.max(half,Math.min(1-half,he.t)),w:DOOR_W,...(ex?{exit:true}:{})}); edit((ex?"Added an emergency exit to ":"Added a door to ")+r.id);
   }
 }
 function nearestDoor(pt,max){ let best=null,bd=max; floorRooms(S.floor).forEach(r=>r.doors.forEach((d,i)=>{ const c=doorCenter(r,d), dd=dist(pt,c); if(dd<bd){ bd=dd; best=[r.k,i]; } })); return best; }
@@ -1381,6 +1485,7 @@ function renderInspector(){
     el.innerHTML=`<h2>${esc(fl?.name||"Level "+S.floor)}</h2>
       ${S.readOnly?"":`<div class="row2" style="margin-bottom:10px"><div class="field"><label for="blk">Block</label><input id="blk" value="${esc(S.plan.block||"")}" maxlength="8"></div><div class="field"><label for="flName">Floor name</label><input id="flName" value="${esc(fl?.name||"")}" maxlength="40"></div></div>`}
       <dl class="kv"><dt>Rooms</dt><dd>${rs.length}</dd><dt>Floor area</dt><dd>${fmtArea(tot)}</dd><dt>Doors</dt><dd>${rs.reduce((s,r)=>s+r.doors.length,0)}</dd><dt>Rooms with scans</dt><dd>${scanned} / ${rs.length}</dd></dl>
+      ${facilitiesHTML(false)}
       <h3>On the map</h3>
       ${S.plan.geo?`<p class="small muted" style="margin:0 0 8px">Placed at ${S.plan.geo.lat.toFixed(5)}, ${S.plan.geo.lng.toFixed(5)}, turned ${S.plan.geo.rot}°. Directions can show GPS, and the GeoJSON export uses map coordinates.</p>`
         :`<p class="small muted" style="margin:0 0 8px">Not placed yet. Place the block on a real map so Directions can show GPS and the GeoJSON export lines up with map data.${S.showCampus&&S.campus&&mainBuilding()?" Until then the campus outline on the plan is lined up roughly, centred on the main building.":""}</p>`}
@@ -1396,6 +1501,7 @@ function renderInspector(){
       <button class="btn sm" id="loadEx">${exArm?"Confirm: replace the plan":"Load sample building"}</button>`}
       ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
     el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
+    bindFacilities(el,false);
     const mh=$("#markHalls"); if(mh) mh.onclick=()=>{ halls.forEach(h=>{ h.r.type=h.g.kind; });
       edit(`Marked ${halls.map(h=>h.r.id).join(", ")} as hallways`); toast(`Marked ${halls.length} room${halls.length===1?"":"s"} as hallways. Change any type that's wrong in the room's panel.`); };
     const mp=$("#mapPlace"); if(mp) mp.onclick=openMapDlg;
@@ -2708,7 +2814,7 @@ function renderDirections(){
   if (g.rev!==S.plan.rev){ g.rev=S.plan.rev; navUpdate(); }     // the plan changed under us: route again
   const R=g.route, to=g.to&&roomByK(g.to);
   $("#sheetLabel").innerHTML=`<b>Directions</b>${to?`to ${esc(roomName(to))}${R?` · ${metres(R.total)}`:""}`:"Pick a room"}`;
-  const key=JSON.stringify([g.from,g.to,g.fromDoor,g.stepFree,g.msg,R&&R.steps.map(s=>s.html),S.plan.rev,S.plan.rooms.length,!!S.plan.geo,g.gpsOn,g.gps&&g.gps.acc,S.floor]);
+  const key=JSON.stringify([g.from,g.to,g.fromDoor,g.stepFree,g.msg,R&&R.steps.map(s=>s.html),S.plan.rev,S.plan.rooms.length,!!S.plan.geo,g.gpsOn,g.gps&&g.gps.acc,S.floor,[...S.fac]]);
   if (key===navKey) return; navKey=key;
   const fl=[...S.plan.floors].sort((a,b)=>a.level-b.level);
   const opts=sel=>`<option value="">Choose a room…</option>`+fl.map(f=>{ const rs=floorRooms(f.level).slice().sort((a,b)=>roomName(a).localeCompare(roomName(b)));
@@ -2722,6 +2828,7 @@ function renderDirections(){
     ${R?`<div class="go-sum"><b>${metres(R.total)}</b> · about ${R.mins} min${R.changes?` · ${R.changes} floor change${R.changes>1?"s":""}`:""}</div>
       <ol class="steps">${R.steps.map((s,i)=>`<li><button data-i="${i}" ${s.f===S.floor?"":`class="off"`}><span class="n">${i+1}</span><span>${s.html}</span><span class="f">L${s.f}</span></button></li>`).join("")}</ol>`
       :g.msg?`<p class="warn">${esc(g.msg)}</p>`:`<p class="small muted">Pick where you are and where you're going, or tap rooms on the plan.</p>`}
+    ${facilitiesHTML(true)}
     <h3>Your position</h3>
     ${S.plan.geo?`<label class="consent"><input type="checkbox" id="goGps" ${g.gpsOn?"checked":""}><span>Show my GPS position on the plan${g.gpsOn&&g.gps?` (±${Math.round(g.gps.acc)} m)`:""}. Indoors it's usually only accurate to 10–50 m, so scan a door marker to be sure where you are.</span></label>
       <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&amp;destination=${centre[0].toFixed(6)},${centre[1].toFixed(6)}">Get to Block ${esc(S.plan.block)} in Google Maps</a>`
@@ -2732,6 +2839,7 @@ function renderDirections(){
   $("#goStep").onchange=e=>{ g.stepFree=e.target.checked; navUpdate(); renderFloors(); renderPlan(); };
   $("#goScan").onclick=()=>$("#goScanIn").click();
   $("#goScanIn").onchange=e=>{ const f=e.target.files[0]; e.target.value=""; if(f) scanDoorPhoto(f); };
+  bindFacilities(el,true);
   const gp=$("#goGps"); if(gp) gp.onchange=e=>{ if(e.target.checked) startNavGps(); else { stopNavGps(); renderPlan(); } };
   el.querySelectorAll(".steps [data-i]").forEach(b=>b.onclick=()=>{ const s=R.steps[+b.dataset.i]; if(s.f!==S.floor){ S.floor=s.f; renderFloors(); }
     if (s.at){ S.view.cx=s.at[0]; S.view.cy=s.at[1]; S.view.scale=Math.max(S.view.scale,18); } if(TOUCH) setSheet(false); renderPlan(); });
