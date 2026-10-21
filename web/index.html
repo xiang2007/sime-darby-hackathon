@@ -2956,7 +2956,7 @@ function renderDirections(){
     <div class="field"><label for="goFrom">From${g.fromDoor?" (door marker)":""}</label><div class="go-row"><select id="goFrom">${opts(g.from)}</select><button class="btn sm" id="goScan" title="Take a photo of a door marker">Scan marker</button></div></div>
     <input type="file" id="goScanIn" accept="image/*" capture="environment" hidden>
     <div class="field"><label for="goTo">To</label><select id="goTo">${opts(g.to)}</select></div>
-    <div class="go-row" style="margin-bottom:6px"><button class="btn sm" id="goSwap" ${g.from&&g.to?"":"disabled"}>Swap</button><label class="consent" style="margin:0"><input type="checkbox" id="goStep" ${g.stepFree?"checked":""}><span>Step-free (lifts only)</span></label></div>
+    <div class="go-row" style="margin-bottom:6px"><button class="btn sm" id="goSwap" ${g.from&&g.to?"":"disabled"}>Swap</button><button class="btn sm" id="goReset" ${g.from||g.to?"":"disabled"} title="Clear both rooms and start again">Reset</button><label class="consent" style="margin:0"><input type="checkbox" id="goStep" ${g.stepFree?"checked":""}><span>Step-free (lifts only)</span></label></div>
     ${R?`<div class="go-sum"><b>${metres(R.total)}</b> · about ${R.mins} min${R.changes?` · ${R.changes} floor change${R.changes>1?"s":""}`:""}</div>
       <ol class="steps">${R.steps.map((s,i)=>`<li><button data-i="${i}" ${s.f===S.floor?"":`class="off"`}><span class="n">${i+1}</span><span>${s.html}</span><span class="f">L${s.f}</span></button></li>`).join("")}</ol>`
       :g.msg?`<p class="warn">${esc(g.msg)}</p>`:`<p class="small muted">Pick where you are and where you're going, or tap rooms on the plan.</p>`}
@@ -2968,6 +2968,7 @@ function renderDirections(){
   $("#goFrom").onchange=e=>{ g.from=e.target.value||null; g.fromDoor=false; navUpdate(); renderFloors(); renderPlan(); };
   $("#goTo").onchange=e=>{ g.to=e.target.value||null; navUpdate(); if(g.route && !routeFloors().has(S.floor)){ S.floor=g.route.lines[0].f; fit(); } renderFloors(); renderPlan(); };
   $("#goSwap").onclick=()=>{ [g.from,g.to]=[g.to,g.from]; g.fromDoor=false; navUpdate(); renderFloors(); renderPlan(); };
+  $("#goReset").onclick=()=>{ g.from=g.to=null; g.fromDoor=false; g.want=null; navUpdate(); renderFloors(); renderPlan(); toast("Cleared the rooms. Pick where you are and where you're going."); };
   $("#goStep").onchange=e=>{ g.stepFree=e.target.checked; navUpdate(); renderFloors(); renderPlan(); };
   $("#goScan").onclick=()=>$("#goScanIn").click();
   $("#goScanIn").onchange=e=>{ const f=e.target.files[0]; e.target.value=""; if(f) scanDoorPhoto(f); };
