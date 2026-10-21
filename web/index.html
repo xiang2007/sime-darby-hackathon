@@ -748,13 +748,16 @@ const ago = t => { if (!t) return ""; const s = (Date.now() - t) / 1000;
   return new Date(t).toLocaleDateString(undefined, {day:"numeric", month:"short"}); };
 
 /* ---------- example plan (shown only while the shared plan is empty) ----------
-   Mock data for APU's main building (OpenStreetMap way/541804093), Levels 3 and 4. geo pins the plan's (0, 0) to
-   the north-west corner of the west wing, square to its walls, so the rooms sit inside the real outline.
-   Block B: the west wing, about 70 × 68 m. Block A: the middle (an atrium, a north bay and a south annex).
-   Block C: the long east wing, turned 20.6° from the rest and laid out on its own grid by uv().
-   The two floors have different layouts. What joins them is fixed: Stairwells A, B and C and Lifts 1–4 are in the
-   same place on both floors, so Directions can go between them. Stairs are drawn square to the plan (they are laid
-   out in their room's bounding rectangle) and keep the same direction on both floors. */
+   Mock data for APU's main building (OpenStreetMap way/541804093), Levels 3 and 4, laid out the way a campus building
+   is: double-loaded corridors with classrooms and labs on both sides, a lift core with toilets in each block, and
+   fire stairs at the corridor ends so no room is far from one. geo pins the plan's (0, 0) to the north-west corner
+   of the west wing, square to its walls, so the rooms sit inside the real outline.
+   Block B: the west wing, about 70 × 68 m, around a ring of corridors with a cross corridor through the middle.
+   Block A: the middle, a central atrium with the main lift core north of it, and the south annex.
+   Block C: the long east wing, turned 20.6° from the rest and laid out on its own grid by uv(): two parallel
+   corridors with a lift core at each end and corridors running south.
+   Both floors share the corridors, stairs, lifts and toilets (they stack); the rooms between them differ. On Level 4
+   the atrium is open to the floor below, with galleries around it. Every fire stair door is an emergency exit. */
 function rect(x0,y0,x1,y1){ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]; }
 function exampleRoom(id,name,type,poly,doors,floor=3,extra){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t,exit])=>({e,t,w:DOOR_W,...(exit?{exit:true}:{})})),...extra}; }
 const EXAMPLE_GEO={x:117.75,y:46.34,lat:3.0556056,lng:101.6999959,rot:27.43,osm:"way/541804093"};
@@ -762,172 +765,210 @@ const WING_T=20.6*Math.PI/180, WC=Math.cos(WING_T), WS=Math.sin(WING_T);
 const uv=(u,v)=>[+(u*WC-v*WS).toFixed(3),+(u*WS+v*WC).toFixed(3)];   // Block C's grid: u along the wing (east), v across it (south)
 const urect=(u0,v0,u1,v1)=>[uv(u0,v0),uv(u1,v0),uv(u1,v1),uv(u0,v1)];
 const onX=v=>uv((72.8+v*WS)/WC,v);   // the point at v on the line x = 72.8, where Block C meets Block A's annex
-// The rooms both floors share, in the same place: stairwells, lifts and the lift lobbies they open onto.
-// Rectangle doors: edge 0 north, 1 east, 2 south, 3 west; t runs clockwise along the edge; a third value 1 marks an
-// emergency exit (the stairwell doors: on these upper floors the fire stairs are the way out).
+// Rectangle doors: edge 0 north, 1 east, 2 south, 3 west (in Block C: v0, u1, v1, u0); t runs clockwise along the
+// edge; a third value 1 marks an emergency exit. Stairs climb in direction dir (0 east, 1 south, 2 west, 3 north,
+// on the room's own grid) from a landing by the door, and keep that direction on both floors.
 const EX_LIFT={kind:"lift",dir:0,mirror:false}, exStair=dir=>({kind:"switchback",dir,mirror:false});
-function exampleCores(f,doorB){
-  const B=(n,name,type,poly,doors,extra)=>exampleRoom(exId("B",f,n),name,type,poly,doors,f,extra);
-  const A=(n,name,type,poly,doors,extra)=>exampleRoom(exId("A",f,n),name,type,poly,doors,f,extra);
-  return [
-    B(20,"Lift lobby","lobby",rect(37,22,43,32),f===3?[[2,.5],[3,.3]]:[[0,.5],[2,.5]]),
-    B(21,"Lift 1","stairs",rect(43,22,46,25.5),[[3,.5]],{stair:EX_LIFT}),
-    B(22,"Lift 2","stairs",rect(43,25.5,46,29),[[3,.5]],{stair:EX_LIFT}),
-    B(23,"Accessible toilet","toilet",rect(43,29,46,32),[[2,.5]]),
-    B(24,"Stairwell A","stairs",rect(46,22,51,32),[[2,.5,1]],{stair:exStair(3)}),
-    B(27,"Stairwell B","stairs",rect(.5,35,5.5,45),[doorB],{stair:exStair(1)}),
-    A(1,"Stairwell C","stairs",rect(70.5,14,76.5,24),[[1,.5,1]],{stair:exStair(2)}),
-    A(2,"Lift 3","stairs",rect(70.5,24,73.5,27.5),[[1,.5]],{stair:EX_LIFT}),
-    A(3,"Lift 4","stairs",rect(70.5,27.5,73.5,31),[[1,.5]],{stair:EX_LIFT}),
-  ];
-}
 const exId=(b,f,n)=>`${b}-${String(f).padStart(2,"0")}-${String(n).padStart(2,"0")}`;
-function exampleBuilders(f){
-  const mk=b=>(n,name,type,poly,doors,extra)=>exampleRoom(exId(b,f,n),name,type,poly,doors,f,extra);
-  return {A:mk("A"),B:mk("B"),C:mk("C")};
-}
+const exDoors=(e,w)=>w>=8?[[e,.2],[e,.8]]:[[e,.5]];   // rooms 8 m or wider get a front and a back door
 
-/* Level 3: Block B around a cross-shaped corridor; Block A a big central atrium; Block C three parallel hallways
-   (north corridor, concourse, south corridor). */
-function exampleLevel3(){
-  const {A,B,C}=exampleBuilders(3);
-  return [
-    ...exampleCores(3,[0,.5,1]),
-    // Block B. The corridor's east end opens onto the central atrium, its south end onto the annex corridor.
-    B(0,"Main corridor","corridor",[[34,.5],[37,.5],[37,32],[70.5,32],[70.5,35],[37,35],[37,68],[34,68],[34,35],[.5,35],[.5,32],[34,32]],[[3,.5],[6,.5]]),
-    B(1,"Lecture Theatre 1","lecture",rect(.5,.5,20,32),[[2,.25],[2,.75]]),
-    B(2,"Computer Lab 2","lab",rect(20,.5,34,11),[[1,.5]]),
-    B(3,"Computer Lab 3","lab",rect(20,11,34,21.5),[[1,.5]]),
-    B(4,"Tutorial Room 4","lecture",rect(20,21.5,34,32),[[1,.4],[2,.5]]),
-    B(5,"Lecture Theatre 5","lecture",[[5.5,35],[20,35],[20,68],[.5,68],[.5,45],[5.5,45]],[[0,.3],[0,.8]]),
-    B(6,"Faculty office","office",rect(20,35,34,46),[[0,.5],[1,.5]]),
-    B(7,"Meeting room","office",rect(20,46,34,57),[[1,.5]]),
-    B(8,"Staff room","office",rect(20,57,34,68),[[1,.5]]),
-    B(9,"Engineering Lab 9","lab",rect(37,35,55,50),[[0,.5],[3,.5]]),
-    B(10,"Student Services Centre","office",rect(55,35,70.5,68),[[0,.3],[0,.75]]),
-    B(11,"Project Studio","lab",rect(37,50,55,68),[[3,.5]]),
-    B(12,"Computer Lab 12","lab",rect(37,.5,50,11),[[3,.5]]),
-    B(13,"Computer Lab 13","lab",rect(37,11,50,22),[[3,.5]]),
-    B(14,"Library annex","other",[[50,.5],[70.5,.5],[70.5,32],[57,32],[57,22],[50,22]],[[2,.5]]),
-    B(25,"Toilets (male)","toilet",rect(51,22,54,32),[[2,.5]]),
-    B(26,"Toilets (female)","toilet",rect(54,22,57,32),[[2,.5]]),
-    // Block A: the atrium joins Block B's corridor, Block C's hallways and the annex corridor
-    A(0,"Central atrium","lobby",[[70.5,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,38),[70.5,68],[70.5,31],[73.5,31],[73.5,24],[76.5,24],[76.5,14],[70.5,14]]),
-    A(4,"Cafeteria","other",rect(71,-10,82,.5),[[2,.5]]),
-    A(5,"Bookshop","office",rect(82,-10,92.4,.5),[[2,.5]]),
-    A(10,"Annex corridor","corridor",[[19.5,68],[72.8,68],[72.8,71],[66.5,71],[66.5,115],[63.5,115],[63.5,71],[19.5,71]],[[0,.981]]),
-    A(11,"Lecture Theatre 11","lecture",rect(19.5,71,34,87.2),[[0,.3],[0,.75]]),
-    A(12,"Tutorial Room 12","lecture",rect(34,71,46,87.2),[[0,.5]]),
-    A(13,"Computer Lab 13","lab",rect(46,71,63.5,87.2),[[0,.5],[1,.3]]),
-    A(14,"Counselling office","office",rect(57.5,87.5,63.5,101),[[1,.5]]),
-    A(15,"Finance office","office",rect(57.5,101,63.5,115),[[1,.5]]),
-    A(16,"Staff office 16","office",rect(66.5,71,72.8,86),[[3,.5]]),
-    A(17,"Staff office 17","office",rect(66.5,86,72.8,100.5),[[3,.5]]),
-    A(18,"Toilets","toilet",rect(66.5,100.5,72.8,115),[[3,.5]]),
-    // Block C: north corridor (v −14 to −11), concourse (v 4 to 10), south corridor (v 30 to 33)
-    C(0,"North corridor","corridor",urect(92,-14,209,-11),[[3,.5]]),
-    C(1,"Concourse","lobby",urect(92,4,166,10),[[3,.5]]),
-    C(2,"South corridor","corridor",[uv(124,10),uv(127,10),uv(127,30),uv(166,30),uv(166,33),uv(113,33),uv(113,70),uv(110,70),uv(110,33),uv(92,33),uv(92,30),uv(124,30)],[[0,.5],[9,.5]]),
-    C(3,"Lecture Theatre C3","lecture",urect(92,-24,103,-14),[[2,.5]]),
-    C(4,"Lecture Theatre C4","lecture",urect(103.5,-39,119.2,-14),[[2,.3],[2,.75]]),
-    C(5,"Tutorial Room C5","lecture",urect(119.2,-24,133,-14),[[2,.5]]),
-    C(6,"Tutorial Room C6","lecture",urect(133,-24,146.5,-14),[[2,.5]]),
-    C(7,"Toilets","toilet",urect(146.5,-39.5,153.8,-14),[[2,.5]]),
-    C(8,"Seminar Room C8","lecture",urect(154.8,-29,169,-14),[[2,.5]]),
-    C(9,"Seminar Room C9","lecture",urect(169,-29,183.5,-14),[[2,.5]]),
-    C(10,"Lecture Theatre C10","lecture",urect(184.3,-49,202.3,-14),[[2,.3],[2,.75]]),
-    C(11,"Plant room","other",urect(203,-30,208,-14),[[2,.5]]),
-    C(12,"Network Lab","lab",urect(92,-11,110,4),[[0,.5]]),
-    C(13,"Electronics Lab","lab",urect(110,-11,128,4),[[0,.5],[2,.5]]),
-    C(14,"Physics Lab","lab",urect(128,-11,147,4),[[0,.5],[2,.5]]),
-    C(15,"Media Lab","lab",urect(147,-11,166,4),[[0,.5],[2,.5]]),
-    C(16,"Multipurpose Hall","other",urect(166,-11,190,21.3),[[0,.5],[3,.443]]),
-    C(17,"Innovation Hub","office",[uv(190,-11),uv(212,-11),uv(197.3,16.5),uv(190,16.5)],[[0,.5]]),
-    C(18,"Toilets","toilet",urect(95.5,20,100,30),[[2,.5]]),
-    C(19,"Student Union","office",urect(100,10,112,30),[[0,.5],[2,.5]]),
-    C(20,"Accounting Lab","lab",urect(112,10,124,30),[[0,.5]]),
-    C(21,"Lecture Theatre C21","lecture",urect(127,10,146,30),[[0,.5],[2,.5]]),
-    C(22,"Lecture Theatre C22","lecture",urect(146,10,166,30),[[0,.5],[2,.5]]),
-    C(23,"Main Library","other",[uv(92,33),uv(110,33),uv(110,58),onX(58),onX(38)],[[0,.5],[1,.4]]),
-    C(24,"Quiet study","office",urect(113,33,126.2,58),[[3,.5]]),
-    C(25,"Food court","other",urect(126.2,33,146,56.5),[[0,.3],[0,.75]]),
-    C(26,"Student Services","office",urect(146,33,166,56.5),[[0,.5]]),
-    C(27,"IT help desk","office",[onX(58),uv(110,58),uv(110,70),onX(70)],[[1,.5]]),
-    C(28,"Design Lab","lab",urect(113,58,126.2,82),[[3,.75]]),
-    C(29,"Medical room","office",[onX(70),uv(113,70),uv(113,82),onX(82)],[[0,.83]]),
-  ];
-}
+function exampleFloor(f){
+  const rooms=[], n={A:0,B:0,C:0}, seq={lab:0,lt:0,dr:0};
+  const add=b=>(name,type,poly,doors,extra)=>{ const id=exId(b,f,n[b]++); rooms.push(exampleRoom(id,typeof name==="function"?name(id):name,type,poly,doors,f,extra)); };
+  const A=add("A"), B=add("B"), C=add("C");
+  const cls=id=>"Classroom "+id, lab=()=>`Tech Lab ${f}-${String(++seq.lab).padStart(2,"0")}`, lt=()=>`Lecture Theatre ${f}-${++seq.lt}`, dr=()=>`Discussion Room ${f}-${++seq.dr}`;
+  const K={cls:[cls,"lecture"],lab:[lab,"lab"],lt:[lt,"lecture"],dr:[dr,"office"]}, k=(s,more)=>[...s,more];
+  // a row of rooms side by side, cut at the given positions along the row (u or x, or v or y for rowV), doors on edge e
+  const rowU=(put,M,cuts,v0,v1,e,specs)=>specs.forEach(([name,type,more],i)=>{ const a=cuts[i], z=cuts[i+1]; put(name,type,M(a,v0,z,v1),[...exDoors(e,z-a),...(more||[])]); });
+  const rowV=(put,M,cuts,u0,u1,e,specs)=>specs.forEach(([name,type,more],i)=>{ const a=cuts[i], z=cuts[i+1]; put(name,type,M(u0,a,u1,z),[...exDoors(e,z-a),...(more||[])]); });
+  const fire=(put,name,poly,door,dir)=>put(name,"stairs",poly,[[...door,1]],{stair:exStair(dir)});
+  const lift=(put,name,poly,door)=>put(name,"stairs",poly,[door],{stair:EX_LIFT});
+  const L3=f===3;
 
-/* Level 4, a different layout on the same stairs and lifts: Block B around a U-shaped corridor (two east–west
-   hallways joined at the west end); Block A a narrower gallery instead of the atrium, with rooms around it, and the
-   annex reached by a hallway from Block B; Block C one central spine with short hallways (fingers) branching
-   north and south. */
-function exampleLevel4(){
-  const {A,B,C}=exampleBuilders(4);
-  const gTop=uv(92,6), gBot=uv(92,22), cEdge=uv(92,-19.62);   // where the gallery and Block A meet Block C's grid
-  return [
-    ...exampleCores(4,[1,.1,1]),   // Stairwell B: the door by its landing, as on Level 3
-    // Block B: hallways at y 19–22 and y 45–48, joined by a hallway at x 5.5–8.5
-    B(0,"North hallway","corridor",[[.5,19],[70.5,19],[70.5,22],[8.5,22],[8.5,45],[70.5,45],[70.5,48],[.5,48],[.5,45],[5.5,45],[5.5,22],[.5,22]],[[1,.5],[5,.5]]),
-    B(1,"Seminar Room 1","lecture",rect(.5,.5,16,19),[[2,.5]]),
-    B(2,"Seminar Room 2","lecture",rect(16,.5,30,19),[[2,.5]]),
-    B(3,"Discussion Room 3","office",rect(30,.5,44,19),[[2,.5]]),
-    B(4,"Discussion Room 4","office",rect(44,.5,58,19),[[2,.5]]),
-    B(5,"Admin office","office",rect(58,.5,70.5,19),[[2,.5]]),
-    B(6,"Store","other",rect(.5,22,5.5,35),[[1,.5]]),
-    B(7,"Design Studio","lab",rect(8.5,22,23,45),[[0,.5],[2,.5]]),
-    B(8,"Architecture Studio","lab",rect(23,22,37,45),[[0,.5],[2,.5]]),
-    B(9,"Lecturer offices","office",rect(57,22,70.5,35),[[0,.5]]),
-    B(16,"Core hallway","corridor",rect(37,32,57,35)),   // Stairwell A opens onto it at the same end as on Level 3
-    B(10,"Cyber Security Lab","lab",rect(37,35,54,45),[[2,.5]]),
-    B(11,"IoT Lab","lab",rect(54,35,70.5,45),[[2,.5]]),
-    B(12,"Auditorium","lecture",rect(.5,48,18,68),[[0,.5]]),
-    B(13,"Data Science Lab","lab",rect(18,48,36,68),[[0,.5],[1,.7]]),
-    B(14,"Robotics Lab","lab",rect(39,48,54,68),[[0,.5],[3,.3]]),
-    B(15,"Student lounge","lobby",rect(54,48,70.5,68),[[0,.5]]),
-    B(25,"Toilets (male)","toilet",rect(51,22,54,32),[[0,.5]]),
-    B(26,"Toilets (female)","toilet",rect(54,22,57,32),[[0,.5]]),
-    // Block A: the gallery, the rooms around it, and the annex hallway that runs down from Block B
-    A(0,"Upper gallery","lobby",[[70.5,31],[73.5,31],[73.5,24],[76.5,24],[76.5,14],[84,14],[84,gTop[1]],gTop,gBot,[70.5,gBot[1]]]),
-    A(4,"Board room","office",[[71,-10],[92.4,-10],[92.4,14],[70.5,14],[70.5,.5],[71,.5]],[[2,.566]]),
-    A(5,"Meeting rooms","office",[[84,14],cEdge,gTop,[84,gTop[1]]],[[3,.5]]),
-    A(6,"Quiet room","office",[[70.5,gBot[1]],gBot,uv(92,38),[70.5,68]],[[0,.5]]),
-    A(10,"Annex hallway","corridor",[[36,48],[39,48],[39,76],[63,76],[63,115],[60,115],[60,79],[19.5,79],[19.5,76],[36,76]],[[0,.5]]),
-    A(11,"Prayer room","other",rect(19.5,68,36,76),[[2,.5]]),
-    A(12,"Printing centre","office",rect(39,68,55,76),[[2,.5]]),
-    A(13,"Career centre","office",rect(55,68,72.8,76),[[2,.25]]),
-    A(14,"Lecture Theatre 21","lecture",rect(19.5,79,40,87.2),[[0,.3],[0,.75]]),
-    A(15,"Computer Lab 23","lab",rect(40,79,60,87.2),[[0,.5]]),
-    A(16,"Registry","office",rect(63,76,72.8,95),[[3,.5]]),
-    A(17,"Toilets","toilet",rect(63,95,72.8,115),[[3,.5]]),
-    // Block C: the spine (v 14–18), fingers north at u 110–113 and 145–148, fingers south at u 123–126 and 150–153
-    C(0,"East spine","corridor",[uv(92,14),uv(110,14),uv(110,-24),uv(113,-24),uv(113,14),uv(145,14),uv(145,-24),uv(148,-24),uv(148,14),uv(190,14),uv(190,18),
-      uv(153,18),uv(153,56.5),uv(150,56.5),uv(150,18),uv(126,18),uv(126,81.5),uv(123,81.5),uv(123,18),uv(92,18)],[[19,.5]]),
-    C(1,"Lecture Theatre C41","lecture",[uv(92,-24),uv(103.5,-24),uv(103.5,-39),uv(110,-39),uv(110,-5),uv(92,-5)],[[3,.6]]),
-    C(2,"Cloud Lab","lab",urect(92,-5,110,14),[[1,.5],[2,.5]]),
-    C(3,"Lecture Theatre C43","lecture",[uv(113,-39),uv(119.2,-39),uv(119.2,-24),uv(129,-24),uv(129,-5),uv(113,-5)],[[5,.4]]),
-    C(4,"Seminar Room C44","lecture",urect(129,-24,145,-5),[[1,.5]]),
-    C(5,"Mechatronics Lab","lab",urect(113,-5,129,14),[[2,.5],[3,.5]]),
-    C(6,"Chemistry Lab","lab",urect(129,-5,145,14),[[1,.5],[2,.5]]),
-    C(7,"Lecture Theatre C47","lecture",[uv(148,-39.5),uv(153.8,-39.5),uv(153.8,-29),uv(166,-29),uv(166,-5),uv(148,-5)],[[5,.3]]),
-    C(8,"Game Dev Lab","lab",urect(148,-5,166,14),[[2,.5],[3,.5]]),
-    C(9,"Exam Hall","other",urect(166,-29,184,14),[[2,.3],[2,.75]]),
-    C(10,"Lecture Theatre C50","lecture",urect(184.3,-49,199,14),[[2,.816]]),
-    C(11,"Plant room","other",[uv(199,-30),uv(211,-30),uv(200,10),uv(199,10)],[[3,.5]]),
-    C(12,"Toilets","toilet",urect(92,18,98,33),[[0,.5]]),
-    C(13,"Business Lab","lab",urect(98,18,108,33),[[0,.5]]),
-    C(14,"Clubs room","office",urect(108,18,123,33),[[0,.5],[1,.5]]),
-    C(15,"Library (upper floor)","other",[uv(92,33),uv(123,33),uv(123,58),onX(58),onX(38)],[[1,.5]]),
-    C(16,"Group study rooms","office",[onX(58),uv(123,58),uv(123,70),onX(70)],[[1,.5]]),
-    C(17,"Sick bay","office",[onX(70),uv(123,70),uv(123,82),onX(82)],[[1,.5]]),
-    C(18,"Lecture Theatre C58","lecture",urect(126,18,150,37),[[0,.5],[3,.5]]),
-    C(19,"International office","office",urect(126,37,150,56.5),[[3,.5],[1,.5]]),
-    C(20,"Startup Incubator","office",urect(153,18,166.4,37),[[0,.5]]),
-    C(21,"Postgraduate centre","office",urect(153,37,166.4,56.5),[[3,.5]]),
-  ];
+  /* ---- Block B: corridors at y 10–13 and 55–58 and x 10–13 and 57.5–60.5, a cross corridor at y 36–39. Both
+     east–west corridors run into Block A's atrium. Fire stairs at the four corners, the lift core on the north side. */
+  B("Block B north corridor","corridor",rect(.5,10,70.5,13),[[1,.5]]);
+  B("Block B south corridor","corridor",rect(.5,55,70.5,58),[[1,.5]]);
+  B("Block B west corridor","corridor",rect(10,13,13,55),[[0,.5],[2,.5]]);
+  B("Block B east corridor","corridor",rect(57.5,13,60.5,55),[[0,.5],[2,.5]]);
+  B("Block B cross corridor","corridor",rect(13,36,57.5,39),[[1,.5],[3,.5]]);
+  B("Link to annex","corridor",rect(36,58,39,68),[[0,.5],[2,.5]]);
+  fire(B,"Fire stair B1",rect(.5,13,10,16.5),[0,.15],0);
+  fire(B,"Fire stair B2",rect(.5,51.5,10,55),[2,.15],2);
+  fire(B,"Fire stair B3",rect(60.5,13,70.5,16.5),[0,.85],2);
+  fire(B,"Fire stair B4",rect(60.5,51.5,70.5,55),[2,.15],2);
+  B("Lift lobby B","lobby",rect(31,13,39.5,19),[[0,.25],[0,.75]]);
+  lift(B,"Lift B1",rect(31,19,33.83,21.5),[0,.5]);
+  lift(B,"Lift B2",rect(33.83,19,36.67,21.5),[0,.5]);
+  lift(B,"Lift B3",rect(36.67,19,39.5,21.5),[0,.5]);
+  B("Male toilet","toilet",rect(25,13,31,21.5),[[0,.5]]);
+  B("Female toilet","toilet",rect(39.5,13,45.5,21.5),[[0,.5]]);
+  B("Accessible toilet","toilet",rect(45.5,13,48.5,21.5),[[0,.5]]);
+
+  /* ---- Block A: the main lift core north of the atrium, and the annex around a corridor that runs from the link
+     to Block C, with a leg south. */
+  fire(A,"Fire stair A1",rect(71,-10,74.5,.5),[2,.5],3);
+  A("Lift lobby A","lobby",rect(74.5,-7,86.5,.5),[[2,.25],[2,.75]]);
+  lift(A,"Lift A1",rect(74.5,-10,77.5,-7),[2,.5]);
+  lift(A,"Lift A2",rect(77.5,-10,80.5,-7),[2,.5]);
+  lift(A,"Lift A3",rect(80.5,-10,83.5,-7),[2,.5]);
+  lift(A,"Lift A4",rect(83.5,-10,86.5,-7),[2,.5]);
+  A("Male toilet","toilet",rect(86.5,-10,92.4,-6),[[3,.12]]);
+  A("Female toilet","toilet",rect(86.5,-6,92.4,-2),[[3,.5]]);
+  A("Accessible toilet","toilet",rect(86.5,-2,92.4,.5),[[2,.5]]);
+  A("Annex corridor","corridor",[[19.5,76],[36,76],[36,68],[39,68],[39,76],[72.8,76],[72.8,79],[66.5,79],[66.5,115],[63.5,115],[63.5,79],[19.5,79]],[[5,.5]]);
+  fire(A,"Fire stair A2",rect(19.5,68,23,76),[2,.5],3);
+  fire(A,"Fire stair A3",rect(57.5,111,63.5,115),[1,.5],2);
+  A("Lift lobby (annex)","lobby",rect(46,71.5,52,76),[[2,.5]]);
+  lift(A,"Lift A5",rect(46,68,49,71.5),[2,.5]);
+  lift(A,"Lift A6",rect(49,68,52,71.5),[2,.5]);
+  A("Male toilet","toilet",rect(52,68,56,76),[[2,.5]]);
+  A("Female toilet","toilet",rect(56,68,60,76),[[2,.5]]);
+  A("Accessible toilet","toilet",rect(60,68,63,76),[[2,.5]]);
+
+  /* ---- Block C: corridors at v −13 to −10 and 10 to 13 from the atrium east, joined by the lift lobbies and a
+     link; corridors south at u 113–116.5 and 146–149; a passage west to the annex. Lift cores at u 100–116 and
+     172–186; fire stairs by each core, at the east end, half-way along and at the ends of the south corridors. */
+  C("Block C north corridor","corridor",urect(92,-13,200,-10),[[3,.5]]);
+  C("Block C south corridor","corridor",urect(92,10,189,13),[[3,.5]]);
+  C("Block C link corridor","corridor",urect(138,-10,141,10),[[0,.5],[2,.5]]);
+  C("Block C south-west corridor","corridor",urect(113,13,116.5,76),[[0,.5]]);
+  C("Block C south-east corridor","corridor",urect(146,13,149,50.5),[[0,.5]]);
+  C("Passage to annex","corridor",[onX(45.5),uv(113,45.5),uv(113,48.5),onX(48.5)],[[1,.5]]);
+  C("Lift lobby C (west)","lobby",urect(104,-10,112,10),[[0,.5],[2,.5]]);
+  lift(C,"Lift C1",urect(100,-6,104,-3),[1,.5]);
+  lift(C,"Lift C2",urect(100,-3,104,0),[1,.5]);
+  lift(C,"Lift C3",urect(112,-6,116,-3),[3,.5]);
+  lift(C,"Lift C4",urect(112,-3,116,0),[3,.5]);
+  C("Male toilet","toilet",urect(100,-10,104,-6),[[0,.5]]);
+  C("Female toilet","toilet",urect(112,-10,116,-6),[[0,.5]]);
+  C("Accessible toilet","toilet",urect(100,0,104,3),[[1,.5]]);
+  fire(C,"Fire stair C1",urect(100,3,104,10),[1,.15],1);
+  C("Cleaner's store","other",urect(112,0,116,3),[[3,.5]]);
+  C("Surau (prayer room)","other",urect(112,3,116,10),[[3,.5],[2,.5]]);
+  C("Lift lobby C (east)","lobby",urect(176,-10,182,10),[[0,.5],[2,.5]]);
+  lift(C,"Lift C5",urect(172,-6,176,-3),[1,.5]);
+  lift(C,"Lift C6",urect(172,-3,176,0),[1,.5]);
+  C("Male toilet","toilet",urect(172,-10,176,-6),[[0,.5]]);
+  C("Female toilet","toilet",urect(182,-10,186,-6),[[0,.5]]);
+  C("Accessible toilet","toilet",urect(182,-6,186,-3),[[3,.5]]);
+  fire(C,"Fire stair C2",urect(182,-3,186,4),[3,.15],3);
+  C("Store","other",urect(172,0,176,10),[[1,.5]]);
+  C("Electrical room","other",urect(182,4,186,10),[[3,.5]]);
+  fire(C,"Fire stair C3",urect(200,-14,207,-10),[3,.375],0);
+  fire(C,"Fire stair C4",urect(113,76,116.5,82),[0,.5],1);
+  fire(C,"Fire stair C5",urect(146,50.5,149,56.5),[0,.5],1);
+  fire(C,"Fire stair C6",urect(133,-24,137,-13),[2,.5],3);
+  C("Plant room","other",urect(200,-36,206,-14),[[2,.5]]);
+
+  if (L3){
+    // Block B
+    A("Central atrium","lobby",[[70.5,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,38),[70.5,68]]);   
+    rowU(B,rect,[.5,12,22,32,42,52,61,70.5],.5,10,2,[K.lab,K.cls,K.cls,K.cls,K.cls,K.cls,["Faculty office","office"]]);
+    rowV(B,rect,[16.5,25.5,34,42.5,51.5],.5,10,1,[K.cls,K.cls,K.cls,K.cls]);
+    rowV(B,rect,[16.5,25.5,34,42.5,51.5],60.5,70.5,3,[K.dr,K.dr,["Lecturer offices","office"],["Student lounge","lobby"]]);
+    rowU(B,rect,[.5,12,24,36],58,68,0,[K.cls,K.cls,K.lab]);
+    rowU(B,rect,[39,51,60.5,70.5],58,68,0,[K.lab,K.cls,["Printing room","office"]]);
+    B(dr,"office",rect(13,13,19,21.5),[[0,.5]]);
+    B(dr,"office",rect(19,13,25,21.5),[[0,.5]]);
+    B("Programme office","office",rect(48.5,13,57.5,21.5),[[0,.5],[1,.5]]);
+    rowU(B,rect,[13,27,43,57.5],21.5,36,2,[k(K.lt,[[3,.5]]),K.lab,k(K.lab,[[1,.5]])]);
+    rowU(B,rect,[13,28,43,57.5],39,55,0,[k(K.lt,[[2,.5]]),k(K.lab,[[2,.5]]),k(K.lab,[[2,.5]])]);
+    // Block A annex
+    A(cls,"lecture",rect(23,68,36,76),exDoors(2,13));
+    A(cls,"lecture",rect(39,68,46,76),exDoors(2,7));
+    A("Staff lounge","office",rect(63,68,72.8,76),exDoors(2,9.8));
+    rowU(A,rect,[19.5,32,45,57.5],79,87.3,0,[K.lt,K.cls,K.cls]);
+    rowV(A,rect,[79,90,100.5,111],57.5,63.5,1,[["Finance office","office"],["Bursary counter","office"],["Admissions office","office"]]);
+    rowV(A,rect,[79,91,103,115],66.5,72.8,3,[["Registry","office"],["Examinations unit","office"],["Records room","other"]]);
+    // Block C, north of the north corridor
+    C(cls,"lecture",urect(92,-24,103,-13),exDoors(2,11));
+    C(lt,"lecture",urect(103,-39.5,119.5,-13),[[2,.25],[2,.75]]);
+    C(lab,"lab",urect(119.5,-24,133,-13),exDoors(2,13.5));
+    C(lab,"lab",[uv(137,-24),uv(146.6,-24),uv(146.6,-39.8),uv(153.8,-39.8),uv(153.8,-13),uv(137,-13)],[[4,.25],[4,.75]]);
+    C(lt,"lecture",urect(154,-29,169,-13),[[2,.25],[2,.75]]);
+    C(lt,"lecture",urect(169,-29,184,-13),[[2,.25],[2,.75]]);
+    C("Auditorium 3","lecture",urect(184,-49,200,-13),[[2,.25],[2,.75]]);
+    // between the corridors
+    C("Student lounge","lobby",urect(92,-10,100,10),[[0,.5],[2,.5],[3,.5]]);
+    C(lab,"lab",urect(116,-10,138,0),exDoors(0,22)); C(lab,"lab",urect(116,0,138,10),exDoors(2,22));
+    rowU(C,urect,[141,156,172],-10,0,0,[K.lab,K.lab]);
+    rowU(C,urect,[141,156,172],0,10,2,[K.cls,K.cls]);
+    C(cls,"lecture",[uv(186,-10),uv(212,-10),uv(198,17),uv(189,21.3),uv(189,10),uv(186,10)],[[0,.3],[4,.5]]);
+    // south of the south corridor
+    rowU(C,urect,[92,102.5,113],13,24,0,[K.cls,K.cls]);
+    C("Library","other",[uv(92,24),uv(113,24),uv(113,45.5),onX(45.5),onX(38)],[[1,.3],[1,.7],[2,.5]]);
+    C("Student Services centre","office",[onX(48.5),uv(113,48.5),uv(113,60),onX(60)],[[0,.5],[1,.5]]);
+    C("Counselling","office",[onX(60),uv(113,60),uv(113,71),onX(71)],[[1,.5]]);
+    C("Health clinic","office",[onX(71),uv(113,71),uv(113,82),onX(82)],[[1,.3]]);
+    C(lt,"lecture",urect(116.5,13,131,30),[[0,.25],[0,.75],[3,.5]]);
+    C(lt,"lecture",urect(131,13,146,30),[[0,.25],[0,.75],[1,.5]]);
+    C(lab,"lab",urect(116.5,30,131,45),[[3,.5]]);
+    C(lab,"lab",urect(131,30,146,45),[[1,.5]]);
+    C(cls,"lecture",urect(116.5,45,131,56.5),[[3,.5]]);
+    C(cls,"lecture",urect(131,45,146,56.5),[[1,.2]]);
+    C("Design Studio","lab",urect(116.5,56.5,126.5,82),[[3,.3]]);
+    C(lt,"lecture",urect(149,13,166.3,26),[[0,.25],[0,.75],[3,.5]]);
+    C(lab,"lab",urect(149,26,166.3,41),[[3,.5]]);
+    C(cls,"lecture",urect(149,41,166.3,56.5),[[3,.7]]);
+    rowU(C,urect,[166.5,178,189],13,21.5,0,[K.cls,K.cls]);
+  } else {
+    // Block A on Level 4: galleries round the atrium, which is open to Level 3 (nothing drawn there)
+    A("Atrium gallery (west)","lobby",[[70.5,.5],[89,.5],[89,4],[74,4],uv(92,34.45),uv(92,38),[70.5,68]]);
+    A("Atrium gallery (east)","lobby",[[89,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,34.45),uv(88.5,25.13),uv(88.5,-20),[89,4]],[[7,.5],[4,.5]]);
+    // Block B: faculty offices along the north, an auditorium in the middle
+    B("Faculty of Computing","office",rect(.5,.5,30,10),[[2,.15],[2,.5],[2,.85]]);
+    rowU(B,rect,[30,38,46,56,70.5],.5,10,2,[["Meeting room","office"],["Meeting room","office"],["Dean's office","office"],["Lecturer offices","office"]]);
+    rowV(B,rect,[16.5,25.5,34,42.5,51.5],.5,10,1,[K.cls,K.cls,K.cls,K.cls]);
+    rowV(B,rect,[16.5,29,42,51.5],60.5,70.5,3,[["Postgraduate research lab","lab"],K.lab,["Student lounge","lobby"]]);
+    rowU(B,rect,[.5,14,26,36],58,68,0,[K.lab,K.lab,K.cls]);
+    rowU(B,rect,[39,55,70.5],58,68,0,[["Library annex (quiet study)","other"],K.lab]);
+    B(dr,"office",rect(13,13,19,21.5),[[0,.5]]);
+    B(dr,"office",rect(19,13,25,21.5),[[0,.5]]);
+    B("Faculty office","office",rect(48.5,13,57.5,21.5),[[0,.5],[1,.5]]);
+    B("Auditorium 4","lecture",rect(13,21.5,57.5,36),[[2,.15],[2,.5],[2,.85],[3,.5],[1,.5]]);
+    rowU(B,rect,[13,24,35,46,57.5],39,55,0,[k(K.lab,[[3,.5]]),K.lab,K.lab,k(K.lab,[[1,.5]])]);
+    // Block A annex
+    A(cls,"lecture",rect(23,68,36,76),exDoors(2,13));
+    A("Meeting room","office",rect(39,68,46,76),exDoors(2,7));
+    A("Career centre","office",rect(63,68,72.8,76),exDoors(2,9.8));
+    rowU(A,rect,[19.5,38.5,57.5],79,87.3,0,[["Exam hall","other"],K.lt]);
+    rowV(A,rect,[79,95,111],57.5,63.5,1,[["International office","office"],["Marketing office","office"]]);
+    rowV(A,rect,[79,97,115],66.5,72.8,3,[["IT services","office"],["Server room","other"]]);
+    // Block C, north of the north corridor
+    C(dr,"office",urect(92,-24,97.5,-13),[[2,.5]]);
+    C(dr,"office",urect(97.5,-24,103,-13),[[2,.5]]);
+    C(lt,"lecture",urect(103,-39.5,119.5,-13),[[2,.25],[2,.75]]);
+    C("Robotics Lab","lab",urect(119.5,-24,133,-13),exDoors(2,13.5));
+    C("Cyber Security Lab","lab",[uv(137,-24),uv(146.6,-24),uv(146.6,-39.8),uv(153.8,-39.8),uv(153.8,-13),uv(137,-13)],[[4,.25],[4,.75]]);
+    C("Multipurpose hall","other",urect(154,-29,184,-13),[[2,.15],[2,.5],[2,.85]]);
+    C(lt,"lecture",urect(184,-49,200,-13),[[2,.25],[2,.75]]);
+    // between the corridors
+    C("Cafeteria","other",urect(92,-10,100,10),[[0,.5],[2,.5],[3,.5]]);
+    rowU(C,urect,[116,127,138],-10,0,0,[K.lab,K.lab]);
+    rowU(C,urect,[116,127,138],0,10,2,[K.cls,K.cls]);
+    rowU(C,urect,[141,151.3,161.7,172],-10,0,0,[K.cls,K.cls,K.cls]);
+    rowU(C,urect,[141,151.3,161.7,172],0,10,2,[K.dr,K.dr,K.dr]);
+    C("Games Development Lab","lab",[uv(186,-10),uv(212,-10),uv(198,17),uv(189,21.3),uv(189,10),uv(186,10)],[[0,.3],[4,.5]]);
+    // south of the south corridor
+    rowU(C,urect,[92,99,106,113],13,24,0,[K.dr,K.dr,K.dr]);
+    C("Library (upper level)","other",[uv(92,24),uv(113,24),uv(113,45.5),onX(45.5),onX(38)],[[1,.3],[1,.7],[2,.5]]);
+    C("Postgraduate centre","office",[onX(48.5),uv(113,48.5),uv(113,65),onX(65)],[[0,.5],[1,.5]]);
+    C("Research office","office",[onX(65),uv(113,65),uv(113,82),onX(82)],[[1,.3]]);
+    C(lt,"lecture",urect(116.5,13,146,30),[[0,.15],[0,.5],[0,.85],[3,.5],[1,.5]]);
+    rowV(C,urect,[30,37.5,45],116.5,131,3,[K.cls,K.cls]);
+    rowV(C,urect,[30,37.5,45],131,146,1,[K.cls,K.cls]);
+    C("Innovation Lab","lab",urect(116.5,45,146,56.5),[[3,.5],[1,.2]]);
+    C("Animation Studio","lab",urect(116.5,56.5,126.5,82),[[3,.3]]);
+    C(lab,"lab",urect(149,13,166.3,30),[[0,.25],[0,.75],[3,.5]]);
+    C(lab,"lab",urect(149,30,166.3,45),[[3,.5]]);
+    C("Mac Lab","lab",urect(149,45,166.3,56.5),[[3,.7]]);
+    rowU(C,urect,[166.5,174,181.5,189],13,21.5,0,[K.dr,K.dr,K.dr]);
+  }
+  return rooms;
 }
 function examplePlan(){
-  return { block:"B", floors:[{level:3,name:"Level 3"},{level:4,name:"Level 4"}], geo:{...EXAMPLE_GEO}, rev:0, rooms:[...exampleLevel3(),...exampleLevel4()] };
+  return { block:"B", floors:[{level:3,name:"Level 3"},{level:4,name:"Level 4"}], geo:{...EXAMPLE_GEO}, rev:0, rooms:[...exampleFloor(3),...exampleFloor(4)] };
 }
 
 /* ---------- state ---------- */
@@ -996,22 +1037,34 @@ function stairOf(r){
   if (r.type!=="stairs") return null;
   if (r.stair) return r.stair;
   let dir;   // by default you enter through the first door and climb away from it
-  if (r.doors.length){ const n=inwardNormal(r,r.doors[0].e); dir=Math.abs(n[0])>Math.abs(n[1])?(n[0]>0?0:2):(n[1]>0?1:3); }
-  else { const b=bbox(r.poly); dir=(b[2]-b[0])>=(b[3]-b[1])?0:1; }
+  const F=stairFrame(r.poly);
+  if (r.doors.length){ const w=inwardNormal(r,r.doors[0].e), n=[w[0]*F.c+w[1]*F.s,-w[0]*F.s+w[1]*F.c]; dir=Math.abs(n[0])>Math.abs(n[1])?(n[0]>0?0:2):(n[1]>0?1:3); }
+  else { const b=F.b; dir=(b[2]-b[0])>=(b[3]-b[1])?0:1; }
   return {kind:"switchback",dir,mirror:false};
 }
-/* Lay a stair out inside the room's bounding rectangle. Local frame: u runs along the first flight, v across it.
+/* Lay a stair out inside the room's rectangle (its bounding box, in the room's own frame when it is turned). Local frame: u runs along the first flight, v across it.
    Switchback: floor landing at u=0, flight 1 up one half, mid landing at the far end, flight 2 back up the other half
    to the floor landing of the level above. Straight: one flight from the floor landing to a top landing at the far end. */
+/* The frame a stair is laid out in: the plan's axes, or the room's own when it is a turned rectangle (like the
+   stairwells in a wing set at an angle). c and s turn the frame onto the plan; b is the room's box in the frame. */
+function stairFrame(p){
+  if (p.length===4){
+    let t=Math.atan2(p[1][1]-p[0][1],p[1][0]-p[0][0])%(Math.PI/2); if(t<0) t+=Math.PI/2; if(t>Math.PI/4) t-=Math.PI/2;
+    if (Math.abs(t)>1e-3){ const c=Math.cos(t), s=Math.sin(t), q=p.map(([x,y])=>[x*c+y*s,-x*s+y*c]), b=bbox(q), near=(a,z)=>Math.abs(a-z)<.05;
+      if (q.every(([u,v])=>(near(u,b[0])||near(u,b[2]))&&(near(v,b[1])||near(v,b[3])))) return {b,c,s}; }
+  }
+  return {b:bbox(p),c:1,s:0};
+}
 function stairLayout(r){
   const st=stairOf(r); if(!st) return null;
   const nl=nextLevel(r.floor), up=nl!=null, rise=(up?nl-r.floor:1)*FLOOR_H;
-  const [bx0,by0,bx1,by1]=bbox(r.poly), x0=bx0+WALL_T, y0=by0+WALL_T, x1=bx1-WALL_T, y1=by1-WALL_T;
+  const F=stairFrame(r.poly), [bx0,by0,bx1,by1]=F.b, x0=bx0+WALL_T, y0=by0+WALL_T, x1=bx1-WALL_T, y1=by1-WALL_T;
   const D=DIRS[st.dir], V=st.mirror?[D[1],-D[0]]:[-D[1],D[0]];
   const O=[D[0]?(D[0]>0?x0:x1):(V[0]>0?x0:x1), D[1]?(D[1]>0?y0:y1):(V[1]>0?y0:y1)];
   const Lu=Math.abs(D[0]*(x1-x0)+D[1]*(y1-y0)), Wv=Math.abs(V[0]*(x1-x0)+V[1]*(y1-y0));
-  const P=(u,v)=>[O[0]+D[0]*u+V[0]*v, O[1]+D[1]*u+V[1]*v];
-  const L={kind:st.kind,st,up,nl,rise,Lu,Wv,P,D,V,flights:[],landings:[],warn:[]};
+  const turn=([x,y])=>[x*F.c-y*F.s, x*F.s+y*F.c];
+  const P=(u,v)=>turn([O[0]+D[0]*u+V[0]*v, O[1]+D[1]*u+V[1]*v]);
+  const L={kind:st.kind,st,up,nl,rise,Lu,Wv,P,D:turn(D),V:turn(V),flights:[],landings:[],warn:[]};
   if (area(r.poly)<(bx1-bx0)*(by1-by0)*.95) L.warn.push("The stair fills the room's bounding rectangle. Draw the stairwell as a rectangle for an exact fit.");
   if (st.kind==="lift") return L;
   const sw=st.kind==="switchback";
@@ -1707,14 +1760,14 @@ function drawCampus3D(){
 }
 /* stair geometry in world space: steps, landings and a balustrade along the well (y0 = top of this floor's slab) */
 function stair3D(r,L,y0,mat,railMat,o){
-  const out=[], P=L.P, alongX=L.D[0]!==0;
+  const out=[], P=L.P, yaw=-Math.atan2(L.D[1],L.D[0]);   // boxes are sized along the flight (u) and across it (v), then turned to match
   const box=(u0,u1,v0,v1,z0,z1,name)=>{ const du=u1-u0, dv=v1-v0, dz=z1-z0; if(du<.01||dv<.01||dz<.005) return;
-    const c=P((u0+u1)/2,(v0+v1)/2), m=new THREE.Mesh(new THREE.BoxGeometry(alongX?du:dv,dz,alongX?dv:du),mat);
-    m.position.set(c[0],y0+z0+dz/2,c[1]); m.name=r.id+"_"+name; out.push(m); };
+    const c=P((u0+u1)/2,(v0+v1)/2), m=new THREE.Mesh(new THREE.BoxGeometry(du,dz,dv),mat);
+    m.position.set(c[0],y0+z0+dz/2,c[1]); m.rotation.y=yaw; m.name=r.id+"_"+name; out.push(m); };
   if (L.kind==="lift"){
     if (o.car){ const cm=new THREE.MeshLambertMaterial({color:new THREE.Color(css("--accent")),transparent:true,opacity:.35});
-      const c=P(L.Lu/2,L.Wv/2), m=new THREE.Mesh(new THREE.BoxGeometry(alongX?L.Lu-.3:L.Wv-.3,2.3,alongX?L.Wv-.3:L.Lu-.3),cm);
-      m.position.set(c[0],y0+1.15,c[1]); m.name=r.id+"_lift_car"; out.push(m); }
+      const c=P(L.Lu/2,L.Wv/2), m=new THREE.Mesh(new THREE.BoxGeometry(L.Lu-.3,2.3,L.Wv-.3),cm);
+      m.position.set(c[0],y0+1.15,c[1]); m.rotation.y=yaw; m.name=r.id+"_lift_car"; out.push(m); }
     return out;
   }
   const fl=L.landings.find(l=>l.role==="floor");
