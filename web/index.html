@@ -748,8 +748,8 @@ function exampleFloor(f,rooms){
   const id=n=>`B-${String(f).padStart(2,"0")}-${String(n).padStart(2,"0")}`, R=(n,name,type,poly,doors,extra)=>exampleRoom(id(n),name,type,poly,doors,f,extra);
   const lift={kind:"lift",dir:0,mirror:false};
   return [
-    // the cross-shaped corridor: east–west at y 32–35, north–south at x 34–37. Its east end runs on into the main building.
-    R(0,"Main corridor","corridor",[[34,.5],[37,.5],[37,32],[70.5,32],[70.5,35],[37,35],[37,68],[34,68],[34,35],[.5,35],[.5,32],[34,32]],[[3,.5]]),
+    // the cross-shaped corridor: east–west at y 32–35, north–south at x 34–37. Its east end opens onto the central atrium, its south end onto the annex corridor.
+    R(0,"Main corridor","corridor",[[34,.5],[37,.5],[37,32],[70.5,32],[70.5,35],[37,35],[37,68],[34,68],[34,35],[.5,35],[.5,32],[34,32]],[[3,.5],[6,.5]]),
     R(20,"Lift lobby","lobby",rect(37,22,43,32),[[2,.5],[3,.3]]),
     R(21,"Lift 1","stairs",rect(43,22,46,25.5),[[3,.5]],{stair:lift}),
     R(22,"Lift 2","stairs",rect(43,25.5,46,29),[[3,.5]],{stair:lift}),
@@ -759,6 +759,75 @@ function exampleFloor(f,rooms){
     R(26,"Toilets (female)","toilet",rect(54,22,57,32),[[2,.5]]),
     R(27,"Stairwell B","stairs",rect(.5,35,5.5,45),[[0,.5]]),
     ...rooms(R)
+  ];
+}
+/* The rest of the main building, as mock data: Block A (a central atrium with a stair and lift core, two rooms in
+   the north bay and a south annex), square with Block B, and Block C (the long east wing), which is turned 20.6°
+   from Block B. Block C is laid out in its own grid: u along the wing (east), v across it (south), turned onto the
+   plan by uv(). Its west end meets the plan grid along u = 92 and, further south, along x = 72.8. Stairwells and
+   lifts are drawn square to the plan, as stairs are laid out in their room's bounding rectangle. */
+const WING_T=20.6*Math.PI/180, WC=Math.cos(WING_T), WS=Math.sin(WING_T);
+const uv=(u,v)=>[+(u*WC-v*WS).toFixed(3),+(u*WS+v*WC).toFixed(3)];
+const urect=(u0,v0,u1,v1)=>[uv(u0,v0),uv(u1,v0),uv(u1,v1),uv(u0,v1)];
+const onX=v=>uv((72.8+v*WS)/WC,v);   // the point at v on the line x = 72.8, where Block C meets Block A's annex
+function exampleRest(f){
+  const L4=f===4, pick=(a,b)=>L4?b:a, lift={kind:"lift",dir:0,mirror:false};
+  const id=(b,n)=>`${b}-${String(f).padStart(2,"0")}-${String(n).padStart(2,"0")}`;
+  const A=(n,name,type,poly,doors,extra)=>exampleRoom(id("A",n),name,type,poly,doors,f,extra);
+  const C=(n,name,type,poly,doors,extra)=>exampleRoom(id("C",n),name,type,poly,doors,f,extra);
+  return [
+    // Block A: the atrium joins Block B's corridor (east end), Block C's corridors and the annex corridor
+    A(0,"Central atrium","lobby",[[70.5,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,38),[70.5,68],[70.5,31],[73.5,31],[73.5,24],[76.5,24],[76.5,14],[70.5,14]]),
+    A(1,"Stairwell C","stairs",rect(70.5,14,76.5,24),[[1,.5]]),
+    A(2,"Lift 3","stairs",rect(70.5,24,73.5,27.5),[[1,.5]],{stair:lift}),
+    A(3,"Lift 4","stairs",rect(70.5,27.5,73.5,31),[[1,.5]],{stair:lift}),
+    A(4,pick("Cafeteria","Prayer room"),pick("other","other"),rect(71,-10,82,.5),[[2,.5]]),
+    A(5,pick("Bookshop","Printing centre"),pick("office","office"),rect(82,-10,92.4,.5),[[2,.5]]),
+    A(10,"Annex corridor","corridor",[[19.5,68],[72.8,68],[72.8,71],[66.5,71],[66.5,115],[63.5,115],[63.5,71],[19.5,71]],[[0,.981]]),
+    A(11,pick("Lecture Theatre 11","Lecture Theatre 21"),"lecture",rect(19.5,71,34,87.2),[[0,.3],[0,.75]]),
+    A(12,pick("Tutorial Room 12","Tutorial Room 22"),"lecture",rect(34,71,46,87.2),[[0,.5]]),
+    A(13,pick("Computer Lab 13","Computer Lab 23"),"lab",rect(46,71,63.5,87.2),[[0,.5],[1,.3]]),
+    A(14,pick("Counselling office","Career centre"),"office",rect(57.5,87.5,63.5,101),[[1,.5]]),
+    A(15,pick("Finance office","Registry"),"office",rect(57.5,101,63.5,115),[[1,.5]]),
+    A(16,pick("Staff office 16","Staff office 26"),"office",rect(66.5,71,72.8,86),[[3,.5]]),
+    A(17,pick("Staff office 17","Staff office 27"),"office",rect(66.5,86,72.8,100.5),[[3,.5]]),
+    A(18,pick("Toilets","Toilets"),"toilet",rect(66.5,100.5,72.8,115),[[3,.5]]),
+
+    // Block C, the east wing: north corridor (v -14 to -11), concourse (v 4 to 10), south corridor (v 30 to 33)
+    C(0,"North corridor","corridor",urect(92,-14,209,-11),[[3,.5]]),
+    C(1,"Concourse","lobby",urect(92,4,166,10),[[3,.5]]),
+    C(2,"South corridor","corridor",[uv(124,10),uv(127,10),uv(127,30),uv(166,30),uv(166,33),uv(113,33),uv(113,70),uv(110,70),uv(110,33),uv(92,33),uv(92,30),uv(124,30)],[[0,.5],[9,.5]]),
+    // north side, with the bays in the north wall
+    C(3,pick("Lecture Theatre C3","Lecture Theatre C23"),"lecture",urect(92,-24,103,-14),[[2,.5]]),
+    C(4,pick("Lecture Theatre C4","Auditorium C24"),"lecture",urect(103.5,-39,119.2,-14),[[2,.3],[2,.75]]),
+    C(5,pick("Tutorial Room C5","Tutorial Room C25"),"lecture",urect(119.2,-24,133,-14),[[2,.5]]),
+    C(6,pick("Tutorial Room C6","Tutorial Room C26"),"lecture",urect(133,-24,146.5,-14),[[2,.5]]),
+    C(7,pick("Toilets","Toilets"),"toilet",urect(146.5,-39.5,153.8,-14),[[2,.5]]),
+    C(8,pick("Seminar Room C8","Seminar Room C28"),"lecture",urect(154.8,-29,169,-14),[[2,.5]]),
+    C(9,pick("Seminar Room C9","Seminar Room C29"),"lecture",urect(169,-29,183.5,-14),[[2,.5]]),
+    C(10,pick("Lecture Theatre C10","Lecture Theatre C30"),"lecture",urect(184.3,-49,202.3,-14),[[2,.3],[2,.75]]),
+    C(11,"Plant room","other",urect(203,-30,208,-14),[[2,.5]]),
+    // between the north corridor and the concourse
+    C(12,pick("Network Lab","Cloud Lab"),"lab",urect(92,-11,110,4),[[0,.5]]),
+    C(13,pick("Electronics Lab","Mechatronics Lab"),"lab",urect(110,-11,128,4),[[0,.5],[2,.5]]),
+    C(14,pick("Physics Lab","Chemistry Lab"),"lab",urect(128,-11,147,4),[[0,.5],[2,.5]]),
+    C(15,pick("Media Lab","Game Dev Lab"),"lab",urect(147,-11,166,4),[[0,.5],[2,.5]]),
+    C(16,pick("Multipurpose Hall","Exam Hall"),"other",urect(166,-11,190,21.3),[[0,.5],[3,.443]]),
+    C(17,pick("Innovation Hub","Startup Incubator"),"office",[uv(190,-11),uv(212,-11),uv(197.3,16.5),uv(190,16.5)],[[0,.5]]),
+    // between the concourse and the south corridor
+    C(18,"Toilets","toilet",urect(95.5,20,100,30),[[2,.5]]),
+    C(19,pick("Student Union","Clubs room"),"office",urect(100,10,112,30),[[0,.5],[2,.5]]),
+    C(20,pick("Accounting Lab","Business Lab"),"lab",urect(112,10,124,30),[[0,.5]]),
+    C(21,pick("Lecture Theatre C21","Lecture Theatre C41"),"lecture",urect(127,10,146,30),[[0,.5],[2,.5]]),
+    C(22,pick("Lecture Theatre C22","Lecture Theatre C42"),"lecture",urect(146,10,166,30),[[0,.5],[2,.5]]),
+    // south of the south corridor, and the south lobe
+    C(23,pick("Main Library","Library (upper floor)"),"other",[uv(92,33),uv(110,33),uv(110,58),onX(58),onX(38)],[[0,.5],[1,.4]]),
+    C(24,pick("Quiet study","Group study rooms"),"office",urect(113,33,126.2,58),[[3,.5]]),
+    C(25,pick("Food court","Food court"),"other",urect(126.2,33,146,56.5),[[0,.3],[0,.75]]),
+    C(26,pick("Student Services","International office"),"office",urect(146,33,166,56.5),[[0,.5]]),
+    C(27,pick("IT help desk","IT help desk"),"office",[onX(58),uv(110,58),uv(110,70),onX(70)],[[1,.5]]),
+    C(28,pick("Design Lab","Architecture Studio"),"lab",urect(113,58,126.2,82),[[3,.75]]),
+    C(29,pick("Medical room","Sick bay"),"office",[onX(70),uv(113,70),uv(113,82),onX(82)],[[0,.83]]),
   ];
 }
 function examplePlan(){
@@ -795,6 +864,7 @@ function examplePlan(){
       R(13,"Robotics Lab","lab",rect(37,11,50,22),[[3,.5]]),
       R(14,"Admin office","office",[[50,.5],[70.5,.5],[70.5,32],[57,32],[57,22],[50,22]],[[2,.5]]),
     ]),
+    ...exampleRest(3), ...exampleRest(4),
   ]};
 }
 
@@ -808,7 +878,7 @@ const S = {
   api: false, etag: null, conflict: null, editKey: false, failedNote: "", serverNote: null, maxVersions: MAX_VERSIONS,
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
   worker: null, scanView: null, scanCache: {},
-  view: {cx: 35.5, cy: 34, scale: 8},
+  view: {cx: 107, cy: 52, scale: 4},
   capture: {frames: [], block: null, floor: null, room: "", consent: false, share: false, busy: false, upload: null, geoOn: false, geo: null}
 };
 
@@ -948,7 +1018,7 @@ function renderBanner(){
   if (S.readOnly){ b.hidden=true; return; }
   if (S.example && S.loaded){
     b.hidden=false;
-    b.innerHTML=bannerHTML(`<b>Example layout.</b> <span class="more">Mock data for Block B, Levels 3–4, in the west wing of the main building.</span> Nothing is saved until you edit it.${S.serverNote?` <span class="more">No database yet, so edits stay in this browser.</span>`:""}`,
+    b.innerHTML=bannerHTML(`<b>Example layout.</b> <span class="more">Mock data for the main building, Levels 3–4: Block B (west wing), Block A (atrium and annex) and Block C (east wing).</span> Nothing is saved until you edit it.${S.serverNote?` <span class="more">No database yet, so edits stay in this browser.</span>`:""}`,
       `<button class="btn sm primary" id="keepEx">Use this example</button><button class="btn sm" id="blankEx">Start blank</button>`);
     $("#keepEx").onclick=()=>{ S.example=false; scheduleSave("Started from the example layout",0); renderAll(); };
     $("#blankEx").onclick=()=>{ S.plan={block:"B",floors:[{level:1,name:"Level 1"}],rooms:[],rev:0}; S.floor=1; S.sel=null; S.example=false; scheduleSave("Started a blank plan",0); fit(); renderAll(); };
@@ -1275,7 +1345,7 @@ function renderInspector(){
       <button class="btn sm" id="markHalls">Mark as hallways</button>`:""}
       <h3>Rooms on this floor</h3>
       ${rs.length?`<ul class="roomlist">${rs.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:`<p class="muted small">Nothing drawn yet.</p>`}
-      ${S.readOnly?"":`<h3>Sample data</h3><p class="small muted" style="margin:0 0 8px">Replace the whole plan with mock data for Block B, Levels 3–4, placed in the west wing of the main building, with stairwells and lifts. The current plan stays in History.</p>
+      ${S.readOnly?"":`<h3>Sample data</h3><p class="small muted" style="margin:0 0 8px">Replace the whole plan with mock data for the main building, Levels 3–4 (Blocks A, B and C), placed on the map, with stairwells and lifts. The current plan stays in History.</p>
       <button class="btn sm" id="loadEx">${exArm?"Confirm: replace the plan":"Load sample building"}</button>`}
       ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
     el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
@@ -1287,7 +1357,7 @@ function renderInspector(){
     const blk=$("#blk"); if(blk) blk.onchange=()=>{ S.plan.block=blk.value.trim().toUpperCase(); edit("Renamed block to "+S.plan.block); };
     const fn=$("#flName"); if(fn) fn.onchange=()=>{ fl.name=fn.value.trim()||"Level "+S.floor; edit("Renamed L"+S.floor); };
     const le=$("#loadEx"); if(le) le.onclick=()=>{ if(!exArm){exArm=true;renderInspector();return;} exArm=false;
-      S.plan={...examplePlan(),rev:S.plan.rev}; S.floor=3; S.sel=null; edit("Loaded the sample building (Block B, Levels 3–4)"); fit(); };
+      S.plan={...examplePlan(),rev:S.plan.rev}; S.floor=3; S.sel=null; edit("Loaded the sample building (main building, Levels 3–4)"); fit(); };
     const df=$("#delFloor"); if(df) df.onclick=()=>{ if(!delArm){delArm=true;renderInspector();return;} delArm=false;
       const lv=S.floor; S.plan.floors=S.plan.floors.filter(f=>f.level!==lv); S.plan.rooms=S.plan.rooms.filter(r=>r.floor!==lv); S.floor=S.plan.floors[0].level; edit("Deleted floor L"+lv); fit(); };
     return;
