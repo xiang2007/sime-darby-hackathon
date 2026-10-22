@@ -1286,9 +1286,9 @@ function setSync(s,text){ const el=$("#sync"); el.dataset.s=s; el.lastElementChi
 function bannerHTML(msg,acts="",dismiss=""){ $("#banner").classList.toggle("solo",!acts&&!!dismiss); return `<span class="msg">${msg}</span>${acts||dismiss?`<span class="acts">${acts}${dismiss?`<button class="x" id="bnX" aria-label="Dismiss">×</button>`:""}</span>`:""}`; }
 function renderBanner(){
   const b=$("#banner");
-  if (S.preview && S.tab!=="capture"){ b.hidden=false;
-    b.innerHTML=bannerHTML(`<b>Preview.</b> A sample campus building (mock data, Levels 3–4) to try directions, floor plans and the 3D outline. <span class="more">Nothing here is saved.</span>`,`<button class="btn sm" id="pvExit">Choose a university</button>`);
-    $("#pvExit").onclick=()=>setTab("unis"); return; }
+  if (S.preview && S.tab!=="capture"){ if (bannerGone()){ b.hidden=true; return; } b.hidden=false;
+    b.innerHTML=bannerHTML(`<b>Preview.</b> A sample campus building (mock data, Levels 3–4) to try directions, floor plans and the 3D outline. <span class="more">Nothing here is saved.</span>`,`<button class="btn sm" id="pvExit">Choose a university</button>`,true);
+    $("#pvExit").onclick=()=>setTab("unis"); $("#bnX").onclick=hideBanner; return; }
   if (S.conflict) return conflictBanner(b);
   if (S.readOnly && S.api && !bannerGone()){ b.hidden=false;
     b.innerHTML=bannerHTML(signedIn()?`<b>Viewing the floor plan.</b> <span class="more">Get directions, or help map rooms from the Capture tab. Only editors can change the plan.</span>`
