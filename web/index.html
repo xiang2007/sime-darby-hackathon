@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>UCampass(PIC)</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -103,6 +104,19 @@ body.page-only .banner{display:none!important}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:6px max(16px,env(safe-area-inset-right,0px)) 6px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--rule);background:var(--paper)}
 .toolbar .grow{flex:1}
 .ovl{position:absolute;left:12px;top:12px;box-shadow:0 1px 3px rgb(0 0 0 / .08)}
+.fac{position:absolute;left:12px;top:54px;box-shadow:0 1px 3px rgb(0 0 0 / .08);max-width:calc(100% - 24px);overflow-x:auto}
+.fac.solo{top:12px}
+.fac button{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fac button[aria-pressed="true"]{background:var(--fac);color:#fff}
+.fac-list{display:grid;gap:4px;margin-bottom:6px}
+.fac-row{display:flex;align-items:center;gap:8px}
+.fac-t{flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:1px solid transparent;background:none;border-radius:7px;padding:5px 6px;cursor:pointer;text-align:left;font-size:.86rem;color:inherit}
+.fac-t:hover{background:var(--paper)}
+.fac-t[aria-pressed="true"]{border-color:var(--rule);background:var(--paper)}
+.fi{flex:none}
+.fac-items{list-style:none;margin:0 0 4px 30px;padding:0;display:grid;gap:1px}
+.fac-items button{border:0;background:none;padding:4px 6px;border-radius:5px;cursor:pointer;font-size:.82rem;text-align:left;width:100%;color:inherit}
+.fac-items button:hover{background:var(--paper)}
 .hint button{pointer-events:auto}
 .hint{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .hint .acts{display:flex;gap:6px}
@@ -412,39 +426,53 @@ footer.site button:hover{color:#fff}
 .uni-chip .mk{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font:800 .62rem var(--f-display);color:#fff}
 .uni-chip small{font-weight:500;color:#6b7591}
 .uni-chip:hover small{color:var(--accent)}
-.unis{display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px;align-items:start}
-.unis-side{position:sticky;top:130px;display:grid;gap:14px}
-.search{position:relative}
-.search input{width:100%;border:0;border-radius:999px;background:#fff;color:var(--navy);padding:12px 44px 12px 18px;font:500 .95rem var(--f-body)}
-.search input::placeholder{color:#8a93ad}
-.search svg{position:absolute;right:16px;top:50%;width:20px;height:20px;margin-top:-10px;color:var(--navy);pointer-events:none}
-.sortby{display:flex;align-items:center;gap:8px;background:rgb(255 255 255 / .1);border:1px solid rgb(255 255 255 / .18);border-radius:10px;padding:0 0 0 12px;color:#fff}
-.sortby svg{width:18px;height:18px;flex:none}
-.sortby select{flex:1;min-width:0;background:transparent;border:0;color:#fff;padding:10px 10px 10px 0;font:500 .9rem var(--f-body);cursor:pointer}
-.sortby select option{color:var(--navy)}
+/* Log in / sign up */
+.auth{display:grid;place-items:start center}
+.auth-card{width:100%;max-width:420px;padding:28px}
+.auth-card h2{font-family:var(--f-display);font-weight:700;font-size:1.8rem;letter-spacing:-.02em;margin:0 0 6px;color:#fff}
+.auth-card .sub{margin:0 0 20px;color:#aab6d3;font-size:.92rem;line-height:1.5}
+.auth-card .field{margin-bottom:14px}
+.auth-card .field label{font-size:.82rem;font-weight:500;color:#c9d4f0}
+.auth-card .field input{padding:10px 12px;font-size:.95rem;border-radius:8px;color:#fff}
+.auth-card .warn{font-size:.85rem;margin:0 0 12px;color:var(--bad)}
+.auth-card .btn.primary{width:100%;justify-content:center;min-height:44px;font-size:.95rem}
+.auth-card .auth-switch{margin:16px 0 6px;color:#c9d4f0;font-size:.9rem}
+.auth-switch button,.auth-card .warn button{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--gold);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.auth-card .auth-note{margin:0;color:var(--ink-2);font-size:.8rem}
 .unis-main h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,3vw,2.1rem);letter-spacing:-.02em;margin:0 0 6px;color:#fff}
-.unis-main .sub{margin:0 0 26px;color:#c9d4f0}
-.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:22px}
-.ucard{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;background:#fff;color:var(--navy);border:0;border-radius:22px;padding:28px 18px 20px;cursor:pointer;font:inherit;box-shadow:0 14px 34px rgb(3 10 30 / .3);transition:transform .18s,box-shadow .18s}
-.ucard:hover{transform:translateY(-3px);box-shadow:0 20px 44px rgb(3 10 30 / .4)}
+.unis-main .eyebrow{color:#8fb4ff;margin-bottom:8px}
+.unis-main .sub{margin:0 0 20px;color:#aab6d3}
+.unis-note{margin:0 0 20px;padding:14px 18px;border:1px solid rgb(143 180 255 / .35);border-radius:12px;background:rgb(143 180 255 / .08);color:#e6ecfb;line-height:1.5}
+.unis-note button{background:none;border:0;padding:0;font:inherit;font-weight:700;color:#8fb4ff;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.unis-note button:hover{color:#fff}
+.unis-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 24px;padding:12px;border:1px solid rgb(255 255 255 / .12);border-radius:14px;background:rgb(255 255 255 / .04)}
+.unis-bar .search{flex:1 1 280px;max-width:420px;position:relative}
+.unis-bar .search input{width:100%;border:1px solid rgb(255 255 255 / .18);border-radius:10px;background:rgb(255 255 255 / .05);color:#fff;padding:11px 14px 11px 40px;font:500 .92rem var(--f-body)}
+.unis-bar .search input::placeholder{color:#8a93ad}
+.unis-bar .search svg{position:absolute;left:13px;top:50%;width:18px;height:18px;margin-top:-9px;color:#aab6d3;pointer-events:none}
+.unis-bar .sortby{display:flex;align-items:center;gap:8px;color:#aab6d3;font:600 .85rem var(--f-body);white-space:nowrap}
+.unis-bar select{border:1px solid rgb(255 255 255 / .18);border-radius:10px;background:rgb(255 255 255 / .05);color:#fff;padding:10px 12px;font:600 .9rem var(--f-body);cursor:pointer}
+.unis-bar select option{color:var(--navy)}
+.unis-bar .count{margin-left:auto;color:#aab6d3;font-size:.9rem}
+.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
+.ucard{display:flex;flex-direction:column;text-align:left;background:rgb(255 255 255 / .04);color:#fff;border:1px solid rgb(255 255 255 / .12);border-radius:16px;padding:0;overflow:hidden;cursor:pointer;font:inherit;transition:transform .18s,border-color .18s}
+.ucard:hover{transform:translateY(-3px);border-color:rgb(143 180 255 / .6)}
 .ucard:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
-.ucard .logo-mk{width:96px;height:96px;border-radius:24px;display:grid;place-items:center;font:800 1.55rem/1 var(--f-display);letter-spacing:.02em;color:#fff}
-.ucard .logo-mk.long{font-size:1.05rem;letter-spacing:0}
-.ucard .logo-img{width:100%;height:112px;display:grid;place-items:center}
-.ucard .logo-img img{display:block;width:auto;height:auto;max-width:88%;max-height:112px;object-fit:contain;mix-blend-mode:multiply}
-.ucard.soon .logo-img{opacity:.8}
-.ucard .logo-mk{margin-block:8px}
-img.mk{object-fit:contain;background:#fff}
-.ucard b{font:700 1.05rem var(--f-display);line-height:1.25}
-.ucard .full{font-size:.8rem;color:#5d6785;line-height:1.4;min-height:2.8em}
-.ucard .st{font:600 .72rem var(--f-body);letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:#e3f6ea;color:#1f7a4a}
+.ucard .top{height:150px;background:#fff;display:grid;place-items:center;padding:18px}
+.ucard .top img{display:block;max-width:80%;max-height:110px;object-fit:contain}
+.ucard .logo-mk{width:96px;height:96px;border-radius:24px;display:grid;place-items:center;font:800 1.4rem/1 var(--f-display);letter-spacing:.02em;color:#fff}
+.ucard .logo-mk.long{font-size:1rem;letter-spacing:0}
+.ucard .body{display:flex;flex-direction:column;gap:8px;padding:18px 20px 20px;flex:1}
+.ucard b{font:700 1.02rem var(--f-display);line-height:1.3}
+.ucard .loc{display:flex;align-items:center;gap:6px;color:#aab6d3;font-size:.88rem}
+.ucard .loc svg{width:15px;height:15px;flex:none}
+.ucard .st{margin-top:auto;padding-top:14px;font:600 .88rem var(--f-body);color:#7fe0a6}
 .ucard.soon{cursor:default}
-.ucard.soon:hover{transform:none;box-shadow:0 14px 34px rgb(3 10 30 / .3)}
-.ucard.soon .logo-mk{filter:saturate(.35);opacity:.75}
-.ucard.soon .st{background:#eef0f5;color:#6b7591}
+.ucard.soon:hover{transform:none;border-color:rgb(255 255 255 / .12)}
+.ucard.soon .top img,.ucard.soon .top .logo-mk{filter:grayscale(1);opacity:.85}
+.ucard.soon .st{color:#aab6d3}
 .unis-empty{color:#c9d4f0;padding:24px 0}
-@media (max-width:860px){ .unis{grid-template-columns:minmax(0,1fr);gap:20px} .unis-side{position:static;grid-template-columns:minmax(0,1fr) minmax(0,1fr)} }
-@media (max-width:720px){ .ugrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px} .ucard{padding:20px 10px 14px;border-radius:18px} .ucard .logo-mk{width:68px;height:68px;border-radius:18px;font-size:1.1rem} .ucard .full{display:none} .ucard .logo-img{height:72px} .ucard .logo-img img{max-height:72px} .ucard .logo-mk{margin-block:2px} .ucard .logo-mk.long{font-size:.78rem} .unis-side{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:720px){ .ugrid{grid-template-columns:minmax(0,1fr);gap:14px} .ucard .top{height:120px} .unis-bar .count{margin-left:0} }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 /* phone: compact sizing, closer to Google Maps */
 @media (max-width:720px){
@@ -556,16 +584,17 @@ img.mk{object-fit:contain;background:#fff}
   <!-- UNIVERSITY PICKER -->
   <section class="view" id="view-unis" hidden>
     <div class="page">
-      <div class="unis">
-        <div class="unis-side">
-          <label class="search"><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search universities</span><input type="search" id="uniQ" placeholder="Search" autocomplete="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></label>
-          <label class="sortby"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8.5V20l-4-2v-4.5z"/></svg><span style="font:600 .85rem var(--f-body);white-space:nowrap">Sort by</span><select id="uniSort" aria-label="Sort by"><option value="avail">Available first</option><option value="az">Name A–Z</option><option value="za">Name Z–A</option></select></label>
+      <div class="unis-main">
+        <p class="eyebrow">Navigation</p>
+        <h2>Available universities</h2>
+        <p class="sub">Choose your campus to get walking directions and building maps.</p>
+        <p class="unis-note" id="uniNote"></p>
+        <div class="unis-bar">
+          <label class="search"><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search universities</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg><input type="search" id="uniQ" placeholder="Search by name or location" autocomplete="off"></label>
+          <label class="sortby">Sort by <select id="uniSort"><option value="az">Name (A–Z)</option><option value="za">Name (Z–A)</option></select></label>
+          <span class="count" id="uniCount"></span>
         </div>
-        <div class="unis-main">
-          <h2>Featured Universities</h2>
-          <p class="sub">Choose a university to open its campus map, directions and 3D outline.</p>
-          <div class="ugrid" id="uniGrid"></div>
-        </div>
+        <div class="ugrid" id="uniGrid"></div>
       </div>
     </div>
   </section>
@@ -579,6 +608,26 @@ img.mk{object-fit:contain;background:#fff}
         <p>Found a wrong room, a missing walkway or a route that sends you the long way round? Let us know and we'll update the map.</p>
         <p>You can also fix the plan yourself under <b style="color:#fff">Contribution</b> by walking a room with your phone camera.</p>
         <div class="cta"><a class="btn primary" style="text-decoration:none" href="https://github.com/xiang2007/sime-darby-hackathon/issues/new" target="_blank" rel="noopener">Send feedback</a><button type="button" class="btn ghost" data-go="capture">Contribute a capture</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOG IN / SIGN UP: Navigation and Contribution need a login; guests can still use Home and Feedback -->
+  <section class="view" id="view-auth" hidden>
+    <div class="page auth">
+      <div class="ncard auth-card">
+        <p class="eyebrow" id="authEyebrow">Welcome back</p>
+        <h2 id="authTitle">Log in</h2>
+        <p class="sub" id="authSub"></p>
+        <form id="authForm" novalidate>
+          <div class="field" id="authEmailF"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" maxlength="254" inputmode="email"></div>
+          <div class="field"><label for="authId">Student ID</label><input id="authId" autocomplete="username" maxlength="20" placeholder="e.g. TP012345" autocapitalize="characters" spellcheck="false"></div>
+          <div class="field"><label for="authPw">Password</label><input id="authPw" type="password" autocomplete="current-password" maxlength="200"></div>
+          <p class="warn" id="authErr" role="alert" hidden></p>
+          <button class="btn primary" type="submit" id="authGo">Log in</button>
+        </form>
+        <p class="auth-switch" id="authSwitch"></p>
+        <p class="auth-note" id="authNote"></p>
       </div>
     </div>
   </section>
@@ -603,6 +652,7 @@ img.mk{object-fit:contain;background:#fff}
             <button data-ov="type" aria-pressed="true">Room type</button>
             <button data-ov="coverage" aria-pressed="false">Coverage</button>
           </div>
+          <div class="seg fac" id="facil" aria-label="Show facilities on the plan"></div>
           <div class="legend" id="legend"></div>
           <div class="hint" id="hint"></div>
           <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Fit plan" style="font-size:.7rem">FIT</button><button id="zall" aria-label="Show the whole campus" title="Show the whole campus" style="font-size:.62rem">ALL</button><button id="zcampus" aria-label="Campus outline from OpenStreetMap" title="Campus outline from OpenStreetMap" aria-pressed="true" style="font-size:.62rem">OSM</button></div>
@@ -682,12 +732,11 @@ img.mk{object-fit:contain;background:#fff}
 <div class="toast" id="toast" hidden></div>
 <dialog class="sheet" id="profile" aria-labelledby="profTitle">
   <form id="profForm">
-    <h2 id="profTitle">Your name</h2>
-    <p class="small muted">Your name appears next to your sessions (and edits, if you're an editor). It's saved in this browser. There are no accounts.</p>
-    <div class="field"><label for="profName">Your name</label><input id="profName" maxlength="60" autocomplete="name"></div>
+    <h2 id="profTitle">Your account</h2>
+    <p class="small muted" id="profWho"></p>
     <div class="field" id="profKeyField" hidden><label for="profKey">Edit key (editors only)</label><input id="profKey" type="password" autocomplete="off"><span class="small muted" id="profKeyNote">Leave blank to view and contribute. Editors get the key from whoever runs this deployment.</span></div>
     <p class="warn" id="profErr" hidden></p>
-    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" type="button" id="profCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn danger" type="button" id="profOut" style="margin-right:auto">Log out</button><button class="btn" type="button" id="profCancel">Cancel</button><button class="btn primary" type="submit" id="profSave">Save</button></div>
   </form>
 </dialog>
 
@@ -719,6 +768,16 @@ const TYPES = {
   toilet:{label:"Toilet",v:"--t-toilet"}, lobby:{label:"Lobby",v:"--t-lobby"}, office:{label:"Office",v:"--t-office"},
   stairs:{label:"Stairs / lift",v:"--t-stairs"}, other:{label:"Other",v:"--t-other"}
 };
+/* What guests (not logged in) see. Public places keep their name and number: corridors, lobbies, toilets, stairs and
+   lifts, and rooms named as somewhere open to everyone (library, auditorium, cafeteria...). Classrooms, labs and offices
+   show only their outline. An editor can override the rule per room (room.public). The server applies the same rule
+   to what it sends guests (lib/privacy.js), marking those rooms private; keep the two copies the same. */
+const PUBLIC_TYPES=new Set(["corridor","lobby","toilet","stairs"]);
+const PUBLIC_NAME=/librar|auditor|cafe|canteen|food court|dining|atrium|lobby|foyer|reception|prayer|surau|musolla|toilet|restroom|washroom|\blift|elevator|stair|exit|entrance|student (service|centre|center|lounge)|multipurpose hall|common room|book ?shop|book ?store|clinic|sick bay|\bgym\b|sports|car ?park|parking|concourse|plaza/i;
+const isPublic = r => typeof r.public==="boolean" ? r.public : PUBLIC_TYPES.has(r.type)||PUBLIC_NAME.test(r.name||"");
+const hidden = r => !!r && (!!r.private || (!signedIn() && !isPublic(r)));
+const rid = r => hidden(r) ? "" : r.id;           // the room number as this viewer may see it
+const PRIVATE = "Private room";
 const FLOOR_H = 3.6, WALL_T = 0.1, DOOR_W = 0.9, DOOR_H = 2.1, GRID = 0.5, VSNAP = 0.25;
 const QC = { sharp:80, dark:45, bright:235, texture:0.035, minSide:480, overlap:0.25, minFrames:8, goodFrames:15 };
 const MAX_VERSIONS = 40;
@@ -733,30 +792,229 @@ const ago = t => { if (!t) return ""; const s = (Date.now() - t) / 1000;
   if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + " min ago"; if (s < 86400) return Math.floor(s/3600) + " h ago";
   return new Date(t).toLocaleDateString(undefined, {day:"numeric", month:"short"}); };
 
-/* ---------- example plan (shown only while the shared plan is empty) ---------- */
+/* ---------- example plan (shown only while the shared plan is empty) ----------
+   Mock data for APU's main building (OpenStreetMap way/541804093), Levels 3 and 4, laid out the way a campus building
+   is: double-loaded corridors with classrooms and labs on both sides, a lift core with toilets in each block, and
+   fire stairs at the corridor ends so no room is far from one. geo pins the plan's (0, 0) to the north-west corner
+   of the west wing, square to its walls, so the rooms sit inside the real outline.
+   Block B: the west wing, about 70 × 68 m, around a ring of corridors with a cross corridor through the middle.
+   Block A: the middle, a central atrium with the main lift core north of it, and the south annex.
+   Block C: the long east wing, turned 20.6° from the rest and laid out on its own grid by uv(): two parallel
+   corridors with a lift core at each end and corridors running south.
+   Both floors share the corridors, stairs, lifts and toilets (they stack); the rooms between them differ. On Level 4
+   the atrium is open to the floor below, with galleries around it. Every fire stair door is an emergency exit. */
 function rect(x0,y0,x1,y1){ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]; }
-function exampleRoom(id,name,type,poly,doors,floor=3){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t])=>({e,t,w:DOOR_W}))}; }
+function exampleRoom(id,name,type,poly,doors,floor=3,extra){ return {k:uid(),id,name,type,floor,height:3.2,poly,doors:(doors||[]).map(([e,t,exit])=>({e,t,w:DOOR_W,...(exit?{exit:true}:{})})),...extra}; }
+const EXAMPLE_GEO={x:117.75,y:46.34,lat:3.0556056,lng:101.6999959,rot:27.43,osm:"way/541804093"};
+const WING_T=20.6*Math.PI/180, WC=Math.cos(WING_T), WS=Math.sin(WING_T);
+const uv=(u,v)=>[+(u*WC-v*WS).toFixed(3),+(u*WS+v*WC).toFixed(3)];   // Block C's grid: u along the wing (east), v across it (south)
+const urect=(u0,v0,u1,v1)=>[uv(u0,v0),uv(u1,v0),uv(u1,v1),uv(u0,v1)];
+const onX=v=>uv((72.8+v*WS)/WC,v);   // the point at v on the line x = 72.8, where Block C meets Block A's annex
+// Rectangle doors: edge 0 north, 1 east, 2 south, 3 west (in Block C: v0, u1, v1, u0); t runs clockwise along the
+// edge; a third value 1 marks an emergency exit. Stairs climb in direction dir (0 east, 1 south, 2 west, 3 north,
+// on the room's own grid) from a landing by the door, and keep that direction on both floors.
+const EX_LIFT={kind:"lift",dir:0,mirror:false}, exStair=dir=>({kind:"switchback",dir,mirror:false});
+const exId=(b,f,n)=>`${b}-${String(f).padStart(2,"0")}-${String(n).padStart(2,"0")}`;
+const exDoors=(e,w)=>w>=8?[[e,.2],[e,.8]]:[[e,.5]];   // rooms 8 m or wider get a front and a back door
+
+function exampleFloor(f){
+  const rooms=[], n={A:0,B:0,C:0}, seq={lab:0,lt:0,dr:0};
+  const add=b=>(name,type,poly,doors,extra)=>{ const id=exId(b,f,n[b]++); rooms.push(exampleRoom(id,typeof name==="function"?name(id):name,type,poly,doors,f,extra)); };
+  const A=add("A"), B=add("B"), C=add("C");
+  const cls=id=>"Classroom "+id, lab=()=>`Tech Lab ${f}-${String(++seq.lab).padStart(2,"0")}`, lt=()=>`Lecture Theatre ${f}-${++seq.lt}`, dr=()=>`Discussion Room ${f}-${++seq.dr}`;
+  const K={cls:[cls,"lecture"],lab:[lab,"lab"],lt:[lt,"lecture"],dr:[dr,"office"]}, k=(s,more)=>[...s,more];
+  // a row of rooms side by side, cut at the given positions along the row (u or x, or v or y for rowV), doors on edge e
+  const rowU=(put,M,cuts,v0,v1,e,specs)=>specs.forEach(([name,type,more],i)=>{ const a=cuts[i], z=cuts[i+1]; put(name,type,M(a,v0,z,v1),[...exDoors(e,z-a),...(more||[])]); });
+  const rowV=(put,M,cuts,u0,u1,e,specs)=>specs.forEach(([name,type,more],i)=>{ const a=cuts[i], z=cuts[i+1]; put(name,type,M(u0,a,u1,z),[...exDoors(e,z-a),...(more||[])]); });
+  const fire=(put,name,poly,door,dir)=>put(name,"stairs",poly,[[...door,1]],{stair:exStair(dir)});
+  const lift=(put,name,poly,door)=>put(name,"stairs",poly,[door],{stair:EX_LIFT});
+  const L3=f===3;
+
+  /* ---- Block B: corridors at y 10–13 and 55–58 and x 10–13 and 57.5–60.5, a cross corridor at y 36–39. Both
+     east–west corridors run into Block A's atrium. Fire stairs at the four corners, the lift core on the north side. */
+  B("Block B north corridor","corridor",rect(.5,10,70.5,13),[[1,.5]]);
+  B("Block B south corridor","corridor",rect(.5,55,70.5,58),[[1,.5]]);
+  B("Block B west corridor","corridor",rect(10,13,13,55),[[0,.5],[2,.5]]);
+  B("Block B east corridor","corridor",rect(57.5,13,60.5,55),[[0,.5],[2,.5]]);
+  B("Block B cross corridor","corridor",rect(13,36,57.5,39),[[1,.5],[3,.5]]);
+  B("Link to annex","corridor",rect(36,58,39,68),[[0,.5],[2,.5]]);
+  fire(B,"Fire stair B1",rect(.5,13,10,16.5),[0,.15],0);
+  fire(B,"Fire stair B2",rect(.5,51.5,10,55),[2,.15],2);
+  fire(B,"Fire stair B3",rect(60.5,13,70.5,16.5),[0,.85],2);
+  fire(B,"Fire stair B4",rect(60.5,51.5,70.5,55),[2,.15],2);
+  B("Lift lobby B","lobby",rect(31,13,39.5,19),[],{open:true});
+  lift(B,"Lift B1",rect(31,19,33.83,21.5),[0,.5]);
+  lift(B,"Lift B2",rect(33.83,19,36.67,21.5),[0,.5]);
+  lift(B,"Lift B3",rect(36.67,19,39.5,21.5),[0,.5]);
+  B("Male toilet","toilet",rect(25,13,31,21.5),[[0,.5]]);
+  B("Female toilet","toilet",rect(39.5,13,45.5,21.5),[[0,.5]]);
+  B("Accessible toilet","toilet",rect(45.5,13,48.5,21.5),[[0,.5]]);
+
+  /* ---- Block A: the main lift core north of the atrium, and the annex around a corridor that runs from the link
+     to Block C, with a leg south. */
+  fire(A,"Fire stair A1",rect(71,-10,74.5,.5),[2,.5],3);
+  A("Lift lobby A","lobby",rect(74.5,-7,86.5,.5),[],{open:true});
+  lift(A,"Lift A1",rect(74.5,-10,77.5,-7),[2,.5]);
+  lift(A,"Lift A2",rect(77.5,-10,80.5,-7),[2,.5]);
+  lift(A,"Lift A3",rect(80.5,-10,83.5,-7),[2,.5]);
+  lift(A,"Lift A4",rect(83.5,-10,86.5,-7),[2,.5]);
+  A("Male toilet","toilet",rect(86.5,-10,92.4,-6),[[3,.12]]);
+  A("Female toilet","toilet",rect(86.5,-6,92.4,-2),[[3,.5]]);
+  A("Accessible toilet","toilet",rect(86.5,-2,92.4,.5),[[2,.5]]);
+  A("Annex corridor","corridor",[[19.5,76],[36,76],[36,68],[39,68],[39,76],[72.8,76],[72.8,79],[66.5,79],[66.5,115],[63.5,115],[63.5,79],[19.5,79]],[[5,.5]]);
+  fire(A,"Fire stair A2",rect(19.5,68,23,76),[2,.5],3);
+  fire(A,"Fire stair A3",rect(57.5,111,63.5,115),[1,.5],2);
+  A("Lift lobby (annex)","lobby",rect(46,71.5,52,76),[],{open:true});
+  lift(A,"Lift A5",rect(46,68,49,71.5),[2,.5]);
+  lift(A,"Lift A6",rect(49,68,52,71.5),[2,.5]);
+  A("Male toilet","toilet",rect(52,68,56,76),[[2,.5]]);
+  A("Female toilet","toilet",rect(56,68,60,76),[[2,.5]]);
+  A("Accessible toilet","toilet",rect(60,68,63,76),[[2,.5]]);
+
+  /* ---- Block C: corridors at v −13 to −10 and 10 to 13 from the atrium east, joined by the lift lobbies and a
+     link; corridors south at u 113–116.5 and 146–149; a passage west to the annex. Lift cores at u 100–116 and
+     172–186; fire stairs by each core, at the east end, half-way along and at the ends of the south corridors. */
+  C("Block C north corridor","corridor",urect(92,-13,200,-10),[[3,.5]]);
+  C("Block C south corridor","corridor",urect(92,10,189,13),[[3,.5]]);
+  C("Block C link corridor","corridor",urect(138,-10,141,10),[[0,.5],[2,.5]]);
+  C("Block C south-west corridor","corridor",urect(113,13,116.5,76),[[0,.5]]);
+  C("Block C south-east corridor","corridor",urect(146,13,149,50.5),[[0,.5]]);
+  C("Passage to annex","corridor",[onX(45.5),uv(113,45.5),uv(113,48.5),onX(48.5)],[[1,.5]]);
+  C("Lift lobby C (west)","lobby",urect(104,-10,112,10),[],{open:true});
+  lift(C,"Lift C1",urect(100,-6,104,-3),[1,.5]);
+  lift(C,"Lift C2",urect(100,-3,104,0),[1,.5]);
+  lift(C,"Lift C3",urect(112,-6,116,-3),[3,.5]);
+  lift(C,"Lift C4",urect(112,-3,116,0),[3,.5]);
+  C("Male toilet","toilet",urect(100,-10,104,-6),[[0,.5]]);
+  C("Female toilet","toilet",urect(112,-10,116,-6),[[0,.5]]);
+  C("Accessible toilet","toilet",urect(100,0,104,3),[[1,.5]]);
+  fire(C,"Fire stair C1",urect(100,3,104,10),[1,.15],1);
+  C("Cleaner's store","other",urect(112,0,116,3),[[3,.5]]);
+  C("Surau (prayer room)","other",urect(112,3,116,10),[[3,.5],[2,.5]]);
+  C("Lift lobby C (east)","lobby",urect(176,-10,182,10),[],{open:true});
+  lift(C,"Lift C5",urect(172,-6,176,-3),[1,.5]);
+  lift(C,"Lift C6",urect(172,-3,176,0),[1,.5]);
+  C("Male toilet","toilet",urect(172,-10,176,-6),[[0,.5]]);
+  C("Female toilet","toilet",urect(182,-10,186,-6),[[0,.5]]);
+  C("Accessible toilet","toilet",urect(182,-6,186,-3),[[3,.5]]);
+  fire(C,"Fire stair C2",urect(182,-3,186,4),[3,.15],3);
+  C("Store","other",urect(172,0,176,10),[[1,.5]]);
+  C("Electrical room","other",urect(182,4,186,10),[[3,.5]]);
+  fire(C,"Fire stair C3",urect(200,-14,207,-10),[3,.375],0);
+  fire(C,"Fire stair C4",urect(113,76,116.5,82),[0,.5],1);
+  fire(C,"Fire stair C5",urect(146,50.5,149,56.5),[0,.5],1);
+  fire(C,"Fire stair C6",urect(133,-24,137,-13),[2,.5],3);
+  C("Plant room","other",urect(200,-36,206,-14),[[2,.5]]);
+
+  if (L3){
+    // Block B
+    A("Central atrium","lobby",[[70.5,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,38),[70.5,68]],[],{open:true});
+    rowU(B,rect,[.5,12,22,32,42,52,61,70.5],.5,10,2,[K.lab,K.cls,K.cls,K.cls,K.cls,K.cls,["Faculty office","office"]]);
+    rowV(B,rect,[16.5,25.5,34,42.5,51.5],.5,10,1,[K.cls,K.cls,K.cls,K.cls]);
+    rowV(B,rect,[16.5,25.5,34,42.5,51.5],60.5,70.5,3,[K.dr,K.dr,["Lecturer offices","office"],["Student lounge","lobby"]]);
+    rowU(B,rect,[.5,12,24,36],58,68,0,[K.cls,K.cls,K.lab]);
+    rowU(B,rect,[39,51,60.5,70.5],58,68,0,[K.lab,K.cls,["Printing room","office"]]);
+    B(dr,"office",rect(13,13,19,21.5),[[0,.5]]);
+    B(dr,"office",rect(19,13,25,21.5),[[0,.5]]);
+    B("Programme office","office",rect(48.5,13,57.5,21.5),[[0,.5],[1,.5]]);
+    rowU(B,rect,[13,27,43,57.5],21.5,36,2,[k(K.lt,[[3,.5]]),K.lab,k(K.lab,[[1,.5]])]);
+    rowU(B,rect,[13,28,43,57.5],39,55,0,[k(K.lt,[[2,.5]]),k(K.lab,[[2,.5]]),k(K.lab,[[2,.5]])]);
+    // Block A annex
+    A(cls,"lecture",rect(23,68,36,76),exDoors(2,13));
+    A(cls,"lecture",rect(39,68,46,76),exDoors(2,7));
+    A("Staff lounge","office",rect(63,68,72.8,76),exDoors(2,9.8));
+    rowU(A,rect,[19.5,32,45,57.5],79,87.3,0,[K.lt,K.cls,K.cls]);
+    rowV(A,rect,[79,90,100.5,111],57.5,63.5,1,[["Finance office","office"],["Bursary counter","office"],["Admissions office","office"]]);
+    rowV(A,rect,[79,91,103,115],66.5,72.8,3,[["Registry","office"],["Examinations unit","office"],["Records room","other"]]);
+    // Block C, north of the north corridor
+    C(cls,"lecture",urect(92,-24,103,-13),exDoors(2,11));
+    C(lt,"lecture",urect(103,-39.5,119.5,-13),[[2,.25],[2,.75]]);
+    C(lab,"lab",urect(119.5,-24,133,-13),exDoors(2,13.5));
+    C(lab,"lab",[uv(137,-24),uv(146.6,-24),uv(146.6,-39.8),uv(153.8,-39.8),uv(153.8,-13),uv(137,-13)],[[4,.25],[4,.75]]);
+    C(lt,"lecture",urect(154,-29,169,-13),[[2,.25],[2,.75]]);
+    C(lt,"lecture",urect(169,-29,184,-13),[[2,.25],[2,.75]]);
+    C("Auditorium 3","lecture",urect(184,-49,200,-13),[[2,.25],[2,.75]]);
+    // between the corridors
+    C("Student lounge","lobby",urect(92,-10,100,10),[[0,.5],[2,.5],[3,.5]]);
+    C(lab,"lab",urect(116,-10,138,0),exDoors(0,22)); C(lab,"lab",urect(116,0,138,10),exDoors(2,22));
+    rowU(C,urect,[141,156,172],-10,0,0,[K.lab,K.lab]);
+    rowU(C,urect,[141,156,172],0,10,2,[K.cls,K.cls]);
+    C(cls,"lecture",[uv(186,-10),uv(212,-10),uv(198,17),uv(189,21.3),uv(189,10),uv(186,10)],[[0,.3],[4,.5]]);
+    // south of the south corridor
+    rowU(C,urect,[92,102.5,113],13,24,0,[K.cls,K.cls]);
+    C("Library","other",[uv(92,24),uv(113,24),uv(113,45.5),onX(45.5),onX(38)],[[1,.3],[1,.7],[2,.5]]);
+    C("Student Services centre","office",[onX(48.5),uv(113,48.5),uv(113,60),onX(60)],[[0,.5],[1,.5]]);
+    C("Counselling","office",[onX(60),uv(113,60),uv(113,71),onX(71)],[[1,.5]]);
+    C("Health clinic","office",[onX(71),uv(113,71),uv(113,82),onX(82)],[[1,.3]]);
+    C(lt,"lecture",urect(116.5,13,131,30),[[0,.25],[0,.75],[3,.5]]);
+    C(lt,"lecture",urect(131,13,146,30),[[0,.25],[0,.75],[1,.5]]);
+    C(lab,"lab",urect(116.5,30,131,45),[[3,.5]]);
+    C(lab,"lab",urect(131,30,146,45),[[1,.5]]);
+    C(cls,"lecture",urect(116.5,45,131,56.5),[[3,.5]]);
+    C(cls,"lecture",urect(131,45,146,56.5),[[1,.2]]);
+    C("Design Studio","lab",urect(116.5,56.5,126.5,82),[[3,.3]]);
+    C(lt,"lecture",urect(149,13,166.3,26),[[0,.25],[0,.75],[3,.5]]);
+    C(lab,"lab",urect(149,26,166.3,41),[[3,.5]]);
+    C(cls,"lecture",urect(149,41,166.3,56.5),[[3,.7]]);
+    rowU(C,urect,[166.5,178,189],13,21.5,0,[K.cls,K.cls]);
+  } else {
+    // Block A on Level 4: galleries round the atrium, which is open to Level 3 (nothing drawn there)
+    A("Atrium gallery (west)","lobby",[[70.5,.5],[89,.5],[89,4],[74,4],uv(92,34.45),uv(92,38),[70.5,68]],[],{open:true});
+    A("Atrium gallery (east)","lobby",[[89,.5],[92.4,.5],[92.4,6],uv(92,-24),uv(92,34.45),uv(88.5,25.13),uv(88.5,-20),[89,4]],[],{open:true});
+    // Block B: faculty offices along the north, an auditorium in the middle
+    B("Faculty of Computing","office",rect(.5,.5,30,10),[[2,.15],[2,.5],[2,.85]]);
+    rowU(B,rect,[30,38,46,56,70.5],.5,10,2,[["Meeting room","office"],["Meeting room","office"],["Dean's office","office"],["Lecturer offices","office"]]);
+    rowV(B,rect,[16.5,25.5,34,42.5,51.5],.5,10,1,[K.cls,K.cls,K.cls,K.cls]);
+    rowV(B,rect,[16.5,29,42,51.5],60.5,70.5,3,[["Postgraduate research lab","lab"],K.lab,["Student lounge","lobby"]]);
+    rowU(B,rect,[.5,14,26,36],58,68,0,[K.lab,K.lab,K.cls]);
+    rowU(B,rect,[39,55,70.5],58,68,0,[["Library annex (quiet study)","other"],K.lab]);
+    B(dr,"office",rect(13,13,19,21.5),[[0,.5]]);
+    B(dr,"office",rect(19,13,25,21.5),[[0,.5]]);
+    B("Faculty office","office",rect(48.5,13,57.5,21.5),[[0,.5],[1,.5]]);
+    B("Auditorium 4","lecture",rect(13,21.5,57.5,36),[[2,.15],[2,.5],[2,.85],[3,.5],[1,.5]]);
+    rowU(B,rect,[13,24,35,46,57.5],39,55,0,[k(K.lab,[[3,.5]]),K.lab,K.lab,k(K.lab,[[1,.5]])]);
+    // Block A annex
+    A(cls,"lecture",rect(23,68,36,76),exDoors(2,13));
+    A("Meeting room","office",rect(39,68,46,76),exDoors(2,7));
+    A("Career centre","office",rect(63,68,72.8,76),exDoors(2,9.8));
+    rowU(A,rect,[19.5,38.5,57.5],79,87.3,0,[["Exam hall","other"],K.lt]);
+    rowV(A,rect,[79,95,111],57.5,63.5,1,[["International office","office"],["Marketing office","office"]]);
+    rowV(A,rect,[79,97,115],66.5,72.8,3,[["IT services","office"],["Server room","other"]]);
+    // Block C, north of the north corridor
+    C(dr,"office",urect(92,-24,97.5,-13),[[2,.5]]);
+    C(dr,"office",urect(97.5,-24,103,-13),[[2,.5]]);
+    C(lt,"lecture",urect(103,-39.5,119.5,-13),[[2,.25],[2,.75]]);
+    C("Robotics Lab","lab",urect(119.5,-24,133,-13),exDoors(2,13.5));
+    C("Cyber Security Lab","lab",[uv(137,-24),uv(146.6,-24),uv(146.6,-39.8),uv(153.8,-39.8),uv(153.8,-13),uv(137,-13)],[[4,.25],[4,.75]]);
+    C("Multipurpose hall","other",urect(154,-29,184,-13),[[2,.15],[2,.5],[2,.85]]);
+    C(lt,"lecture",urect(184,-49,200,-13),[[2,.25],[2,.75]]);
+    // between the corridors
+    C("Cafeteria","other",urect(92,-10,100,10),[[0,.5],[2,.5],[3,.5]]);
+    rowU(C,urect,[116,127,138],-10,0,0,[K.lab,K.lab]);
+    rowU(C,urect,[116,127,138],0,10,2,[K.cls,K.cls]);
+    rowU(C,urect,[141,151.3,161.7,172],-10,0,0,[K.cls,K.cls,K.cls]);
+    rowU(C,urect,[141,151.3,161.7,172],0,10,2,[K.dr,K.dr,K.dr]);
+    C("Games Development Lab","lab",[uv(186,-10),uv(212,-10),uv(198,17),uv(189,21.3),uv(189,10),uv(186,10)],[[0,.3],[4,.5]]);
+    // south of the south corridor
+    rowU(C,urect,[92,99,106,113],13,24,0,[K.dr,K.dr,K.dr]);
+    C("Library (upper level)","other",[uv(92,24),uv(113,24),uv(113,45.5),onX(45.5),onX(38)],[[1,.3],[1,.7],[2,.5]]);
+    C("Postgraduate centre","office",[onX(48.5),uv(113,48.5),uv(113,65),onX(65)],[[0,.5],[1,.5]]);
+    C("Research office","office",[onX(65),uv(113,65),uv(113,82),onX(82)],[[1,.3]]);
+    C(lt,"lecture",urect(116.5,13,146,30),[[0,.15],[0,.5],[0,.85],[3,.5],[1,.5]]);
+    rowV(C,urect,[30,37.5,45],116.5,131,3,[K.cls,K.cls]);
+    rowV(C,urect,[30,37.5,45],131,146,1,[K.cls,K.cls]);
+    C("Innovation Lab","lab",urect(116.5,45,146,56.5),[[3,.5],[1,.2]]);
+    C("Animation Studio","lab",urect(116.5,56.5,126.5,82),[[3,.3]]);
+    C(lab,"lab",urect(149,13,166.3,30),[[0,.25],[0,.75],[3,.5]]);
+    C(lab,"lab",urect(149,30,166.3,45),[[3,.5]]);
+    C("Mac Lab","lab",urect(149,45,166.3,56.5),[[3,.7]]);
+    rowU(C,urect,[166.5,174,181.5,189],13,21.5,0,[K.dr,K.dr,K.dr]);
+  }
+  dropOpenDoors(rooms);   // corridor doors that led into an open lobby or the atrium
+  return rooms;
+}
 function examplePlan(){
-  return { block:"B", floors:[{level:3,name:"Level 3"},{level:4,name:"Level 4"}], rev:0, rooms:[
-    exampleRoom("B-03-00","Main corridor","corridor",rect(0,8,40,11)),
-    exampleRoom("B-03-01","Lecture Theatre 1","lecture",rect(0,11,12,19),[[0,.25],[0,.8]]),
-    exampleRoom("B-03-02","Computer Lab 2","lab",rect(12,11,22,19),[[0,.5]]),
-    exampleRoom("B-03-03","Engineering Lab 3","lab",rect(22,11,32,19),[[0,.5]]),
-    exampleRoom("B-03-04","Faculty office","office",rect(32,11,40,19),[[0,.3]]),
-    exampleRoom("B-03-05","Toilets","toilet",rect(0,2,5,8),[[2,.5]]),
-    exampleRoom("B-03-06","Stairwell","stairs",rect(5,2,10,8),[[2,.5]]),
-    exampleRoom("B-03-07","Lift lobby","lobby",rect(10,2,16,8),[[2,.35]]),
-    exampleRoom("B-03-08","Lecture Theatre 8","lecture",rect(16,0,30,8),[[2,.2],[2,.8]]),
-    exampleRoom("B-03-09","Student services","office",rect(30,2,40,8),[[2,.5]]),
-    exampleRoom("B-04-00","Main corridor","corridor",rect(0,8,40,11),null,4),
-    exampleRoom("B-04-01","Seminar Room 1","lecture",rect(0,11,14,19),[[0,.5]],4),
-    exampleRoom("B-04-02","Design Studio","lab",rect(14,11,28,19),[[0,.3],[0,.7]],4),
-    exampleRoom("B-04-03","Meeting room","office",rect(28,11,40,19),[[0,.5]],4),
-    exampleRoom("B-04-05","Toilets","toilet",rect(0,2,5,8),[[2,.5]],4),
-    exampleRoom("B-04-06","Stairwell","stairs",rect(5,2,10,8),[[2,.5]],4),
-    exampleRoom("B-04-07","Lift lobby","lobby",rect(10,2,16,8),[[2,.35]],4),
-    exampleRoom("B-04-08","Library annex","other",rect(16,2,40,8),[[2,.2],[2,.8]],4),
-  ]};
+  return { block:"B", floors:[{level:3,name:"Level 3"},{level:4,name:"Level 4"}], geo:{...EXAMPLE_GEO}, rev:0, rooms:[...exampleFloor(3),...exampleFloor(4)] };
 }
 
 /* ---------- state ---------- */
@@ -769,9 +1027,16 @@ const S = {
   api: false, etag: null, conflict: null, editKey: false, failedNote: "", serverNote: null, maxVersions: MAX_VERSIONS,
   saveTimer: null, pendingNote: "", saving: false, lastWritten: 0,
   worker: null, scanView: null, scanCache: {},
-  view: {cx: 20, cy: 9.5, scale: 18},
+  view: {cx: 107, cy: 52, scale: 4},
   capture: {frames: [], block: null, floor: null, room: "", consent: false, share: false, busy: false, upload: null, geoOn: false, geo: null}
 };
+
+// In the Preview, S.plan is the sample building and nothing can be edited; the shared plan stays in S._plan.
+S._plan=S.plan; S._ro=S.readOnly; delete S.plan; delete S.readOnly;
+Object.defineProperties(S,{
+  plan:{get(){ return S.preview?S.previewPlan:S._plan; }, set(v){ S._plan=v; }, enumerable:true},
+  readOnly:{get(){ return S._ro||!!S.preview; }, set(v){ S._ro=v; }, enumerable:true},
+});
 
 /* ---------- geometry ---------- */
 const area = p => Math.abs(signed(p));
@@ -825,22 +1090,34 @@ function stairOf(r){
   if (r.type!=="stairs") return null;
   if (r.stair) return r.stair;
   let dir;   // by default you enter through the first door and climb away from it
-  if (r.doors.length){ const n=inwardNormal(r,r.doors[0].e); dir=Math.abs(n[0])>Math.abs(n[1])?(n[0]>0?0:2):(n[1]>0?1:3); }
-  else { const b=bbox(r.poly); dir=(b[2]-b[0])>=(b[3]-b[1])?0:1; }
+  const F=stairFrame(r.poly);
+  if (r.doors.length){ const w=inwardNormal(r,r.doors[0].e), n=[w[0]*F.c+w[1]*F.s,-w[0]*F.s+w[1]*F.c]; dir=Math.abs(n[0])>Math.abs(n[1])?(n[0]>0?0:2):(n[1]>0?1:3); }
+  else { const b=F.b; dir=(b[2]-b[0])>=(b[3]-b[1])?0:1; }
   return {kind:"switchback",dir,mirror:false};
 }
-/* Lay a stair out inside the room's bounding rectangle. Local frame: u runs along the first flight, v across it.
+/* Lay a stair out inside the room's rectangle (its bounding box, in the room's own frame when it is turned). Local frame: u runs along the first flight, v across it.
    Switchback: floor landing at u=0, flight 1 up one half, mid landing at the far end, flight 2 back up the other half
    to the floor landing of the level above. Straight: one flight from the floor landing to a top landing at the far end. */
+/* The frame a stair is laid out in: the plan's axes, or the room's own when it is a turned rectangle (like the
+   stairwells in a wing set at an angle). c and s turn the frame onto the plan; b is the room's box in the frame. */
+function stairFrame(p){
+  if (p.length===4){
+    let t=Math.atan2(p[1][1]-p[0][1],p[1][0]-p[0][0])%(Math.PI/2); if(t<0) t+=Math.PI/2; if(t>Math.PI/4) t-=Math.PI/2;
+    if (Math.abs(t)>1e-3){ const c=Math.cos(t), s=Math.sin(t), q=p.map(([x,y])=>[x*c+y*s,-x*s+y*c]), b=bbox(q), near=(a,z)=>Math.abs(a-z)<.05;
+      if (q.every(([u,v])=>(near(u,b[0])||near(u,b[2]))&&(near(v,b[1])||near(v,b[3])))) return {b,c,s}; }
+  }
+  return {b:bbox(p),c:1,s:0};
+}
 function stairLayout(r){
   const st=stairOf(r); if(!st) return null;
   const nl=nextLevel(r.floor), up=nl!=null, rise=(up?nl-r.floor:1)*FLOOR_H;
-  const [bx0,by0,bx1,by1]=bbox(r.poly), x0=bx0+WALL_T, y0=by0+WALL_T, x1=bx1-WALL_T, y1=by1-WALL_T;
+  const F=stairFrame(r.poly), [bx0,by0,bx1,by1]=F.b, x0=bx0+WALL_T, y0=by0+WALL_T, x1=bx1-WALL_T, y1=by1-WALL_T;
   const D=DIRS[st.dir], V=st.mirror?[D[1],-D[0]]:[-D[1],D[0]];
   const O=[D[0]?(D[0]>0?x0:x1):(V[0]>0?x0:x1), D[1]?(D[1]>0?y0:y1):(V[1]>0?y0:y1)];
   const Lu=Math.abs(D[0]*(x1-x0)+D[1]*(y1-y0)), Wv=Math.abs(V[0]*(x1-x0)+V[1]*(y1-y0));
-  const P=(u,v)=>[O[0]+D[0]*u+V[0]*v, O[1]+D[1]*u+V[1]*v];
-  const L={kind:st.kind,st,up,nl,rise,Lu,Wv,P,D,V,flights:[],landings:[],warn:[]};
+  const turn=([x,y])=>[x*F.c-y*F.s, x*F.s+y*F.c];
+  const P=(u,v)=>turn([O[0]+D[0]*u+V[0]*v, O[1]+D[1]*u+V[1]*v]);
+  const L={kind:st.kind,st,up,nl,rise,Lu,Wv,P,D:turn(D),V:turn(V),flights:[],landings:[],warn:[]};
   if (area(r.poly)<(bx1-bx0)*(by1-by0)*.95) L.warn.push("The stair fills the room's bounding rectangle. Draw the stairwell as a rectangle for an exact fit.");
   if (st.kind==="lift") return L;
   const sw=st.kind==="switchback";
@@ -885,12 +1162,120 @@ function stairSymbol(r,fs){
 }
 
 const floorRooms = f => S.plan.rooms.filter(r => r.floor === f);
+
+/* ---------- open-plan lobbies and atriums ----------
+   A lobby or corridor marked open has no wall or door where it meets a corridor or another open lobby: the two
+   floors run into each other. A lobby that isn't marked open (a student lounge, say) keeps its walls. openMap(rooms) finds those stretches: spans maps a room's k to a list per edge of [t0, t1] cut out
+   of that edge, and segs lists each opening once, as {a, b, p0, p1} with a and b the two rooms' k. */
+function isHall(r){ return r.type==="corridor" || r.type==="lobby"; }
+function openMap(rs){
+  const spans=new Map(), segs=[];
+  const put=(r,e,t0,t1)=>{ if(!spans.has(r.k)) spans.set(r.k,r.poly.map(()=>[])); spans.get(r.k)[e].push([t0,t1]); };
+  rs.forEach(r=>{ if(!r.open || !isHall(r)) return;
+    rs.forEach(o=>{ if(o===r || o.floor!==r.floor || !(o.type==="corridor" || o.open&&isHall(o)) || (o.open && o.k<r.k)) return;   // two open rooms: once
+      r.poly.forEach((_,e)=>{ const [a,b]=edgeOf(r.poly,e), L=dist(a,b); if(L<.3) return;
+        const ux=(b[0]-a[0])/L, uy=(b[1]-a[1])/L, off=p=>Math.abs((p[0]-a[0])*uy-(p[1]-a[1])*ux), at=p=>((p[0]-a[0])*ux+(p[1]-a[1])*uy)/L;
+        o.poly.forEach((_,f)=>{ const [c,d]=edgeOf(o.poly,f); if(off(c)>.15 || off(d)>.15) return;
+          const t0=Math.max(0,Math.min(at(c),at(d))), t1=Math.min(1,Math.max(at(c),at(d))); if((t1-t0)*L<.3) return;
+          const p0=lerp(a,b,t0), p1=lerp(a,b,t1), s0=projT(p0,[c,d]), s1=projT(p1,[c,d]);
+          put(r,e,t0,t1); put(o,f,Math.min(s0,s1),Math.max(s0,s1)); segs.push({a:r.k,b:o.k,p0,p1}); }); }); }); });
+  return {spans,segs};
+}
+// is point p in one of the openings? (a door there is left over from before the room was opened)
+function inOpening(p,om){ return om.segs.some(s=>segDist(p,[s.p0,s.p1])<.2); }
+// drop doors that sit in an opening; returns how many went
+function dropOpenDoors(rs){ const om=openMap(rs); let n=0;
+  rs.forEach(r=>{ const keep=r.doors.filter(d=>!inOpening(doorCenter(r,d),om)); n+=r.doors.length-keep.length; r.doors=keep; }); return n; }
+// the edge's wall as [t0, t1] pieces with the openings cut out
+function wallRuns(spans){ const out=[]; let s=0; [...spans].sort((x,y)=>x[0]-y[0]).forEach(([a,b])=>{ if(a>s) out.push([s,a]); s=Math.max(s,b); }); if(s<1) out.push([s,1]); return out; }
 const roomByK = k => S.plan.rooms.find(r => r.k === k);
 
 /* coverage = accepted sessions tagged with this room id */
 function coverage(){ const m={}; S.sessions.forEach(s=>{ if(s.verdict!=="rejected" && s.room) m[s.room]=(m[s.room]||0)+1; }); return m; }
 const covLevel = n => n>=3?3:n>=2?2:n>=1?1:0;
 const COV_LABEL = ["Unscanned","Low (1 session)","Medium (2)","High (3+)"];
+
+/* ---------- facilities: toilets, stairs, lifts and emergency exits ----------
+   The buttons over the plan highlight every toilet, stairwell, lift or emergency exit on the floor and fade the rest.
+   Toilets, stairwells and lifts come from the room type (a "Stairs / lift" room set to Lift is a lift). Emergency
+   exits are doors marked as such in Doors mode; on upper floors these are usually the doors into the fire stairs.
+   In Directions, "Nearest" routes to the closest one from where you are. */
+const FAC={
+  toilet:{label:"Toilets",one:"toilet",color:"#8b5cf6",
+    icon:`<circle cx="-4.5" cy="-6.5" r="2.1" fill="#fff"/><path d="M-7.5-3.4h6v5.4h-1.3v6.4h-3.4V2h-1.3z" fill="#fff"/><circle cx="4.5" cy="-6.5" r="2.1" fill="#fff"/><path d="M4.5-3.6 8.2 4.2H6.3v4.2H2.7V4.2H.8z" fill="#fff"/>`},
+  stairs:{label:"Stairs",one:"stairwell",color:"#475569",
+    icon:`<path d="M-8.5 7.5h4.2V3.3h4.2V-.9h4.2v-4.2h4.4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`},
+  lift:{label:"Lifts",one:"lift",color:"#0e7490",
+    icon:`<path d="M-4.6-1.4 0-7.6l4.6 6.2zM-4.6 1.4 0 7.6l4.6-6.2z" fill="#fff"/>`},
+  exit:{label:"Exits",one:"emergency exit",color:"#15803d",
+    icon:`<path d="M-8.5-8.5h8v17h-8z" fill="none" stroke="#fff" stroke-width="2"/><path d="M1.5 0h7M5.2-3.6 8.8 0 5.2 3.6" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`},
+};
+S.fac=new Set(); try{ JSON.parse(localStorage.getItem("apu-fac")||"[]").forEach(c=>FAC[c]&&S.fac.add(c)); }catch(e){}
+function saveFac(){ try{ localStorage.setItem("apu-fac",JSON.stringify([...S.fac])); }catch(e){} }
+function facOf(r){ return hidden(r)?null:r.type==="toilet"?"toilet":r.type==="stairs"?(stairOf(r).kind==="lift"?"lift":"stairs"):null; }
+// Everything of one kind on a floor: {r, at} for rooms; exits are doors, so {r, d, at} with at the door's centre.
+function facItems(cat,f){
+  const rs=floorRooms(f);
+  if (cat==="exit") return rs.flatMap(r=>r.doors.filter(d=>d.exit).map(d=>({r,d,at:doorCenter(r,d)})));
+  return rs.filter(r=>facOf(r)===cat).map(r=>({r,at:roomPoint(r)}));
+}
+const facCount=cat=>S.plan.floors.reduce((n,f)=>n+facItems(cat,f.level).length,0);
+// A badge of a constant size on screen, centred on p
+function facBadge(cat,p,px=13){ const k=px/12/S.view.scale;
+  return `<g transform="translate(${p[0]} ${p[1]}) scale(${k})" pointer-events="none"><rect x="-12" y="-12" width="24" height="24" rx="6" fill="${FAC[cat].color}" stroke="#fff" stroke-width="2"/>${FAC[cat].icon}</g>`; }
+function facIcon(cat,size=16){ return `<svg class="fi" viewBox="-12 -12 24 24" width="${size}" height="${size}" aria-hidden="true"><rect x="-12" y="-12" width="24" height="24" rx="6" fill="${FAC[cat].color}"/>${FAC[cat].icon}</svg>`; }
+function facOverlay(){
+  if (!S.fac.size) return "";
+  let s="";
+  [...S.fac].forEach(cat=>facItems(cat,S.floor).forEach(it=>{
+    if (cat!=="exit"){ const [x0,y0,x1,y1]=bbox(it.r.poly);   // smaller badges in small rooms, so lifts side by side don't overlap
+      return s+=facBadge(cat,it.at,Math.max(7,Math.min(13,Math.min(x1-x0,y1-y0)*S.view.scale*.42))); }
+    // the exit sign sits just outside the door, on the side people come from
+    const n=inwardNormal(it.r,it.d.e), off=20/S.view.scale;
+    s+=`<circle cx="${it.at[0]}" cy="${it.at[1]}" r="${7/S.view.scale}" fill="none" stroke="${FAC.exit.color}" stroke-width="3" vector-effect="non-scaling-stroke" pointer-events="none"/>`+facBadge("exit",[it.at[0]-n[0]*off,it.at[1]-n[1]*off],12);
+  }));
+  return s;
+}
+let facKey="";
+function renderFacBar(){
+  const el=$("#facil"); el.classList.toggle("solo",!!S.nav);
+  const key=[...S.fac].join()+"|"+S.floor+"|"+S.plan.rev+"|"+S.plan.rooms.length+"|"+signedIn(); if (key===facKey) return; facKey=key;
+  el.innerHTML=Object.entries(FAC).map(([c,f])=>{ const n=facItems(c,S.floor).length;
+    return `<button data-fac="${c}" aria-pressed="${S.fac.has(c)}" style="--fac:${f.color}" title="${f.label} on this floor: ${n}">${facIcon(c,14)}<span>${f.label}</span></button>`; }).join("");
+  el.querySelectorAll("[data-fac]").forEach(b=>b.onclick=()=>toggleFac(b.dataset.fac));
+}
+function toggleFac(cat,on){ if (on ?? !S.fac.has(cat)) S.fac.add(cat); else S.fac.delete(cat); saveFac(); facKey=""; navKey=""; renderPlan(); }
+// The Facilities part of the side panel: counts, the ones on this floor, and in Directions the Nearest buttons
+function facilitiesHTML(nav){
+  const from=nav&&S.go.from&&roomByK(S.go.from);
+  return `<h3>Facilities</h3>
+    ${nav?`<p class="small muted" style="margin:0 0 8px">${from?`Find the nearest one from <b>${esc(roomName(from))}</b>.`:"Pick where you are (From) to find the nearest one."}</p>`:""}
+    <div class="fac-list">${Object.entries(FAC).map(([c,f])=>{ const here=facItems(c,S.floor), all=facCount(c), on=S.fac.has(c);
+      return `<div class="fac-row"><button class="fac-t" data-ft="${c}" aria-pressed="${on}" title="${on?"Hide":"Show"} ${f.label.toLowerCase()} on the plan">${facIcon(c)}<span><b>${f.label}</b><span class="muted"> · ${here.length} on L${S.floor}${all!==here.length?`, ${all} in all`:""}</span></span></button>
+        ${nav?`<button class="btn sm" data-near="${c}" ${from&&all?"":"disabled"}>Nearest</button>`:""}</div>
+        ${on&&here.length?`<ul class="fac-items">${here.map((it,i)=>`<li><button data-fi="${c}:${i}">${esc(roomName(it.r))} <span class="mono muted">${esc(rid(it.r))}</span></button></li>`).join("")}</ul>`:""}`; }).join("")}</div>
+    ${!nav&&!facCount("exit")&&!S.readOnly?`<p class="small muted" style="margin:6px 0 0">No emergency exits yet. In Doors mode, pick Emergency exit and tap a door to mark it.</p>`:""}`;
+}
+function bindFacilities(el,nav){
+  el.querySelectorAll("[data-ft]").forEach(b=>b.onclick=()=>toggleFac(b.dataset.ft));
+  el.querySelectorAll("[data-fi]").forEach(b=>b.onclick=()=>{ const [c,i]=b.dataset.fi.split(":"), it=facItems(c,S.floor)[+i]; if(!it) return;
+    S.view.cx=it.at[0]; S.view.cy=it.at[1]; S.view.scale=Math.max(S.view.scale,14); if(!nav&&!hidden(it.r)) S.sel=it.r.k; if(TOUCH) setSheet(false); renderPlan(); });
+  el.querySelectorAll("[data-near]").forEach(b=>b.onclick=()=>nearestFacility(b.dataset.near));
+}
+/* Route to the closest toilet, stairwell, lift or exit (by walking route, across floors) and show it */
+function nearestFacility(cat){
+  const g=S.go, from=g.from&&roomByK(g.from), f=FAC[cat];
+  if (!from){ toast("Pick where you are first (From)."); return; }
+  if (cat==="exit"?from.doors.some(d=>d.exit):facOf(from)===cat){ toast(cat==="exit"?`${roomName(from)} has an emergency exit.`:`You're already in a ${f.one}.`); return; }
+  const cands=[...new Set(S.plan.floors.flatMap(fl=>facItems(cat,fl.level).map(it=>it.r)))].filter(r=>r!==from);
+  let best=null;
+  cands.forEach(r=>{ const R=navRoute(from,r,{stepFree:g.stepFree&&cat!=="exit",fromDoor:g.fromDoor}); if(R && (!best||R.total<best.R.total)) best={r,R}; });
+  if (!best){ toast(`No ${f.one} can be reached from here${g.stepFree?" step-free":""}.`); return; }
+  g.to=best.r.k; S.fac.add(cat); saveFac(); facKey=""; navUpdate();
+  if (g.route && !routeFloors().has(S.floor)){ S.floor=g.route.lines[0].f; fit(); }
+  renderFloors(); renderPlan();
+  toast(`Nearest ${f.one}: ${roomName(best.r)}${rid(best.r)?` (${best.r.id})`:""}, ${metres(best.R.total)}${best.r.floor!==from.floor?` on L${best.r.floor}`:""}.`);
+}
 
 /* ---------- toast & sync ---------- */
 let toastT;
@@ -901,15 +1286,20 @@ function setSync(s,text){ const el=$("#sync"); el.dataset.s=s; el.lastElementChi
 function bannerHTML(msg,acts="",dismiss=""){ $("#banner").classList.toggle("solo",!acts&&!!dismiss); return `<span class="msg">${msg}</span>${acts||dismiss?`<span class="acts">${acts}${dismiss?`<button class="x" id="bnX" aria-label="Dismiss">×</button>`:""}</span>`:""}`; }
 function renderBanner(){
   const b=$("#banner");
+  if (S.preview && S.tab!=="capture"){ b.hidden=false;
+    b.innerHTML=bannerHTML(`<b>Preview.</b> A sample campus building (mock data, Levels 3–4) to try directions, floor plans and the 3D outline. <span class="more">Nothing here is saved.</span>`,`<button class="btn sm" id="pvExit">Choose a university</button>`);
+    $("#pvExit").onclick=()=>setTab("unis"); return; }
   if (S.conflict) return conflictBanner(b);
   if (S.readOnly && S.api && !bannerGone()){ b.hidden=false;
-    b.innerHTML=bannerHTML(`<b>Viewing the floor plan.</b> <span class="more">Get directions, or help map rooms from the Capture tab. Only editors can change the plan.</span>`,`<button class="btn sm" id="keyBtn">Editor sign-in</button>`,true);
-    $("#keyBtn").onclick=openProfile; $("#bnX").onclick=hideBanner; return; }
+    b.innerHTML=bannerHTML(signedIn()?`<b>Viewing the floor plan.</b> <span class="more">Get directions, or help map rooms from the Capture tab. Only editors can change the plan.</span>`
+      :`<b>Browsing as a guest.</b> <span class="more">Directions and landmarks work without an account. Log in to use GPS, contribute or edit.</span>`,
+      `<button class="btn sm" id="keyBtn">${signedIn()?"Editor sign-in":"Log in"}</button>`,true);
+    $("#keyBtn").onclick=()=>signedIn()?openProfile():loginFor(""); $("#bnX").onclick=hideBanner; return; }
   if (S.readOnly && !S.api){ b.hidden=false; b.innerHTML=bannerHTML(`<b>View only.</b> Your sharing level doesn't allow edits${S.noContrib?" or new sessions":""}.`); return; }
   if (S.readOnly){ b.hidden=true; return; }
   if (S.example && S.loaded){
     b.hidden=false;
-    b.innerHTML=bannerHTML(`<b>Example layout.</b> <span class="more">A sample of Block B, Levels 3–4.</span> Nothing is saved until you edit it.${S.serverNote?` <span class="more">No database yet, so edits stay in this browser.</span>`:""}`,
+    b.innerHTML=bannerHTML(`<b>Example layout.</b> <span class="more">Mock data for the main building, Levels 3–4: Block B (west wing), Block A (atrium and annex) and Block C (east wing).</span> Nothing is saved until you edit it.${S.serverNote?` <span class="more">No database yet, so edits stay in this browser.</span>`:""}`,
       `<button class="btn sm primary" id="keepEx">Use this example</button><button class="btn sm" id="blankEx">Start blank</button>`);
     $("#keepEx").onclick=()=>{ S.example=false; scheduleSave("Started from the example layout",0); renderAll(); };
     $("#blankEx").onclick=()=>{ S.plan={block:"B",floors:[{level:1,name:"Level 1"}],rooms:[],rev:0}; S.floor=1; S.sel=null; S.example=false; scheduleSave("Started a blank plan",0); fit(); renderAll(); };
@@ -932,51 +1322,184 @@ document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>setTab(b.d
 // University logos supplied by the project owner, cropped and inlined so the single-file build needs no extra assets
 const LOGO_APU="data:image/webp;base64,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";
 const LOGO_UNITEN="data:image/webp;base64,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";
-// Featured universities shown before the Navigation tools. Only APU has map data so far.
+// Universities shown before the Navigation tools. None has live floor plans yet, so Navigation opens on the Preview:
+// the sample building (mock data), view only. Set live:true on a university once its plan is mapped.
 const UNIS=[
-  {id:"apu",short:"APU",name:"Asia Pacific University of Technology & Innovation",color:"#1d4fa8",live:true,logo:LOGO_APU},
-  {id:"uniten",short:"UNITEN",name:"Universiti Tenaga Nasional",color:"#e2492f",live:false,logo:LOGO_UNITEN},
-  {id:"sunway",short:"SUNWAY",name:"Sunway University",color:"#14254f",live:false},
+  {id:"apu",short:"APU",name:"Asia Pacific University of Technology & Innovation",loc:"Kuala Lumpur",color:"#1d4fa8",live:false,logo:LOGO_APU},
+  {id:"sunway",short:"SUNWAY",name:"Sunway University",loc:"Bandar Sunway, Selangor",color:"#14254f",live:false},
+  {id:"uniten",short:"UNITEN",name:"Universiti Tenaga Nasional",loc:"Kajang, Selangor",color:"#e2492f",live:false,logo:LOGO_UNITEN},
 ];
+const PREVIEW={id:"preview",short:"Preview",mark:"PV",name:"Preview: sample campus",color:"#c9962b",live:true};
+const uniOf=id=>id==="preview"?PREVIEW:UNIS.find(u=>u.id===id);
 const UNI_KEY="apu-uni";
-S.uni=null; try{ const u=localStorage.getItem(UNI_KEY); if(UNIS.some(x=>x.id===u&&x.live)) S.uni=u; }catch(e){}
+S.uni=null; try{ const u=localStorage.getItem(UNI_KEY); if(uniOf(u)?.live) S.uni=u; }catch(e){}
+const PIN=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>`;
 function renderUnis(){
-  const q=$("#uniQ").value.trim().toLowerCase(), sort=$("#uniSort").value;
-  let list=UNIS.filter(u=>!q || (u.short+" "+u.name).toLowerCase().includes(q));
-  list.sort((a,b)=> sort==="avail" ? (b.live-a.live)||a.short.localeCompare(b.short) : sort==="za" ? b.short.localeCompare(a.short) : a.short.localeCompare(b.short));
+  const q=$("#uniQ").value.trim().toLowerCase(), sort=$("#uniSort").value, any=UNIS.some(u=>u.live);
+  $("#uniNote").innerHTML=`${any?"Only some campuses have live floor plans so far.":"Campus maps are on the way: no university has live floor plans yet."} Meanwhile, <button type="button" id="uniPreview">try the Preview</button> to see how it works, or <button type="button" id="uniHelp">help map your campus</button>.`;
+  $("#uniPreview").onclick=()=>pickUni("preview"); $("#uniHelp").onclick=()=>setTab("capture");
+  const list=UNIS.filter(u=>!q || (u.short+" "+u.name+" "+u.loc).toLowerCase().includes(q));
+  list.sort((a,b)=>(sort==="za"?-1:1)*a.name.localeCompare(b.name));
+  $("#uniCount").textContent=`${list.length} universit${list.length===1?"y":"ies"}`;
   $("#uniGrid").innerHTML = list.length ? list.map(u=>`<button type="button" class="ucard${u.live?"":" soon"}" data-uni="${u.id}"${u.live?"":' aria-disabled="true"'}>
-      ${u.logo?`<span class="logo-img"><img src="${u.logo}" alt="${esc(u.short)} logo"></span>`:`<span class="logo-mk${u.short.length>4?" long":""}" style="background:${u.color}">${esc(u.short)}</span>`}<b>${esc(u.short)}</b><span class="full">${esc(u.name)}</span>
-      <span class="st">${u.live?"Map available":"Coming soon"}</span></button>`).join("")
+      <span class="top">${u.logo?`<img src="${u.logo}" alt="${esc(u.short)} logo">`:`<span class="logo-mk${u.short.length>4?" long":""}" style="background:${u.color}">${esc(u.short)}</span>`}</span>
+      <span class="body"><b>${esc(u.name)}</b><span class="loc">${PIN}${esc(u.loc)}</span>
+      <span class="st">${u.live?"Map available":"Coming soon: no floor plans yet"}</span></span></button>`).join("")
     : `<p class="unis-empty">No university matches “${esc(q)}”.</p>`;
   $("#uniGrid").querySelectorAll(".ucard").forEach(c=>c.onclick=()=>pickUni(c.dataset.uni));
 }
 function pickUni(id){
-  const u=UNIS.find(x=>x.id===id); if(!u) return;
-  if (!u.live){ toast(`${u.short} isn't mapped yet. It's coming soon.`); return; }
+  const u=uniOf(id); if(!u) return;
+  if (!u.live){ toast(`${u.short} isn't mapped yet. Try the Preview to see how it works.`); return; }
   S.uni=id; try{ localStorage.setItem(UNI_KEY,id); }catch(e){}
   const next=S.uniNext||"nav"; S.uniNext=null; setTab(next);
+}
+/* Preview: the Navigation tools on the sample building, view only. S.plan reads the sample while it's on;
+   the shared plan keeps loading and saving underneath (S.plan's setter always writes it). */
+function setPreview(on){
+  if (!!S.preview===on) return;
+  S.preview=on; if(on && !S.previewPlan) S.previewPlan=examplePlan();
+  if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=on?3:S.plan.floors[0].level;
+  S.sel=null; S.draft=[]; Object.assign(S.go,{from:null,to:null,route:null}); S.fitted=false; if(T) T.framed=false;
+  renderAll();
 }
 $("#uniQ").oninput=renderUnis; $("#uniSort").onchange=renderUnis;
 $("#uniChip").onclick=()=>setTab("unis");
 
-const GROUP={unis:"navigation",home:"home",feedback:"feedback",nav:"navigation",plan:"navigation","3d":"navigation",capture:"contribution",sessions:"contribution",history:"contribution"};
+/* ---------- accounts: Contribution, GPS and editing need a login; guests can use the map ----------
+   Guests get Home, Feedback and Navigation (universities, Directions, floor plan, 3D, toilets/stairs/lifts/exits),
+   but not their GPS position on the plan, editing the plan or Contribution.
+   Signing up takes an email, student ID and password. A login lasts 6 hours. A device that has logged in before
+   opens on "Log in" (student ID and password) instead of "Sign up".
+   With the server (api/auth.js) accounts live in the database. Without one (standalone copy, artifact) they're kept
+   in this browser, with the password stored as a PBKDF2 hash. */
+const AUTH_KEY="apu-auth", KNOWN_KEY="apu-known-id", ACCOUNTS_KEY="apu-accounts", LOGIN_MS=6*3600e3;
+const ls={get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(e){} }};
+S.auth=null; try{ const a=JSON.parse(ls.get(AUTH_KEY)||"null"); if(a&&a.studentId&&a.exp>Date.now()) S.auth=a; else ls.set(AUTH_KEY,""); }catch(e){}
+S.authView=ls.get(KNOWN_KEY)?"login":"signup";
+const signedIn=()=>!!S.auth && S.auth.exp>Date.now();
+const needsLogin=t=>GROUP[t]==="contribution";
+let authReady; const AUTH_SERVER=new Promise(r=>authReady=r);   // true once we know the server keeps accounts
+AUTH_SERVER.then(server=>{ S.authLocal=!server; if(S.tab==="auth") renderAuth(); });
+function saveAuth(a){
+  S.auth=a; ls.set(AUTH_KEY,a?JSON.stringify(a):"");
+  if (a) ls.set(KNOWN_KEY,a.studentId);
+  if (S.api){ S.meId=a?a.studentId:null; S.readOnly=!(a&&S.keyOk)||planIsPartial(); if(S.readOnly) setMode("select");
+    // Guests get classrooms without their details, so fetch the plan again for the new viewer
+    if (S.loaded){ S.etag=null; S.refetch=true; setTimeout(()=>poll(true)); } }
+  if (!a) stopNavGps();
+  renderMe(); if (S.plan) setTimeout(renderAll);
+}
+// The plan as the server sends it to guests: classrooms without their details. It can't be saved back.
+const planIsPartial = () => !!S.plan?.rooms?.some(r=>r.private);
+function signOut(msg){
+  const tok=S.auth?.token;
+  if (tok) fetch("/api/auth",{method:"DELETE",headers:{authorization:"Bearer "+tok}}).catch(()=>{});
+  saveAuth(null); S.authView="login";
+  if ($("#profile").open) $("#profile").close();
+  if (msg) toast(msg);
+  const cur=S.nav?"nav":S.tab;
+  if (needsLogin(cur)) setTab(cur); else renderAll();   // setTab sends a gated tab to the login page
+}
+// Send a guest to the login page for one feature, then back to where they were
+function loginFor(why){ const cur=S.nav?"nav":S.tab; S.authNext=cur==="auth"?S.authNext:cur; S.authWhy=why; setTab("auth"); }
+function loginExpired(){ if (S.auth && !signedIn()) signOut("Your 6-hour login has ended. Please log in again."); }
+setInterval(loginExpired,15000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) loginExpired(); });
+
+const ID_RE=/^[A-Z0-9-]{3,20}$/, EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function renderAuth(){
+  const up=S.authView==="signup", known=ls.get(KNOWN_KEY), next=S.authNext&&GROUP[S.authNext];
+  const what=S.authWhy||(next==="contribution"?"contribute":"contribute, edit the plan and show your GPS position on the map");
+  $("#authEyebrow").textContent=up?"Create an account":"Welcome back";
+  $("#authTitle").textContent=up?"Sign up":"Log in";
+  $("#authSub").textContent=up?`Sign up with your email and student ID to ${what}. You can still use the map and directions as a guest.`
+    :`Log in with your student ID and password to ${what}.`;
+  $("#authEmailF").hidden=!up;
+  $("#authPw").autocomplete=up?"new-password":"current-password";
+  $("#authGo").textContent=up?"Create account":"Log in";
+  if (!up && known && !$("#authId").value) $("#authId").value=known;
+  $("#authSwitch").innerHTML=up?`Already have an account? <button type="button" id="authSw">Log in</button>`
+    :`New here? <button type="button" id="authSw">Create an account</button>`;
+  $("#authSw").onclick=()=>{ S.authView=up?"login":"signup"; $("#authErr").hidden=true; renderAuth(); (up?$("#authId"):$("#authEmail")).focus(); };
+  $("#authNote").textContent=`You stay logged in for 6 hours.${S.authLocal?" No server is connected, so accounts are kept in this browser only.":""}`;
+}
+function authError(msg,swap){
+  const e=$("#authErr"); e.hidden=false; e.textContent=msg+" ";
+  if (swap){ const b=document.createElement("button"); b.type="button"; b.textContent=swap==="login"?"Log in instead":"Create an account";
+    b.onclick=()=>{ S.authView=swap; e.hidden=true; renderAuth(); }; e.append(b); }
+}
+// Passwords for browser-only accounts: PBKDF2-SHA256 with a random salt
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))), unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function pwHash(pw,salt){
+  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]);
+  return b64(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:unb64(salt),iterations:150000},key,256));
+}
+async function localAuth(up,email,id,pw){
+  if (!crypto?.subtle) throw new Error("This browser can't store passwords safely here. Open the site over https.");
+  let accts={}; try{ accts=JSON.parse(ls.get(ACCOUNTS_KEY)||"{}")||{}; }catch(e){}
+  if (up){
+    if (accts[id]) throw Object.assign(new Error("That student ID already has an account. Log in instead."),{swap:"login"});
+    if (Object.values(accts).some(a=>a.email===email)) throw Object.assign(new Error("An account with that email already exists. Log in instead."),{swap:"login"});
+    const salt=b64(crypto.getRandomValues(new Uint8Array(16)));
+    accts[id]={email,salt,hash:await pwHash(pw,salt)}; ls.set(ACCOUNTS_KEY,JSON.stringify(accts));
+  } else {
+    const a=accts[id];
+    if (!a || await pwHash(pw,a.salt)!==a.hash) throw new Error("Student ID or password is wrong.");
+    email=a.email;
+  }
+  return {studentId:id,email,exp:Date.now()+LOGIN_MS,local:true};
+}
+$("#authForm").onsubmit=async e=>{
+  e.preventDefault();
+  const up=S.authView==="signup", email=$("#authEmail").value.trim().toLowerCase(), id=$("#authId").value.trim().toUpperCase(), pw=$("#authPw").value;
+  $("#authErr").hidden=true;
+  if (up && !EMAIL_RE.test(email)) return authError("Enter a valid email address.");
+  if (!ID_RE.test(id)) return authError("Student ID must be 3 to 20 letters, digits or dashes.");
+  if (!pw) return authError("Enter your password.");
+  if (up && pw.length<8) return authError("Password must be at least 8 characters.");
+  const go=$("#authGo"); go.disabled=true; const label=go.textContent; go.textContent=up?"Creating account…":"Logging in…";
+  try{
+    let a;
+    if (await AUTH_SERVER){
+      const res=await fetch("/api/auth",{method:"POST",headers:{"content-type":"application/json"},cache:"no-store",
+        body:JSON.stringify(up?{action:"register",email,studentId:id,password:pw}:{action:"login",studentId:id,password:pw})});
+      const d=await res.json().catch(()=>({}));
+      if (!res.ok) throw Object.assign(new Error(d.message||"Couldn't reach the server. Try again."),{swap:d.error==="taken"?"login":null});
+      // The server ends the login after 6 hours; the page counts 6 hours on its own clock too.
+      a={studentId:d.user.studentId,email:d.user.email,token:d.token,exp:Date.now()+LOGIN_MS};
+    } else a=await localAuth(up,email,id,pw);
+    $("#authPw").value=""; saveAuth(a);
+    toast(up?`Account created. Logged in as ${a.studentId}.`:`Logged in as ${a.studentId}.`);
+    const next=S.authNext||"nav", gps=S.authGps; S.authNext=null; S.authWhy=""; S.authGps=false; setTab(next); renderAll();
+    if (gps && S.nav) startNavGps();
+  }catch(err){ authError(err.message||"Something went wrong. Try again.",err.swap); }
+  finally{ go.disabled=false; go.textContent=label; }
+};
+
+const GROUP={auth:"auth",unis:"navigation",home:"home",feedback:"feedback",nav:"navigation",plan:"navigation","3d":"navigation",capture:"contribution",sessions:"contribution",history:"contribution"};
 const LAST={home:"home",feedback:"feedback",navigation:"nav",contribution:"capture"};
 document.querySelectorAll("nav.main button").forEach(b=>b.onclick=()=>setTab(b.dataset.group==="navigation"&&!S.uni?"unis":LAST[b.dataset.group]));
 $("#brandHome").onclick=()=>setTab("home");
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>setTab(b.dataset.go));
 function setTab(t){
   if (!GROUP[t]) t="home";
+  // Navigation and Contribution need a login; guests are sent to the login page and brought back after
+  if (needsLogin(t) && !signedIn()){ if(S.auth) saveAuth(null); S.authNext=t; t="auth"; }
+  else if (t==="auth" && signedIn()) t=S.authNext||"home";
   // The Navigation tools open only after a university is chosen
   if (GROUP[t]==="navigation" && t!=="unis" && !S.uni){ S.uniNext=t; t="unis"; }
   const grp=GROUP[t]; if (t!=="unis") LAST[grp]=t;
-  const page=grp==="home"||grp==="feedback"||t==="unis";
-  document.querySelectorAll("nav.main button").forEach(b=>{ if(b.dataset.group===grp) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  if (t!=="unis") setPreview(grp==="navigation" && S.uni==="preview");
+  const page=grp==="home"||grp==="feedback"||grp==="auth"||t==="unis", hl=t==="auth"?GROUP[S.authNext]:grp;
+  document.querySelectorAll("nav.main button").forEach(b=>{ if(b.dataset.group===hl) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   $("#subbar").hidden = t==="unis" || (grp!=="navigation" && grp!=="contribution");
   document.body.classList.toggle("page-only", page);
   $("#siteFooter").hidden = !page;
-  const cu=UNIS.find(u=>u.id===S.uni); $("#uniChip").hidden = grp!=="navigation" || !cu;
-  if (cu) $("#uniChip").innerHTML=`${cu.logo?`<img class="mk" src="${cu.logo}" alt="">`:`<span class="mk" style="background:${cu.color}">${esc(cu.short.slice(0,3))}</span>`}${esc(cu.short)} <small>· Change</small>`;
+  const cu=uniOf(S.uni); $("#uniChip").hidden = grp!=="navigation" || !cu;
+  if (cu) $("#uniChip").innerHTML=`${cu.logo?`<img class="mk" src="${cu.logo}" alt="">`:`<span class="mk" style="background:${cu.color}">${esc(cu.mark||cu.short.slice(0,3))}</span>`}${esc(cu.short)} <small>· Change</small>`;
   if (t==="unis") renderUnis();
+  if (t==="auth") renderAuth();
   document.querySelectorAll("nav.tabs button").forEach(b=>b.hidden = b.dataset.group!==grp);
   if (t!=="capture"){ stopLive(); stopGeo(); }
   if (t!=="nav") stopNavGps();
@@ -985,7 +1508,7 @@ function setTab(t){
   S.tab=t;
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===(S.nav?"nav":t))));
   $("#modes").hidden=S.nav||S.readOnly; $("#overlay").hidden=S.nav; if (wasNav!==S.nav) renderFloors();
-  ["home","unis","feedback","plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
+  ["home","auth","unis","feedback","plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
   document.body.classList.toggle("fill", t==="plan"||t==="3d");
   $("#exMenu").open=false; window.scrollTo(0,0);
   if (t==="3d") { init3D(); build3D(); resize3D(); }
@@ -993,7 +1516,7 @@ function setTab(t){
   if (t==="sessions") renderSessions();
   if (t==="history") renderHistory();
   if (t==="capture") renderCapture();
-  try{ localStorage.setItem("apu-tab",S.nav?"nav":t); }catch(e){}
+  try{ localStorage.setItem("apu-tab",S.nav?"nav":t==="auth"?(S.authNext||"home"):t); }catch(e){}
 }
 
 /* ---------- floors toolbar ---------- */
@@ -1030,7 +1553,7 @@ $("#zcampus").onclick=()=>{ S.showCampus=!S.showCampus; try{ localStorage.setIte
   toast(S.showCampus?"Showing the campus outline from OpenStreetMap.":"Campus outline hidden."); };
 svg.addEventListener("wheel",e=>{ e.preventDefault(); zoom(e.deltaY<0?1.15:1/1.15,toWorld(e)); },{passive:false});
 
-function roomFill(r,cov){ if(S.overlay==="coverage") return css(["--cov0","--cov1","--cov2","--cov3"][covLevel(cov[r.id]||0)]); return css((TYPES[r.type]||TYPES.other).v); }
+function roomFill(r,cov){ if(S.overlay==="coverage") return css(["--cov0","--cov1","--cov2","--cov3"][covLevel(cov[r.id]||0)]); return css((hidden(r)?TYPES.other:TYPES[r.type]||TYPES.other).v); }
 
 function renderPlan(){
   if (S.tab!=="plan") return;
@@ -1044,28 +1567,34 @@ function renderPlan(){
   // hatch for unscanned
   let defs=`<defs><pattern id="hatch" width=".6" height=".6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".6" height=".6" fill="${css("--cov0")}"/><line x1="0" y1="0" x2="0" y2=".6" stroke="${css("--ink-2")}" stroke-opacity=".35" stroke-width=".12"/></pattern></defs>`;
   const rs=floorRooms(S.floor); let rooms="",labels="",doors="",handles="",stairs="";
-  const fs=Math.max(.35,Math.min(.9,13/S.view.scale));
+  const fs=Math.max(.35,Math.min(.9,13/S.view.scale)), om=openMap(rs);
   rs.forEach(r=>{
     const pts=r.poly.map(p=>p.join(",")).join(" "), sel=r.k===S.sel||(S.mode==="move"&&S.moveKeys?.includes(r.k));
     const unscanned=S.overlay==="coverage" && !(cov[r.id]>0);
-    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":roomFill(r,cov)}" fill-opacity="${S.overlay==="coverage"?.9:.28}" stroke="${sel||navMark(r)?acc:ink}" stroke-width="${sel||navMark(r)?3:2}" vector-effect="non-scaling-stroke" style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    const fc=S.fac.size&&S.fac.has(facOf(r))?FAC[facOf(r)].color:null, faded=S.fac.size&&!fc&&!sel&&!navMark(r);   // facilities on: the rest fades
+    const stroke=`stroke="${sel||navMark(r)?acc:fc||ink}" stroke-opacity="${faded?.45:1}" stroke-width="${sel||navMark(r)||fc?3:2}" vector-effect="non-scaling-stroke"`;
+    const sp=!sel && om.spans.get(r.k);   // open to a corridor: draw the walls only, with gaps for the openings
+    rooms+=`<polygon data-k="${r.k}" points="${pts}" fill="${unscanned?"url(#hatch)":fc||roomFill(r,cov)}" fill-opacity="${faded?.08:fc?.42:S.overlay==="coverage"&&!S.nav?.9:.28}" ${sp?`stroke="none"`:stroke} style="cursor:${S.mode==="select"?"pointer":"crosshair"}"/>`;
+    if (sp){ let d=""; r.poly.forEach((_,e)=>{ const [a,b]=edgeOf(r.poly,e); wallRuns(sp[e]).forEach(([t0,t1])=>{ const p=lerp(a,b,t0), q=lerp(a,b,t1); d+=`M${p[0]},${p[1]}L${q[0]},${q[1]}`; }); });
+      if (d) rooms+=`<path d="${d}" fill="none" ${stroke} stroke-linecap="square" pointer-events="none"/>`; }
     stairs+=stairSymbol(r,fs);
     const [cx,cy]=centroid(r.poly);
-    if (S.view.scale>6){
+    if (S.view.scale>6 && !hidden(r)){
       labels+=`<text x="${cx}" y="${cy-fs*.25}" text-anchor="middle" font-family="${css("--f-mono")}" font-size="${fs}" font-weight="500" fill="${ink}" pointer-events="none">${esc(r.id)}</text>`;
       if (S.view.scale>12) labels+=`<text x="${cx}" y="${cy+fs*.95}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*.8}" fill="${css("--ink-2")}" pointer-events="none">${esc(S.overlay==="coverage"?COV_LABEL[covLevel(cov[r.id]||0)]:(r.name||TYPES[r.type]?.label||""))} · ${area(r.poly).toFixed(0)} m²</text>`;
     }
     r.doors.forEach((d,di)=>{
+      if (om.segs.length && inOpening(doorCenter(r,d),om)) return;
       const [a,b]=edgeOf(r.poly,d.e), L=dist(a,b)||1, half=(d.w/L)/2, p0=lerp(a,b,Math.max(0,d.t-half)), p1=lerp(a,b,Math.min(1,d.t+half));
       doors+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${paper}" stroke-width="6" vector-effect="non-scaling-stroke"/>`;
       // swing arc into the room
       const n=inwardNormal(r,d.e), rad=d.w, e1=[p0[0]+n[0]*rad,p0[1]+n[1]*rad];
       const sweep = (( (p1[0]-p0[0])*n[1]-(p1[1]-p0[1])*n[0]) > 0) ? 0 : 1;
-      doors+=`<path d="M${p0[0]},${p0[1]} L${e1[0]},${e1[1]} A${rad},${rad} 0 0 ${sweep} ${p1[0]},${p1[1]}" fill="none" stroke="${ink}" stroke-opacity=".55" stroke-width="1" vector-effect="non-scaling-stroke" data-door="${r.k}:${di}" pointer-events="${S.mode==="door"?"visibleStroke":"none"}"/>`;
+      doors+=`<path d="M${p0[0]},${p0[1]} L${e1[0]},${e1[1]} A${rad},${rad} 0 0 ${sweep} ${p1[0]},${p1[1]}" fill="none" stroke="${d.exit?FAC.exit.color:ink}" stroke-opacity="${d.exit?1:.55}" stroke-width="${d.exit?2.5:1}" vector-effect="non-scaling-stroke" data-door="${r.k}:${di}" pointer-events="${S.mode==="door"?"visibleStroke":"none"}"/>`;
     });
     if (sel && S.mode==="select" && !S.readOnly && !S.nav) r.poly.forEach((p,i)=>handles+=`<rect data-h="${i}" x="${p[0]-6/S.view.scale}" y="${p[1]-6/S.view.scale}" width="${12/S.view.scale}" height="${12/S.view.scale}" fill="${css("--sheet")}" stroke="${acc}" stroke-width="2" vector-effect="non-scaling-stroke" style="cursor:move"/>`);
   });
-  let overlay=S.nav?navOverlay(fs):scanOverlay(fs);
+  let overlay=facOverlay()+(S.nav?navOverlay(fs):scanOverlay(fs));
   if (S.mode==="door" && S.hoverEdge){ const r=roomByK(S.hoverEdge.k); if(r){ const [a,b]=edgeOf(r.poly,S.hoverEdge.e); const c=lerp(a,b,S.hoverEdge.t);
     overlay+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${acc}" stroke-width="4" vector-effect="non-scaling-stroke" stroke-opacity=".6"/><circle cx="${c[0]}" cy="${c[1]}" r="${DOOR_W/2}" fill="${acc}" fill-opacity=".25" stroke="${acc}" vector-effect="non-scaling-stroke"/>`; } }
   if (S.mode==="draw" && S.draft.length){
@@ -1081,7 +1610,7 @@ function renderPlan(){
   const scale=`<g pointer-events="none"><line x1="${sx}" y1="${sy}" x2="${sx+sb}" y2="${sy}" stroke="${ink}" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${sx+sb/2}" y="${sy-.25}" font-family="${css("--f-mono")}" font-size="${fs*.75}" fill="${ink}" text-anchor="middle">${sb} m</text></g>`;
   const empty = !rs.length ? `<text x="${S.view.cx}" y="${S.view.cy}" text-anchor="middle" font-family="${css("--f-body")}" font-size="${fs*1.1}" fill="${css("--ink-2")}">No rooms on L${S.floor} yet. Pick “Draw room” and click the corners.</text>` : "";
   svg.innerHTML=defs+`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${paper}" data-bg="1"/>`+g+campusSvg()+rooms+stairs+doors+labels+overlay+handles+scale+empty;
-  renderHint(); renderLegend(); renderInspector();
+  renderHint(); renderLegend(); renderFacBar(); renderInspector();
 }
 function inwardNormal(r,e){ const [a,b]=edgeOf(r.poly,e), dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1, s=signed(r.poly)>0?1:-1; return [-dy/L*s, dx/L*s]; }
 
@@ -1093,11 +1622,13 @@ function renderHint(){
       :TOUCH?"Tap a room to edit it · drag to pan · pinch to zoom":"Click a room to edit it · drag corner handles to reshape · drag to pan",
     draw:n?(TOUCH?`${n} corner${n===1?"":"s"} · tap to add more, or tap the first corner to close`:"Click to add corners (right angles snap; Shift for free angles) · click the first corner or press Enter to close")
       :`${tap} to place the first corner. Points snap to a 0.5 m grid.`,
-    door:`${tap} a wall to add a 0.9 m door · ${tap.toLowerCase()} a door to remove it`,
+    door:S.doorKind==="exit"?`${tap} a door to mark it as an emergency exit, or to unmark it · ${tap.toLowerCase()} a wall to add an exit door`
+      :`${tap} a wall to add a 0.9 m door · ${tap.toLowerCase()} a door to remove it`,
     move:S.moveKeys?.length?`${S.moveKeys.length} room${S.moveKeys.length===1?"":"s"} picked · drag to move${S.showCampus?" (corners snap to the building outline)":""} · turn them here`
       :`${tap} or drag a room to move it with every room joined to it, such as an imported walk`}[S.mode]
     +(S.mode==="draw"&&!n&&S.showCampus&&S.campus?" Corners snap to the building outline.":"");
-  const acts = S.mode==="draw" && n ? `<span class="acts"><button class="btn sm" data-d="undo">Undo</button><button class="btn sm primary" data-d="done" ${n<3?"disabled":""}>Finish room</button><button class="btn sm" data-d="cancel">Cancel</button></span>`
+  const acts = S.mode==="door" && !S.readOnly ? `<span class="acts"><span class="seg"><button data-dk="door" aria-pressed="${S.doorKind!=="exit"}">Door</button><button data-dk="exit" aria-pressed="${S.doorKind==="exit"}">Emergency exit</button></span></span>`
+    : S.mode==="draw" && n ? `<span class="acts"><button class="btn sm" data-d="undo">Undo</button><button class="btn sm primary" data-d="done" ${n<3?"disabled":""}>Finish room</button><button class="btn sm" data-d="cancel">Cancel</button></span>`
     : S.mode==="move" && S.moveKeys?.length && !S.readOnly ? `<span class="acts"><button class="btn sm" data-m="-90" title="Turn 90° anticlockwise">⟲ 90°</button><button class="btn sm" data-m="-5">⟲ 5°</button><button class="btn sm" data-m="5">⟳ 5°</button><button class="btn sm" data-m="90" title="Turn 90° clockwise">⟳ 90°</button>${S.showCampus&&S.campus?`<button class="btn sm primary" data-m="align" title="Turn to line up with the building's walls">Line up with building</button>`:""}</span>` : "";
   const key=h+acts; if (key===hintKey) return; hintKey=key;
   const el=$("#hint"); el.innerHTML=`<span>${esc(h)}</span>${acts}`;
@@ -1105,10 +1636,12 @@ function renderHint(){
     if (d==="undo") S.draft.pop(); if (d==="cancel") S.draft=[]; S.cursor=null;
     if (d==="done" && S.draft.length>=3) return closeDraft(); renderPlan(); });
   el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>b.dataset.m==="align"?alignGroup():rotateGroup(+b.dataset.m));
+  el.querySelectorAll("[data-dk]").forEach(b=>b.onclick=()=>{ S.doorKind=b.dataset.dk; if(S.doorKind==="exit") toggleFac("exit",true); else renderPlan(); });
 }
 function renderLegend(){
   const l=$("#legend");
-  if (S.overlay==="coverage") l.innerHTML=COV_LABEL.map((t,i)=>`<span><i class="sw" style="background:var(${["--cov0","--cov1","--cov2","--cov3"][i]})"></i>${t}</span>`).join("");
+  if (S.fac.size) l.innerHTML=[...S.fac].map(c=>`<span><i class="sw" style="background:${FAC[c].color}"></i>${FAC[c].label} · ${facItems(c,S.floor).length}</span>`).join("");
+  else if (S.overlay==="coverage" && !S.nav) l.innerHTML=COV_LABEL.map((t,i)=>`<span><i class="sw" style="background:var(${["--cov0","--cov1","--cov2","--cov3"][i]})"></i>${t}</span>`).join("");
   else { const used=new Set(floorRooms(S.floor).map(r=>r.type)); l.innerHTML=Object.entries(TYPES).filter(([k])=>used.has(k)).map(([,t])=>`<span><i class="sw" style="background:var(${t.v})"></i>${t.label}</span>`).join(""); }
   l.hidden = !l.innerHTML;
 }
@@ -1175,10 +1708,12 @@ function tapAt(ev,t){
   }
   if (S.mode==="door"){
     const hit=t.dataset.door ? t.dataset.door.split(":") : nearestDoor(pt,TOUCH?.6:.35);
+    if (hit && S.doorKind==="exit"){ const r=roomByK(hit[0]), d=r.doors[+hit[1]];
+      if (d.exit){ delete d.exit; edit("Unmarked an emergency exit on "+r.id); } else { d.exit=true; edit("Marked an emergency exit on "+r.id); } return; }
     if (hit){ const r=roomByK(hit[0]); r.doors.splice(+hit[1],1); edit("Removed a door from "+r.id); return; }
     const he=nearestEdge(pt); if(!he) return;
     const r=roomByK(he.k), L=dist(...edgeOf(r.poly,he.e)); if (L<DOOR_W+.1){ toast("That wall is too short for a door."); return; }
-    const half=DOOR_W/2/L; r.doors.push({e:he.e,t:Math.max(half,Math.min(1-half,he.t)),w:DOOR_W}); edit("Added a door to "+r.id);
+    const half=DOOR_W/2/L, ex=S.doorKind==="exit"; r.doors.push({e:he.e,t:Math.max(half,Math.min(1-half,he.t)),w:DOOR_W,...(ex?{exit:true}:{})}); edit((ex?"Added an emergency exit to ":"Added a door to ")+r.id);
   }
 }
 function nearestDoor(pt,max){ let best=null,bd=max; floorRooms(S.floor).forEach(r=>r.doors.forEach((d,i)=>{ const c=doorCenter(r,d), dd=dist(pt,c); if(dd<bd){ bd=dd; best=[r.k,i]; } })); return best; }
@@ -1209,22 +1744,36 @@ function uniqueId(id){ let x=id,i=2; while(S.plan.rooms.some(r=>r.id===x)) x=id+
 function deleteRoom(k){ const r=roomByK(k); if(!r) return; S.plan.rooms=S.plan.rooms.filter(x=>x.k!==k); S.sel=null; edit("Deleted room "+r.id); }
 
 /* ---------- inspector ---------- */
-let delArm=false, lastInsp=null;
+let delArm=false, exArm=false, lastInsp=null;
 function setSheet(open){ S.sheet=open; $("#insp").classList.toggle("open",open); $("#sheetHandle").setAttribute("aria-expanded",String(open)); $("#sheetCue").textContent=open?"Close":"Details"; }
 $("#sheetHandle").onclick=()=>setSheet(!S.sheet);
+// A classroom, lab or office picked by a guest: just say it's there.
+function privateRoomPanel(el){
+  const r=roomByK(S.sel);
+  $("#sheetLabel").innerHTML=`<b>${PRIVATE}</b>L${r.floor}`;
+  el.innerHTML=`<h2>${PRIVATE}</h2>
+    <p class="small muted">Classrooms, labs and offices are only shown to students who are logged in. Guests can see public places like the library, auditoriums, toilets, stairs and lifts.</p>
+    <dl class="kv"><dt>Floor</dt><dd>${esc(floorName(r.floor))}</dd></dl>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm primary" id="pvLogin">Log in to see this room</button><button class="btn sm" id="rBack">← All places on L${S.floor}</button></div>`;
+  $("#pvLogin").onclick=()=>loginFor("see every room on the map");
+  $("#rBack").onclick=()=>{ S.sel=null; renderPlan(); };
+}
 function renderInspector(){
   if (S.nav) return renderDirections();
   const el=$("#inspector"), r=S.sel&&roomByK(S.sel), cov=coverage();
   const key=(r?r.k:"floor")+S.floor; if (key!==lastInsp){ lastInsp=key; el.scrollTop=0; }
+  if (r && hidden(r)) return privateRoomPanel(el);
   if (r) $("#sheetLabel").innerHTML=`<b>${esc(r.id)}</b>${esc(r.name||TYPES[r.type]?.label||"")}`;
   else { const n=floorRooms(S.floor).length, fl=S.plan.floors.find(f=>f.level===S.floor); $("#sheetLabel").innerHTML=`<b>L${S.floor}</b>${esc(fl?.name||"")} · ${n} room${n===1?"":"s"}`; }
   if (!r){
     const rs=floorRooms(S.floor).slice().sort((a,b)=>a.id.localeCompare(b.id)), fl=S.plan.floors.find(f=>f.level===S.floor);
+    const shown=rs.filter(r=>!hidden(r)), nHid=rs.length-shown.length;
     const tot=rs.reduce((s,r)=>s+area(r.poly),0), scanned=rs.filter(r=>cov[r.id]>0).length;
     const halls=S.readOnly?[]:rs.filter(r=>r.type==="other").map(r=>({r,g:shapeOf(r.poly)})).filter(h=>h.g.kind);
     el.innerHTML=`<h2>${esc(fl?.name||"Level "+S.floor)}</h2>
       ${S.readOnly?"":`<div class="row2" style="margin-bottom:10px"><div class="field"><label for="blk">Block</label><input id="blk" value="${esc(S.plan.block||"")}" maxlength="8"></div><div class="field"><label for="flName">Floor name</label><input id="flName" value="${esc(fl?.name||"")}" maxlength="40"></div></div>`}
       <dl class="kv"><dt>Rooms</dt><dd>${rs.length}</dd><dt>Floor area</dt><dd>${fmtArea(tot)}</dd><dt>Doors</dt><dd>${rs.reduce((s,r)=>s+r.doors.length,0)}</dd><dt>Rooms with scans</dt><dd>${scanned} / ${rs.length}</dd></dl>
+      ${facilitiesHTML(false)}
       <h3>On the map</h3>
       ${S.plan.geo?`<p class="small muted" style="margin:0 0 8px">Placed at ${S.plan.geo.lat.toFixed(5)}, ${S.plan.geo.lng.toFixed(5)}, turned ${S.plan.geo.rot}°. Directions can show GPS, and the GeoJSON export uses map coordinates.</p>`
         :`<p class="small muted" style="margin:0 0 8px">Not placed yet. Place the block on a real map so Directions can show GPS and the GeoJSON export lines up with map data.${S.showCampus&&S.campus&&mainBuilding()?" Until then the campus outline on the plan is lined up roughly, centred on the main building.":""}</p>`}
@@ -1235,9 +1784,14 @@ function renderInspector(){
       <ul class="small" style="margin:0 0 8px;padding-left:18px">${halls.map(h=>`<li><span class="mono">${esc(h.r.id)}</span>: ${TYPES[h.g.kind].label.toLowerCase()}, ${esc(hallNote(h.g))}</li>`).join("")}</ul>
       <button class="btn sm" id="markHalls">Mark as hallways</button>`:""}
       <h3>Rooms on this floor</h3>
-      ${rs.length?`<ul class="roomlist">${rs.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:`<p class="muted small">Nothing drawn yet.</p>`}
+      ${nHid?`<p class="small muted" style="margin:0 0 8px">${nHid} classroom${nHid===1?"":"s"} and office${nHid===1?"":"s"} on this floor ${nHid===1?"is":"are"} hidden. <button class="btn sm" data-login-rooms>Log in to see them</button></p>`:""}
+      ${shown.length?`<ul class="roomlist">${shown.map(r=>`<li><button data-k="${r.k}"><i class="sw" style="background:var(${(TYPES[r.type]||TYPES.other).v})"></i><span>${esc(r.name||TYPES[r.type]?.label)}<br><span class="mono">${esc(r.id)}</span></span><span class="mono">${area(r.poly).toFixed(0)} m²</span></button></li>`).join("")}</ul>`:nHid?"":`<p class="muted small">Nothing drawn yet.</p>`}
+      ${S.readOnly?"":`<h3>Sample data</h3><p class="small muted" style="margin:0 0 8px">Replace the whole plan with mock data for the main building, Levels 3–4 (Blocks A, B and C), placed on the map, with stairwells and lifts. The current plan stays in History.</p>
+      <button class="btn sm" id="loadEx">${exArm?"Confirm: replace the plan":"Load sample building"}</button>`}
       ${S.readOnly||S.plan.floors.length<2?"":`<h3>Floor</h3><button class="btn sm danger" id="delFloor">${delArm?"Confirm: delete L"+S.floor+" and its rooms":"Delete this floor"}</button>`}`;
     el.querySelectorAll(".roomlist button").forEach(b=>b.onclick=()=>{ S.sel=b.dataset.k; renderPlan(); });
+    el.querySelectorAll("[data-login-rooms]").forEach(b=>b.onclick=()=>loginFor("see every room on the map"));
+    bindFacilities(el,false);
     const mh=$("#markHalls"); if(mh) mh.onclick=()=>{ halls.forEach(h=>{ h.r.type=h.g.kind; });
       edit(`Marked ${halls.map(h=>h.r.id).join(", ")} as hallways`); toast(`Marked ${halls.length} room${halls.length===1?"":"s"} as hallways. Change any type that's wrong in the room's panel.`); };
     const mp=$("#mapPlace"); if(mp) mp.onclick=openMapDlg;
@@ -1245,11 +1799,13 @@ function renderInspector(){
     const wi=$("#walkImport"), wf=$("#walkIn"); if(wi){ wi.onclick=()=>wf.click(); wf.onchange=()=>{ const f=wf.files[0]; wf.value=""; if(f) importWalk(f); }; }
     const blk=$("#blk"); if(blk) blk.onchange=()=>{ S.plan.block=blk.value.trim().toUpperCase(); edit("Renamed block to "+S.plan.block); };
     const fn=$("#flName"); if(fn) fn.onchange=()=>{ fl.name=fn.value.trim()||"Level "+S.floor; edit("Renamed L"+S.floor); };
+    const le=$("#loadEx"); if(le) le.onclick=()=>{ if(!exArm){exArm=true;renderInspector();return;} exArm=false;
+      S.plan={...examplePlan(),rev:S.plan.rev}; S.floor=3; S.sel=null; edit("Loaded the sample building (main building, Levels 3–4)"); fit(); };
     const df=$("#delFloor"); if(df) df.onclick=()=>{ if(!delArm){delArm=true;renderInspector();return;} delArm=false;
       const lv=S.floor; S.plan.floors=S.plan.floors.filter(f=>f.level!==lv); S.plan.rooms=S.plan.rooms.filter(r=>r.floor!==lv); S.floor=S.plan.floors[0].level; edit("Deleted floor L"+lv); fit(); };
     return;
   }
-  delArm=false;
+  delArm=false; exArm=false;
   const dup=S.plan.rooms.some(x=>x!==r && x.id===r.id), n=cov[r.id]||0, ro=S.readOnly?"disabled":"";
   const g0=r.type==="other"?shapeOf(r.poly):null, hint=g0&&g0.kind?g0:null;
   el.innerHTML=`<h2>${esc(r.id)}</h2>
@@ -1257,6 +1813,8 @@ function renderInspector(){
     <div class="field"><label for="rName">Name</label><input id="rName" value="${esc(r.name)}" maxlength="60" placeholder="e.g. Lecture Theatre 4" ${ro}></div>
     <div class="row2"><div class="field"><label for="rType">Type</label><select id="rType" ${ro}>${Object.entries(TYPES).map(([k,t])=>`<option value="${k}" ${k===r.type?"selected":""}>${t.label}</option>`).join("")}</select></div>
     <div class="field"><label for="rH">Ceiling height (m)</label><input id="rH" type="number" min="2.2" max="12" step="0.1" value="${r.height}" ${ro}></div></div>
+    <label class="consent" style="margin:-2px 0 10px"><input type="checkbox" id="rPub" ${isPublic(r)?"checked":""} ${ro}><span>Public place: guests who aren't logged in can see its name and number${typeof r.public==="boolean"?"":" (set from its type and name)"}</span></label>
+    ${isHall(r)?`<label class="consent" style="margin:-2px 0 10px"><input type="checkbox" id="rOpen" ${r.open?"checked":""} ${ro}><span>Open plan: no walls or doors where it meets a corridor or another open-plan lobby</span></label>`:""}
     ${hint?`<p class="small muted" style="margin:-4px 0 10px">Looks like a ${TYPES[hint.kind].label.toLowerCase()} from its shape: ${esc(hallNote(hint))}. ${ro?"":`<button class="btn sm" id="rHall">Set as ${TYPES[hint.kind].label.toLowerCase()}</button>`}</p>`:""}
     <dl class="kv"><dt>Area</dt><dd>${fmtArea(area(r.poly))}</dd><dt>Corners</dt><dd>${r.poly.length}</dd><dt>Doors</dt><dd>${r.doors.length}</dd><dt>Floor</dt><dd>L${r.floor}</dd>
       <dt>Coverage</dt><dd><span class="pill ${n>=3?"ok":n>=1?"warn":"idle"}">${COV_LABEL[covLevel(n)]}</span></dd></dl>
@@ -1272,7 +1830,9 @@ function renderInspector(){
   const bind=(id,fn)=>{ const e=$(id); if(e) e.onchange=fn; };
   bind("#rId",e=>{ const v=e.target.value.trim(); if(!v) return renderInspector(); const old=r.id; r.id=v; edit(`Renamed ${old} to ${v}`); });
   bind("#rName",e=>{ r.name=e.target.value.trim(); edit("Renamed "+r.id); });
-  bind("#rType",e=>{ r.type=e.target.value; if(r.type!=="stairs") delete r.stair; edit(`Set ${r.id} to ${TYPES[r.type].label}`); });
+  bind("#rPub",e=>{ const on=e.target.checked; delete r.public; if(isPublic(r)!==on) r.public=on; edit(`${on?"Showed":"Hid"} ${r.id} ${on?"to":"from"} guests`); });
+  bind("#rOpen",e=>{ if(e.target.checked){ r.open=true; const n=dropOpenDoors(floorRooms(r.floor)); edit(`Opened ${r.id} to the corridors`+(n?`, removing ${n} door${n===1?"":"s"}`:"")); } else { delete r.open; edit(`Walled ${r.id} off from the corridors. Add doors to it in Doors mode`); } });
+  bind("#rType",e=>{ r.type=e.target.value; if(r.type!=="stairs") delete r.stair; if(!isHall(r)) delete r.open; edit(`Set ${r.id} to ${TYPES[r.type].label}`); });
   bind("#sKind",e=>{ r.stair={...stairOf(r),kind:e.target.value}; edit(`Set ${r.id} to ${STAIR_KINDS[r.stair.kind].toLowerCase()}`); });
   const sT=$("#sTurn"); if(sT) sT.onclick=()=>{ const st=stairOf(r); r.stair={...st,dir:(st.dir+1)%4}; edit("Turned the stair in "+r.id); };
   const sM=$("#sFlip"); if(sM) sM.onclick=()=>{ const st=stairOf(r); r.stair={...st,mirror:!st.mirror}; edit("Mirrored the stair in "+r.id); };
@@ -1307,8 +1867,7 @@ function markerSvgFile(r){ const inner=qrSvg(markerText(r)).replace(/^<svg[^>]*>
   return `<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="100mm" viewBox="0 0 80 100"><rect width="80" height="100" fill="#fff"/><svg x="8" y="6" width="64" height="64" viewBox="-2 -2 ${n} ${n}">${inner}</svg><text x="40" y="82" font-family="monospace" font-size="9" text-anchor="middle">${esc(r.id)}</text><text x="40" y="93" font-family="sans-serif" font-size="5" text-anchor="middle">${esc(r.name||TYPES[r.type].label)} · Block ${esc(S.plan.block)} L${r.floor}</text></svg>`; }
 
 /* ---------- edits, saving, versions ---------- */
-function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll();
-  if (S.api && !S.meId && !S.askedName){ S.askedName=true; openProfile(); } }
+function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll(); }
 function planBody(){ return {block:S.plan.block, floors:S.plan.floors, rooms:S.plan.rooms, ...(S.plan.geo?{geo:S.plan.geo}:{})}; }
 function scheduleSave(note,delay=900){
   if (!S.pendingNote) S.pendingNote=note;
@@ -1347,7 +1906,7 @@ async function restore(v){
   if (restoreArm!==v.rev){ restoreArm=v.rev; renderHistory(); return; }
   restoreArm=null;
   let body=v.plan;
-  if (!body && S.api){ const res=await fetch("/api/versions?rev="+v.rev,{cache:"no-store"}).catch(()=>null);
+  if (!body && S.api){ const res=await fetch("/api/versions?rev="+v.rev,{headers:apiHeaders(),cache:"no-store"}).catch(()=>null);
     if (!res||!res.ok){ toast(res?(await apiError(res)).message:"Couldn't reach the server."); renderHistory(); return; } body=(await res.json()).plan; }
   const p=clone(body); S.plan={...p,rev:S.plan.rev}; S.sel=null;
   if (!S.plan.floors.some(f=>f.level===S.floor)) S.floor=S.plan.floors[0]?.level??1;
@@ -1376,7 +1935,9 @@ function init3D(){
   (function loop(){ requestAnimationFrame(loop); if(S.tab!=="3d") return; ctl.update(); renderer.render(scene,cam); })();
 }
 function resize3D(){ if(!T) return; const w=T.host.clientWidth,h=T.host.clientHeight; if(!w||!h) return; T.renderer.setSize(w,h,false); T.cam.aspect=w/h; T.cam.updateProjectionMatrix(); }
+const meshId = r => rid(r) || "room-"+r.k;
 function showInfo3D(r){ const cov=r?coverage()[r.id]||0:0;
+  if (hidden(r)){ $("#threeInfo").innerHTML=`<b>${PRIVATE}</b><br><span class="muted small">L${r.floor} · Log in to see its name and details</span>`; return; }
   $("#threeInfo").innerHTML=r?`<b class="mono">${esc(r.id)}</b> · ${esc(r.name||TYPES[r.type].label)}<br><span class="muted small">${TYPES[r.type].label} · L${r.floor} · ${fmtArea(area(r.poly))} · ${r.doors.length} door${r.doors.length===1?"":"s"} · ${COV_LABEL[covLevel(cov)]}</span>`:(TOUCH?"Drag to orbit · pinch to zoom · tap a room":"Drag to orbit · scroll to zoom · click a room"); }
 function build3D(){
   if (!T) return;
@@ -1385,7 +1946,7 @@ function build3D(){
   T.picks=[]; const cov=coverage(), wallCol=new THREE.Color(css("--ink")), sel=S.sel;
   const floors=S.scope==="one"?[S.floor]:[...new Set(S.plan.floors.map(f=>f.level))];
   const minL=Math.min(...S.plan.floors.map(f=>f.level));
-  let bb=new THREE.Box3();
+  let bb=new THREE.Box3(); const OM=new Map(), om=f=>OM.get(f)||OM.set(f,openMap(floorRooms(f))).get(f);
   S.plan.rooms.filter(r=>floors.includes(r.floor)).forEach(r=>{
     const base=(r.floor-minL)*FLOOR_H, dim = S.scope==="all" && r.floor!==S.floor;
     const L=stairLayout(r), lowest=r.floor===minL;
@@ -1393,7 +1954,7 @@ function build3D(){
     if (!L || lowest){   // stairwells and lift shafts stay open above the lowest floor
       const shape=new THREE.Shape(r.poly.map(([x,y])=>new THREE.Vector2(x,y)));
       const slab=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.12,bevelEnabled:false}),fm);
-      slab.rotation.x=Math.PI/2; slab.position.y=base+.12; slab.userData.k=r.k; slab.name=r.id+"_floor"; T.group.add(slab); T.picks.push(slab);
+      slab.rotation.x=Math.PI/2; slab.position.y=base+.12; slab.userData.k=r.k; slab.name=meshId(r)+"_floor"; T.group.add(slab); T.picks.push(slab);
     }
     const wm=new THREE.MeshLambertMaterial({color:r.k===sel?new THREE.Color(css("--accent")):wallCol,transparent:true,opacity:dim?.18:.82});
     const wallH=L&&L.up?Math.max(r.height,L.rise):r.height;   // the shaft walls run up to the next floor
@@ -1403,12 +1964,13 @@ function build3D(){
       stair3D(r,L,base+.12,sm,wm,{floorLanding:!lowest,topLanding:!above,car:lowest}).forEach(m=>{ m.userData.k=r.k; T.group.add(m); T.picks.push(m); });
       if (L.up){ const p=L.P(0,0); bb.expandByPoint(new THREE.Vector3(p[0],base+L.rise,p[1])); }
     }
-    r.poly.forEach((_,e)=>wallPieces(r,e,wallH).forEach(([s0,s1,z0,z1])=>{
+    const sp=om(r.floor).spans.get(r.k);
+    r.poly.forEach((_,e)=>wallPieces(r,e,wallH,sp?.[e]).forEach(([s0,s1,z0,z1])=>{
       const [a,b]=edgeOf(r.poly,e), n=inwardNormal(r,e), L=dist(a,b);
       const p0=lerp(a,b,s0/L), p1=lerp(a,b,s1/L), len=s1-s0; if(len<.02) return;
       const g=new THREE.BoxGeometry(len,z1-z0,WALL_T), mesh=new THREE.Mesh(g,wm.clone());
       mesh.position.set((p0[0]+p1[0])/2+n[0]*WALL_T/2, base+.12+(z0+z1)/2, (p0[1]+p1[1])/2+n[1]*WALL_T/2);
-      mesh.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]); mesh.name=r.id+"_wall"; T.group.add(mesh);
+      mesh.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]); mesh.name=meshId(r)+"_wall"; T.group.add(mesh);
     }));
     r.poly.forEach(([x,y])=>bb.expandByPoint(new THREE.Vector3(x,base+r.height,y)));
   });
@@ -1441,14 +2003,14 @@ function drawCampus3D(){
 }
 /* stair geometry in world space: steps, landings and a balustrade along the well (y0 = top of this floor's slab) */
 function stair3D(r,L,y0,mat,railMat,o){
-  const out=[], P=L.P, alongX=L.D[0]!==0;
+  const out=[], P=L.P, yaw=-Math.atan2(L.D[1],L.D[0]);   // boxes are sized along the flight (u) and across it (v), then turned to match
   const box=(u0,u1,v0,v1,z0,z1,name)=>{ const du=u1-u0, dv=v1-v0, dz=z1-z0; if(du<.01||dv<.01||dz<.005) return;
-    const c=P((u0+u1)/2,(v0+v1)/2), m=new THREE.Mesh(new THREE.BoxGeometry(alongX?du:dv,dz,alongX?dv:du),mat);
-    m.position.set(c[0],y0+z0+dz/2,c[1]); m.name=r.id+"_"+name; out.push(m); };
+    const c=P((u0+u1)/2,(v0+v1)/2), m=new THREE.Mesh(new THREE.BoxGeometry(du,dz,dv),mat);
+    m.position.set(c[0],y0+z0+dz/2,c[1]); m.rotation.y=yaw; m.name=meshId(r)+"_"+name; out.push(m); };
   if (L.kind==="lift"){
     if (o.car){ const cm=new THREE.MeshLambertMaterial({color:new THREE.Color(css("--accent")),transparent:true,opacity:.35});
-      const c=P(L.Lu/2,L.Wv/2), m=new THREE.Mesh(new THREE.BoxGeometry(alongX?L.Lu-.3:L.Wv-.3,2.3,alongX?L.Wv-.3:L.Lu-.3),cm);
-      m.position.set(c[0],y0+1.15,c[1]); m.name=r.id+"_lift_car"; out.push(m); }
+      const c=P(L.Lu/2,L.Wv/2), m=new THREE.Mesh(new THREE.BoxGeometry(L.Lu-.3,2.3,L.Wv-.3),cm);
+      m.position.set(c[0],y0+1.15,c[1]); m.rotation.y=yaw; m.name=meshId(r)+"_lift_car"; out.push(m); }
     return out;
   }
   const fl=L.landings.find(l=>l.role==="floor");
@@ -1464,19 +2026,20 @@ function stair3D(r,L,y0,mat,railMat,o){
     const x=B3.clone().sub(A3), len=x.length(); x.normalize();
     const z=new THREE.Vector3(L.V[0],0,L.V[1]).normalize(), y=new THREE.Vector3().crossVectors(z,x);
     const m=new THREE.Mesh(new THREE.BoxGeometry(len,.9,.04),railMat);
-    m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,y,z)); m.position.copy(A3).add(B3).multiplyScalar(.5); m.name=r.id+`_flight${fi+1}_rail`; out.push(m);
+    m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,y,z)); m.position.copy(A3).add(B3).multiplyScalar(.5); m.name=meshId(r)+`_flight${fi+1}_rail`; out.push(m);
   });
   return out;
 }
-/* split an edge into wall boxes, leaving openings for this room's doors and any other room's door on the same wall line */
-function wallPieces(r,e,h=r.height){
-  const [a,b]=edgeOf(r.poly,e), L=dist(a,b), gaps=[];
+/* split an edge into wall boxes, leaving openings for this room's doors and any other room's door on the same wall line,
+   and no wall at all along open stretches (spans, from openMap) */
+function wallPieces(r,e,h=r.height,spans=[]){
+  const [a,b]=edgeOf(r.poly,e), L=dist(a,b), gaps=spans.map(([t0,t1])=>[t0*L,t1*L,true]);
   r.doors.filter(d=>d.e===e).forEach(d=>gaps.push([d.t*L-d.w/2,d.t*L+d.w/2]));
   floorRooms(r.floor).forEach(o=>{ if(o===r) return; o.doors.forEach(d=>{ const c=doorCenter(o,d), t=projT(c,[a,b]), p=lerp(a,b,t);
     const [oa,ob]=edgeOf(o.poly,d.e), par=Math.abs(((b[0]-a[0])*(ob[1]-oa[1])-(b[1]-a[1])*(ob[0]-oa[0]))/((L||1)*(dist(oa,ob)||1)));
     if(dist(c,p)<.15 && par<.05 && t>0 && t<1) gaps.push([t*L-d.w/2,t*L+d.w/2]); }); });
   gaps.sort((x,y)=>x[0]-y[0]); const out=[]; let s=0;
-  gaps.forEach(([g0,g1])=>{ g0=Math.max(0,g0); g1=Math.min(L,g1); if(g0>s) out.push([s,g0,0,h]); out.push([g0,g1,DOOR_H,h]); s=Math.max(s,g1); });
+  gaps.forEach(([g0,g1,open])=>{ g0=Math.max(0,g0); g1=Math.min(L,g1); if(g0>s) out.push([s,g0,0,h]); if(!open && g1>s) out.push([Math.max(s,g0),g1,DOOR_H,h]); s=Math.max(s,g1); });
   if (s<L) out.push([s,L,0,h]); return out;
 }
 $("#floorScope").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.scope=b.dataset.scope; $("#floorScope").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); if(T){T.framed=false; build3D();} });
@@ -1517,7 +2080,7 @@ function geojson(){
     ...(g?{placement:{...g,note:"Placed on the map by hand: plan point (x, y) in metres sits at (lat, lng) and the plan is turned rot degrees clockwise."}}
       :{crs_note:"Local building coordinates in metres (x east, y south of the block origin). Place the block on the map (Floor plan tab) to export real map coordinates."+(anchor?" See anchor for a rough GPS position of the block.":"")}),
     ...(anchor?{anchor}:{}),
-    features:S.plan.rooms.map(r=>({type:"Feature",properties:{id:r.id,name:r.name,type:r.type,type_label:TYPES[r.type]?.label,block:S.plan.block,floor:r.floor,
+    features:S.plan.rooms.map(r=>({type:"Feature",properties:{...(hidden(r)?{id:"",name:"",type:"other",type_label:PRIVATE}:{id:r.id,name:r.name,type:r.type,type_label:TYPES[r.type]?.label}),block:S.plan.block,floor:r.floor,
       area_m2:+area(r.poly).toFixed(2),ceiling_m:r.height,doors:r.doors.length,sessions:coverage()[r.id]||0,...stairProps(r)},
       geometry:{type:"Polygon",coordinates:[[...r.poly,r.poly[0]].map(pt)]}})).concat(campusFeatures())},null,2);
 }
@@ -2265,31 +2828,46 @@ const browserDownloads={ async save({filename,data}){
 } };
 
 /* ---------- server backend (the Vercel deploy with a Postgres database; see api/) ---------- */
-const NAME_KEY="apu-name", EDITKEY_KEY="apu-edit-key";
+const EDITKEY_KEY="apu-edit-key";
 const lsGet=k=>{ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } };
 const lsSet=(k,v)=>{ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(e){} };
-function apiHeaders(){ const h={"content-type":"application/json"}, k=lsGet(EDITKEY_KEY); if(k) h["x-edit-key"]=k; return h; }
+function apiHeaders(){ const h={"content-type":"application/json"}, k=lsGet(EDITKEY_KEY); if(k) h["x-edit-key"]=k;
+  if (S.auth?.token) h.authorization="Bearer "+S.auth.token; return h; }
 const apiSend=(method,path,body)=>fetch(path,{method,headers:apiHeaders(),body:body&&JSON.stringify(body),cache:"no-store"});
-async function apiError(res){ const d=await res.json().catch(()=>({})); return Object.assign(new Error(d.message||"Request failed"),{api:true,status:res.status}); }
+async function apiError(res){ const d=await res.json().catch(()=>({}));
+  if (res.status===401 && d.error==="login") setTimeout(()=>signOut("Your login has ended. Please log in again.")); return Object.assign(new Error(d.message||"Request failed"),{api:true,status:res.status}); }
 
 async function connectApi(h){
-  S.api=true; S.meId=lsGet(NAME_KEY)||null; S.editKey=true; S.editKeySet=h.editKeySet!==false; S.maxVersions=200; S.photoStore=!!h.photos; S.videoStore=!!h.videos;
-  S.readOnly=!h.keyOk;     // only editors (with the edit key) can change the plan; everyone can view and contribute
+  S.api=true; S.meId=signedIn()?S.auth.studentId:null; S.editKey=true;
+  S.authServer=!!h.accounts; authReady(S.authServer); checkLogin(); S.editKeySet=h.editKeySet!==false; S.maxVersions=200; S.photoStore=!!h.photos; S.videoStore=!!h.videos;
+  S.keyOk=!!h.keyOk; S.readOnly=!(S.keyOk&&signedIn());     // only logged-in editors (with the edit key) change the plan
   if (S.readOnly) setMode("select");
   renderMe(); setSync("saving","Loading shared plan…");
   await poll(true);
   setInterval(()=>poll(),4000);
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) poll(true); });
 }
+// Is the saved login still good on the server? A browser-only account can't be used once the server keeps accounts.
+async function checkLogin(){
+  if (!S.auth) return;
+  if (S.authServer && (S.auth.local || !S.auth.token)){ signOut("Please log in with your student account."); return; }
+  if (!S.auth.token) return;
+  const r=await fetch("/api/auth",{headers:{authorization:"Bearer "+S.auth.token},cache:"no-store"}).catch(()=>null);
+  if (r && r.status===401) signOut("Your login has ended. Please log in again.");
+}
 let polling=false;
 async function poll(force){
   if (polling || (!force && document.hidden)) return;
   polling=true;
   try{
-    const res=await fetch("/api/state",{headers:S.etag?{"if-none-match":S.etag}:{},cache:"no-store"});
+    const tok=S.auth?.token||"", h=tok?{authorization:"Bearer "+tok}:{};   // guests get classrooms without their details
+    if (S.etag) h["if-none-match"]=S.etag;
+    const res=await fetch("/api/state",{headers:h,cache:"no-store"});
     if (res.status===304) return;
     if (!res.ok) throw await apiError(res);
-    const d=await res.json(); S.etag=res.headers.get("etag");
+    const d=await res.json();
+    if ((S.auth?.token||"")!==tok){ S.etag=null; S.refetch=true; setTimeout(()=>poll(true)); return; }   // logged in or out meanwhile
+    S.etag=res.headers.get("etag");
     const sessKey=s=>s.map(x=>x._id+(x.recon?x.recon.status+x.recon.at:"")).join(), sessChanged=sessKey(d.sessions||[])!==sessKey(S.sessions);
     S.loaded=true; S.sessions=d.sessions||[]; S.versions=d.versions||[]; S.worker=d.worker||null;
     const adopted=applyRemote(d.plan);
@@ -2302,8 +2880,11 @@ async function poll(force){
 function applyRemote(p){
   if (S.saveTimer || S.saving || S.conflict) return false;   // our own edit is on its way
   if (!p){ if(!S.example) setSync("saved","Saved"); else setSync("saved","Connected"); return false; }
-  if (!S.example && p.rev===S.plan.rev){ setSync("saved","Saved"); return false; }
-  const first=S.example; adoptPlan(p); setSync("saved","Saved"); renderAll(); if(first) fit();
+  const again=S.refetch; S.refetch=false;
+  if (!S.example && p.rev===S.plan.rev && !again){ setSync("saved","Saved"); return false; }
+  const first=S.example; adoptPlan(p);
+  S.readOnly=!(S.keyOk&&signedIn())||planIsPartial(); if(S.readOnly) setMode("select");
+  setSync("saved","Saved"); renderAll(); if(first) fit();
   return true;
 }
 /* Three-way merge by room key against the plan we last synced (S.base). Rooms only one side changed merge cleanly;
@@ -2329,6 +2910,7 @@ function applyMerged(plan,theirs){
   renderAll();
 }
 async function commitApi(note){
+  if (planIsPartial()){ S.failedNote=note; setSync("error","Not saved"); toast("The full plan is still loading, so that change wasn't saved. Try again in a moment."); S.refetch=true; poll(true); return; }
   S.saving=true; setSync("saving","Saving…");
   try{
     const body=clone(planBody());
@@ -2338,6 +2920,7 @@ async function commitApi(note){
       if (m && !m.clash.length){ applyMerged(m.plan,t); toast(`Merged with ${t.by||"another contributor"}'s changes (r${t.rev}).`); return await commitApi(note); }
       S.conflict={note,theirs:t,merged:m&&m.plan,clash:m?m.clash:[]}; setSync("error","Not saved"); renderBanner(); return;
     }
+    if (res.status===401 && (await res.clone().json().catch(()=>({}))).error==="login"){ S.failedNote=note; setSync("error","Not saved"); signOut("Your login has ended. Log in again to save your change."); return; }
     if (res.status===401||res.status===503){ S.failedNote=note; S.readOnly=true; setSync("error","View only"); toast(res.status===503?"Editing is turned off on this deployment, so that change wasn't saved.":"The edit key is missing or wrong, so that change wasn't saved."); renderAll(); openProfile(); return; }
     if (!res.ok){ const e=await apiError(res); S.failedNote=note; setSync("error","Not saved"); toast(e.message); return; }
     const d=await res.json(); S.plan.rev=d.rev; S.lastWritten=d.rev; S.base=body; S.failedNote=""; setSync("saved","Saved");
@@ -2355,29 +2938,32 @@ function conflictBanner(b){
   $("#cfTheirs").onclick=()=>{ S.conflict=null; if(t) adoptPlan(t); setSync("saved","Saved"); renderAll(); fit(); toast(`Loaded r${t?.rev}. Your unsaved change was discarded.`); };
 }
 function renderMe(){
-  if (!S.api) return;
   const m=$("#me"); m.hidden=false;
-  m.innerHTML=`<button type="button" id="meBtn"${(S.meId||"").length>9?' class="long"':""} title="Change your name${S.editKey?" or edit key":""}"><span>${S.meId?esc(S.meId):"Set your name"}</span><span class="avatar"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11.5" r="6"/><path d="M5 27c1.5-6 6-8.5 11-8.5s9.5 2.5 11 8.5z"/></svg></span></button>`;
-  $("#meBtn").onclick=openProfile;
+  const who=signedIn()?S.auth.studentId:"";
+  m.innerHTML=`<button type="button" id="meBtn"${who.length>9?' class="long"':""} title="${who?"Your account":"Log in or sign up"}"><span>${who?esc(who):"Log in"}</span><span class="avatar"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11.5" r="6"/><path d="M5 27c1.5-6 6-8.5 11-8.5s9.5 2.5 11 8.5z"/></svg></span></button>`;
+  $("#meBtn").onclick=()=>{ if(signedIn()) return openProfile(); loginFor(""); };
 }
 function openProfile(){
   const d=$("#profile"); if(!d.showModal) return;
-  $("#profName").value=S.meId||""; $("#profKeyField").hidden=!S.editKey; $("#profKey").value=lsGet(EDITKEY_KEY); $("#profErr").hidden=true;
+  const a=signedIn()?S.auth:null, end=a&&new Date(a.exp).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+  $("#profWho").innerHTML=a?`Logged in as <b>${esc(a.studentId)}</b> (${esc(a.email)}). Your login ends at ${esc(end)}.`:"You're not logged in.";
+  $("#profOut").hidden=!a; $("#profSave").textContent=S.editKey?"Save":"Close";
+  $("#profKeyField").hidden=!S.editKey; $("#profKey").value=lsGet(EDITKEY_KEY); $("#profErr").hidden=true;
   $("#profKeyNote").textContent=S.editKeySet?"Leave blank to view and contribute. Editors get the key from whoever runs this deployment.":"Editing is turned off until EDIT_KEY is set on the server. You can still view and contribute.";
   if (!d.open) d.showModal();
 }
 $("#profCancel").onclick=()=>$("#profile").close();
+$("#profOut").onclick=()=>signOut("Logged out.");
 $("#profForm").onsubmit=async e=>{
   e.preventDefault();
-  const name=$("#profName").value.trim().slice(0,60); lsSet(NAME_KEY,name); S.meId=name||null;
   if (S.editKey){
     lsSet(EDITKEY_KEY,$("#profKey").value);
     const h=await fetch("/api/health",{headers:apiHeaders(),cache:"no-store"}).then(r=>r.json()).catch(()=>null);
     const key=$("#profKey").value;
     if (h) S.editKeySet=h.editKeySet!==false;
     if (!h || (key && !h.keyOk)){ const er=$("#profErr"); er.hidden=false; er.textContent=!h?"Couldn't reach the server to check the key.":!S.editKeySet?"Editing is turned off on this deployment (EDIT_KEY isn't set).":"That edit key isn't right."; S.readOnly=true; setMode("select"); renderMe(); renderAll(); return; }
-    S.readOnly=!h.keyOk; if (S.readOnly) setMode("select");
-    if (!S.readOnly) toast("Signed in as an editor.");
+    S.keyOk=!!h.keyOk; S.readOnly=!(S.keyOk&&signedIn()); if (S.readOnly) setMode("select");
+    if (!S.readOnly) toast("Signed in as an editor."); else if (S.keyOk) toast("Edit key saved. Log in to edit the plan.");
   }
   $("#profile").close(); renderMe(); renderAll();
   if (S.failedNote && !S.readOnly){ const n=S.failedNote; S.failedNote=""; scheduleSave(n,0); }
@@ -2396,7 +2982,7 @@ function roomPoint(r){ const c=centroid(r.poly); if(inside(c,r.poly)) return c;
   const p=r.poly; for(let i=1;i<p.length-1;i++){ const q=centroid([p[0],p[i],p[i+1]]); if(inside(q,p)) return q; }
   return c; }
 function clearPath(a,b,poly){ for(let i=1;i<12;i++) if(!inside(lerp(a,b,i/12),poly)) return false; return true; }
-const roomName = r => r ? (r.name || TYPES[r.type]?.label || r.id) : "";
+const roomName = r => r ? (hidden(r) ? PRIVATE : r.name || TYPES[r.type]?.label || r.id) : "";
 const floorName = lv => S.plan.floors.find(f=>f.level===lv)?.name || "Level "+lv;
 
 function navGraph(stepFree){
@@ -2414,6 +3000,10 @@ function navGraph(stepFree){
     link(ia,dn,dist(N[ia].p,c)); link(dn,ib,dist(c,N[ib].p));
     inRoom.get(r.k).push(ia); inRoom.get(o.k).push(ib); doors.push({a:r.k,b:o.k,c,node:dn});
   }));
+  // open-plan lobbies: a crossing every 3 m or so along each opening, marked open so directions don't say "door"
+  [...new Set(rooms.map(r=>r.floor))].forEach(f=>openMap(rooms.filter(r=>r.floor===f)).segs.forEach(sg=>{
+    const m=Math.max(1,Math.round(dist(sg.p0,sg.p1)/3));   // one point on the line, walked to straight from either room
+    for (let i=0;i<m;i++){ const dn=add(lerp(sg.p0,sg.p1,(i+.5)/m),f,{door:true,open:true,a:sg.a,b:sg.b}); inRoom.get(sg.a).push(dn); inRoom.get(sg.b).push(dn); } }));
   rooms.forEach(r=>{ const p=r.poly, s=Math.sign(signed(p))||1;   // inside corners of L-shaped rooms
     p.forEach((v,i)=>{ const j=(i+p.length-1)%p.length, a=p[j], b=p[(i+1)%p.length];
       if (((v[0]-a[0])*(b[1]-v[1])-(v[1]-a[1])*(b[0]-v[0]))*s>=0) return;
@@ -2454,7 +3044,8 @@ function describeRoute(G,path,via,from,to,opt){
   const P=i=>G.N[path[i]], legs=[]; let leg={k:P(0).room||null,f:P(0).f,pts:[P(0).p]};
   for (let i=1;i<path.length;i++){ const n=P(i), e=via[path[i]];
     if (e.via){ legs.push(leg); legs.push({move:e.via,from:P(i-1).f,to:n.f}); leg={k:n.room,f:n.f,pts:[n.p]}; continue; }
-    if (n.door){ leg.pts.push(n.p); legs.push(leg); leg={k:null,f:n.f,pts:[n.p]}; continue; }
+    if (leg.k==null && e.room) leg.k=e.room;   // a room crossed between two openings has only their points
+    if (n.door){ leg.pts.push(n.p); leg.outOpen=!!n.open; legs.push(leg); leg={k:null,f:n.f,pts:[n.p]}; continue; }
     if (leg.k==null) leg.k=n.room;
     leg.pts.push(n.p);
   }
@@ -2477,13 +3068,19 @@ function describeRoute(G,path,via,from,to,opt){
       say(`Leave ${B(r)} through the door${d>5?`, ${metres(d)} away`:""}.`, l.f, pts[0]);
       continue;
     } else if (i===0 || (legs[i-1] && !legs[i-1].move)){
-      // walked in through a door at pts[0]: which way to turn, how far, any corners, then the door out
-      const inner=pts.slice(1, leavesBy?-1:undefined), first=inner.length>1?turnOf(heading(pts[0],pts[1]),heading(inner[0],inner[1])):"straight";
+      // walked in at pts[0]: which way to turn, how far, any corners, then the way out. Through a door, the turn is
+      // taken just inside it; through an opening, from the way we were already walking.
+      const open=i>0 && legs[i-1].outOpen, q=open&&legs[i-1].pts;
+      const inner=pts.slice(open?0:1, leavesBy&&!l.outOpen?-1:undefined);   // out through an opening: walk right up to it
+      const first=open?(pts.length>1?turnOf(heading(q[q.length-2],q[q.length-1]),heading(pts[0],pts[1])):"straight")
+        :inner.length>1?turnOf(heading(pts[0],pts[1]),heading(inner[0],inner[1])):"straight";
       const runs=[]; let run=0;
       for (let j=1;j<inner.length;j++){ run+=dist(inner[j-1],inner[j]);
         if (j<inner.length-1){ const t=turnOf(heading(inner[j-1],inner[j]),heading(inner[j],inner[j+1])); if(t!=="straight"){ runs.push({d:run,t,at:inner[j]}); run=0; } } }
       runs.push({d:run});
-      const lead = i===0 ? `Start at the door of <b>${esc(roomName(from))}</b> and walk` : first==="straight" ? `Go straight into ${B(r)} and walk` : first==="back" ? `Turn around in ${B(r)} and walk` : `Turn ${first} into ${B(r)} and walk`;
+      const lead = i===0 ? `Start at the door of <b>${esc(roomName(from))}</b> and walk`
+        : open ? (first==="straight" ? `Carry on into ${B(r)} and walk` : first==="back" ? `Turn around into ${B(r)} and walk` : `Turn ${first} into ${B(r)} and walk`)
+        : first==="straight" ? `Go straight into ${B(r)} and walk` : first==="back" ? `Turn around in ${B(r)} and walk` : `Turn ${first} into ${B(r)} and walk`;
       say(runs[0].d<1.5?lead.replace(/ and walk$/,"."):`${lead} ${metres(runs[0].d)}${i===0?` through ${B(r)}`:""}.`, l.f, pts[0]);
       for (let j=0;j<runs.length-1;j++){ const nx=runs[j+1]; say(nx.d<1.5?`Turn ${runs[j].t}.`:`Turn ${runs[j].t} and walk ${metres(nx.d)}.`, l.f, runs[j].at); }
     } else if (legs[i-1]?.move){
@@ -2494,7 +3091,8 @@ function describeRoute(G,path,via,from,to,opt){
       const side=turnOf(heading(pts[pts.length-3],pts[pts.length-2]),heading(pts[pts.length-2],pts[pts.length-1]));
       const where=side==="straight"?"ahead":side==="back"?"behind you":`on your ${side}`;
       const isEnd=legs[i+1].k===to.k && i+1===legs.length-1;
-      say(isEnd?`${B(nextRoom)} is ${where}. You've arrived.`:`Go through the door ${where} into ${B(nextRoom)}.`, l.f, pts[pts.length-1]);
+      if (isEnd) say(`${B(nextRoom)} is ${where}. You've arrived.`, l.f, pts[pts.length-1]);
+      else if (!l.outOpen) say(`Go through the door ${where} into ${B(nextRoom)}.`, l.f, pts[pts.length-1]);   // an opening: the next step names the room
     }
   }
   const secs=total/WALK_MPS+changes*30;
@@ -2519,6 +3117,7 @@ function navHint(tap){
   return r ? (r.lines.some(l=>l.f===S.floor) ? (other.length?`Your route continues on ${other.map(f=>"L"+f).join(", ")}.`:`${tap} another room to change where you're going.`) : `Your route is on ${other.map(f=>"L"+f).join(", ")}.`) : S.go.msg;
 }
 function navPick(r){ const g=S.go;
+  if (hidden(r)){ toast("Classrooms and offices are hidden until you log in. Pick a public place, or log in to see every room."); return; }
   if (!g.from){ g.from=r.k; g.fromDoor=false; } else if (r.k!==g.from) g.to=r.k; else return;
   navUpdate(); if (g.route) toast(`${metres(g.route.total)} · about ${g.route.mins} min`); renderFloors(); renderPlan(); }
 
@@ -2543,35 +3142,43 @@ function navOverlay(fs){
 let navKey="";
 function renderDirections(){
   const el=$("#inspector"), g=S.go;
-  if (g.want && (S.loaded || !S.example)){ const f=S.plan.rooms.find(r=>r.id===g.want.from), t=S.plan.rooms.find(r=>r.id===g.want.to); if(f||t){ if(f) g.from=f.k; if(t) g.to=t.k; g.want=null; navUpdate(); renderFloors(); } }
-  if (g.from && !roomByK(g.from)) g.from=null; if (g.to && !roomByK(g.to)) g.to=null;
+  if (g.want && (S.loaded || !S.example)){ const f=S.plan.rooms.find(r=>r.id&&r.id===g.want.from&&!hidden(r)), t=S.plan.rooms.find(r=>r.id&&r.id===g.want.to&&!hidden(r)); if(f||t){ if(f) g.from=f.k; if(t) g.to=t.k; g.want=null; navUpdate(); renderFloors(); } }
+  if (g.from && (!roomByK(g.from)||hidden(roomByK(g.from)))) g.from=null; if (g.to && (!roomByK(g.to)||hidden(roomByK(g.to)))) g.to=null;
   if (g.rev!==S.plan.rev){ g.rev=S.plan.rev; navUpdate(); }     // the plan changed under us: route again
   const R=g.route, to=g.to&&roomByK(g.to);
   $("#sheetLabel").innerHTML=`<b>Directions</b>${to?`to ${esc(roomName(to))}${R?` · ${metres(R.total)}`:""}`:"Pick a room"}`;
-  const key=JSON.stringify([g.from,g.to,g.fromDoor,g.stepFree,g.msg,R&&R.steps.map(s=>s.html),S.plan.rev,S.plan.rooms.length,!!S.plan.geo,g.gpsOn,g.gps&&g.gps.acc,S.floor]);
+  const key=JSON.stringify([g.from,g.to,g.fromDoor,g.stepFree,g.msg,R&&R.steps.map(s=>s.html),S.plan.rev,S.plan.rooms.length,signedIn(),planIsPartial(),!!S.plan.geo,g.gpsOn,g.gps&&g.gps.acc,S.floor,[...S.fac]]);
   if (key===navKey) return; navKey=key;
   const fl=[...S.plan.floors].sort((a,b)=>a.level-b.level);
-  const opts=sel=>`<option value="">Choose a room…</option>`+fl.map(f=>{ const rs=floorRooms(f.level).slice().sort((a,b)=>roomName(a).localeCompare(roomName(b)));
+  const opts=sel=>`<option value="">Choose a ${signedIn()?"room":"place"}…</option>`+fl.map(f=>{ const rs=floorRooms(f.level).filter(r=>!hidden(r)).sort((a,b)=>roomName(a).localeCompare(roomName(b)));
     return rs.length?`<optgroup label="${esc(f.name||"Level "+f.level)}">${rs.map(r=>`<option value="${r.k}" ${r.k===sel?"selected":""}>${esc(roomName(r))} · ${esc(r.id)}</option>`).join("")}</optgroup>`:""; }).join("");
   const centre=S.plan.geo&&blockCentre();
   el.innerHTML=`<h2>Directions</h2>
     <div class="field"><label for="goFrom">From${g.fromDoor?" (door marker)":""}</label><div class="go-row"><select id="goFrom">${opts(g.from)}</select><button class="btn sm" id="goScan" title="Take a photo of a door marker">Scan marker</button></div></div>
     <input type="file" id="goScanIn" accept="image/*" capture="environment" hidden>
     <div class="field"><label for="goTo">To</label><select id="goTo">${opts(g.to)}</select></div>
-    <div class="go-row" style="margin-bottom:6px"><button class="btn sm" id="goSwap" ${g.from&&g.to?"":"disabled"}>Swap</button><label class="consent" style="margin:0"><input type="checkbox" id="goStep" ${g.stepFree?"checked":""}><span>Step-free (lifts only)</span></label></div>
+    <div class="go-row" style="margin-bottom:6px"><button class="btn sm" id="goSwap" ${g.from&&g.to?"":"disabled"}>Swap</button><button class="btn sm" id="goReset" ${g.from||g.to?"":"disabled"} title="Clear both rooms and start again">Reset</button><label class="consent" style="margin:0"><input type="checkbox" id="goStep" ${g.stepFree?"checked":""}><span>Step-free (lifts only)</span></label></div>
+    ${signedIn()?"":`<p class="small muted" style="margin:0 0 8px">As a guest you can find public places like the library, toilets, stairs and lifts. <button class="btn sm" id="goRoomsLogin">Log in for classrooms</button></p>`}
     ${R?`<div class="go-sum"><b>${metres(R.total)}</b> · about ${R.mins} min${R.changes?` · ${R.changes} floor change${R.changes>1?"s":""}`:""}</div>
       <ol class="steps">${R.steps.map((s,i)=>`<li><button data-i="${i}" ${s.f===S.floor?"":`class="off"`}><span class="n">${i+1}</span><span>${s.html}</span><span class="f">L${s.f}</span></button></li>`).join("")}</ol>`
       :g.msg?`<p class="warn">${esc(g.msg)}</p>`:`<p class="small muted">Pick where you are and where you're going, or tap rooms on the plan.</p>`}
+    ${facilitiesHTML(true)}
     <h3>Your position</h3>
-    ${S.plan.geo?`<label class="consent"><input type="checkbox" id="goGps" ${g.gpsOn?"checked":""}><span>Show my GPS position on the plan${g.gpsOn&&g.gps?` (±${Math.round(g.gps.acc)} m)`:""}. Indoors it's usually only accurate to 10–50 m, so scan a door marker to be sure where you are.</span></label>
+    ${S.plan.geo&&!signedIn()?`<p class="small muted">Log in to show your GPS position on the plan. You can still scan a door marker to start from there.</p><button class="btn sm" id="goGpsLogin">Log in to use GPS</button>
+      <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&amp;destination=${centre[0].toFixed(6)},${centre[1].toFixed(6)}">Get to Block ${esc(S.plan.block)} in Google Maps</a>`
+    :S.plan.geo?`<label class="consent"><input type="checkbox" id="goGps" ${g.gpsOn?"checked":""}><span>Show my GPS position on the plan${g.gpsOn&&g.gps?` (±${Math.round(g.gps.acc)} m)`:""}. Indoors it's usually only accurate to 10–50 m, so scan a door marker to be sure where you are.</span></label>
       <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&amp;destination=${centre[0].toFixed(6)},${centre[1].toFixed(6)}">Get to Block ${esc(S.plan.block)} in Google Maps</a>`
       :`<p class="small muted">Scan the door marker next to you to start from there. GPS can be shown here once the block is placed on the map (Floor plan tab, no room selected).</p>`}`;
   $("#goFrom").onchange=e=>{ g.from=e.target.value||null; g.fromDoor=false; navUpdate(); renderFloors(); renderPlan(); };
   $("#goTo").onchange=e=>{ g.to=e.target.value||null; navUpdate(); if(g.route && !routeFloors().has(S.floor)){ S.floor=g.route.lines[0].f; fit(); } renderFloors(); renderPlan(); };
   $("#goSwap").onclick=()=>{ [g.from,g.to]=[g.to,g.from]; g.fromDoor=false; navUpdate(); renderFloors(); renderPlan(); };
+  $("#goReset").onclick=()=>{ g.from=g.to=null; g.fromDoor=false; g.want=null; navUpdate(); renderFloors(); renderPlan(); toast("Cleared the rooms. Pick where you are and where you're going."); };
   $("#goStep").onchange=e=>{ g.stepFree=e.target.checked; navUpdate(); renderFloors(); renderPlan(); };
   $("#goScan").onclick=()=>$("#goScanIn").click();
   $("#goScanIn").onchange=e=>{ const f=e.target.files[0]; e.target.value=""; if(f) scanDoorPhoto(f); };
+  bindFacilities(el,true);
+  const grl=$("#goRoomsLogin"); if(grl) grl.onclick=()=>loginFor("get directions to classrooms");
+  const gl=$("#goGpsLogin"); if(gl) gl.onclick=()=>{ S.authGps=true; loginFor("show your GPS position on the map"); };
   const gp=$("#goGps"); if(gp) gp.onchange=e=>{ if(e.target.checked) startNavGps(); else { stopNavGps(); renderPlan(); } };
   el.querySelectorAll(".steps [data-i]").forEach(b=>b.onclick=()=>{ const s=R.steps[+b.dataset.i]; if(s.f!==S.floor){ S.floor=s.f; renderFloors(); }
     if (s.at){ S.view.cx=s.at[0]; S.view.cy=s.at[1]; S.view.scale=Math.max(S.view.scale,18); } if(TOUCH) setSheet(false); renderPlan(); });
@@ -2586,7 +3193,7 @@ async function scanDoorPhoto(file){
     const q=jsQR(x.getImageData(0,0,w,h).data,w,h), m=q&&parseMarker(q.data);
     if (!m){ toast("No door marker found. Get closer so the code fills more of the photo."); return; }
     const r=S.plan.rooms.find(r=>r.id===m.room);
-    if (!r){ toast(`Marker ${m.room} isn't on this plan.`); return; }
+    if (!r || hidden(r)){ toast(!signedIn()?"Log in to start from a classroom's door marker.":`Marker ${m.room} isn't on this plan.`); return; }
     S.go.from=r.k; S.go.fromDoor=true; S.floor=r.floor; navUpdate(); renderFloors(); fit();
     toast(`You're at the door of ${roomName(r)}.`);
   }catch(e){ toast("Couldn't read that photo."); }
@@ -2606,6 +3213,7 @@ const blockCentre=()=>toLatLng(planCentre());
 
 let navWatch=null;
 function startNavGps(){
+  if (!signedIn()){ S.go.gpsOn=false; S.authGps=true; loginFor("show your GPS position on the map"); return; }
   if (!navigator.geolocation){ S.go.gpsOn=false; toast("This browser can't share your location."); renderPlan(); return; }
   S.go.gpsOn=true; renderPlan();
   navWatch=navigator.geolocation.watchPosition(p=>{ S.go.gps={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}; renderPlan(); },
@@ -2649,7 +3257,8 @@ async function openMapDlg(){
 $("#mapRot").oninput=e=>{ if(!MAP) return; MAP.rot=+e.target.value; drawMapOutline(); };
 $("#mapCancel").onclick=()=>$("#mapDlg").close();
 $("#mapSnap").onclick=snapToPick;
-$("#mapHere").onclick=()=>{ if(!navigator.geolocation||!MAP){ toast("This browser can't share your location."); return; }
+$("#mapHere").onclick=()=>{ if(!signedIn()){ toast("Log in to use your location."); return; }
+  if(!navigator.geolocation||!MAP){ toast("This browser can't share your location."); return; }
   navigator.geolocation.getCurrentPosition(p=>MAP.map.setView([p.coords.latitude,p.coords.longitude],19),()=>toast("Location is blocked or unavailable."),{enableHighAccuracy:true,timeout:15000}); };
 $("#mapSave").onclick=()=>{ if(!MAP) return; const g=mapGeo();
   S.plan.geo={x:+g.x.toFixed(3),y:+g.y.toFixed(3),lat:+g.lat.toFixed(7),lng:+g.lng.toFixed(7),rot:+g.rot.toFixed(2),...(MAP.osm?{osm:MAP.osm}:{})};
@@ -2911,19 +3520,20 @@ function alignGroup(){
 
 // Links like ?from=B-03-01&to=B-04-02 open Directions with those rooms
 (function(){ try{ const q=new URLSearchParams(location.search), f=q.get("from"), t=q.get("to");
-  if (f||t){ S.go.want={from:f,to:t}; S.tab="nav"; S.uni=S.uni||"apu"; try{ localStorage.setItem("apu-tab","nav"); }catch(e){} } }catch(e){} })();
+  if (f||t){ S.go.want={from:f,to:t}; S.tab="nav"; S.uni=S.uni||"preview"; try{ localStorage.setItem("apu-tab","nav"); }catch(e){} } }catch(e){} })();
 
 /* ---------- boot ---------- */
 try{ const t=localStorage.getItem("apu-tab"); if(t) S.tab=t; }catch(e){}
-setTab(S.tab); renderAll(); if(S.tab==="plan"){ S.fitted=true; requestAnimationFrame(fit); }
+setTab(S.tab); renderMe(); renderAll(); if(S.tab==="plan"){ S.fitted=true; requestAnimationFrame(fit); }
 
 (async function connect(){
   const c=window.claude;
-  if (c && typeof c.use==="function") return connectArtifact(c);
+  if (c && typeof c.use==="function"){ authReady(false); return connectArtifact(c); }
   const h=await fetch("/api/health",{headers:apiHeaders(),cache:"no-store"})
     .then(r=>r.ok && /json/.test(r.headers.get("content-type")||"") ? r.json() : null).catch(()=>null);
   S.dl=browserDownloads;
   if (h && h.db) return connectApi(h);
+  authReady(false);
   S.serverNote=h?(h.reason||"not_configured"):null; goStandalone();
 })();
 
@@ -2932,7 +3542,7 @@ async function connectArtifact(c){
   S.db=db; S.user=user; S.dl=dl;
   $("#exNote").textContent = dl ? "" : "Saving files isn't available in this view.";
   ["#exGeo","#exGlb","#exJson"].forEach(s=>$(s).disabled=!dl);
-  if (user){ try{ const me=await user.me(); S.meId=me.id; const m=$("#me"); m.hidden=false; m.innerHTML=`<img src="${esc(me.avatarUrl)}" alt=""><span>${esc(me.name||"You")}</span>`;
+  if (user){ try{ const me=await user.me(); S.meId=me.id;
     const w=await user.can("data.write"); if (w===false) S.readOnly=S.noContrib=true; }catch(e){} }
   if (!db){ goStandalone(); return; }
   setSync("saving","Loading shared plan…");

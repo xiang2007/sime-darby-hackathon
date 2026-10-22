@@ -3,11 +3,12 @@
 //                                        session reserved. lat/lng/acc: where it was taken (GPS-tagged sessions)
 //   GET  /api/photos?session=ID          the session's photos: [{id, i, w, h, bytes, at, geo}]
 //   GET  /api/photos?id=ID               one photo's bytes
-// Anyone can upload to a session they submitted. Viewing photos needs the edit key (or the worker's WORKER_KEY).
+// Logged-in students can upload to a session they submitted. Viewing photos needs the edit key (or the worker's WORKER_KEY).
 import { json, route, requireKey, workerKeyOk } from "../lib/http.js";
 import * as V from "../lib/validate.js";
 import { claimPhoto, savePhotoData, dropPhoto, listPhotos, getPhoto } from "../lib/store.js";
 import { photoStore } from "../lib/photos.js";
+import { requireUser } from "../lib/auth.js";
 
 const noStore = () => json({ error: "no_photo_store", message: "Photo storage isn't set up on this deployment." }, 503);
 const CLAIM_ERRORS = {
@@ -35,6 +36,7 @@ export const GET = route(async req => {
 
 export const POST = route(async req => {
   if (!photoStore()) return noStore();
+  const [, denied] = await requireUser(req); if (denied) return denied;
   const p = V.photoParams(req.url);
   if (+(req.headers.get("content-length") || 0) > V.MAX_PHOTO_BYTES) throw new V.Invalid("Photo is too large");
   const bytes = new Uint8Array(await req.arrayBuffer());
