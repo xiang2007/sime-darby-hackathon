@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const PORT = +process.env.PORT || 3000;
-const ROUTES = ["health", "state", "plan", "versions", "sessions", "photos", "jobs", "videos"];
+const ROUTES = ["health", "state", "plan", "versions", "sessions", "photos", "jobs", "videos", "auth"];
 execSync("sh scripts/build-vercel.sh", { stdio: "inherit" });
 
 createServer(async (req, res) => {

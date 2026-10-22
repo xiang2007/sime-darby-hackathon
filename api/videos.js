@@ -1,4 +1,4 @@
-// Walk videos that the worker maps a floor from (worker.py --map). Anyone can contribute one, like photos.
+// Walk videos that the worker maps a floor from (worker.py --map). Logged-in students can contribute one, like photos.
 // They're kept in the Neon Postgres database, in pieces of VIDEO_CHUNK bytes, because a Vercel function takes
 // at most 4.5 MB per request.
 //   POST /api/videos                 body {by, block, floor, geo?, bytes, type, name?}: start a walk video session.
@@ -12,6 +12,7 @@ import { json, readJson, route, requireKey, workerKeyOk } from "../lib/http.js";
 import * as V from "../lib/validate.js";
 import { addMapSession, getVideoChunk, getVideoSession, putVideoChunk, UPLOAD_WINDOW_MS } from "../lib/store.js";
 import { VIDEO_CHUNK, videoStore } from "../lib/videos.js";
+import { requireUser } from "../lib/auth.js";
 
 const noStore = () => json({ error: "no_video_store", message: "Video uploads are turned off on this deployment." }, 503);
 const params = req => {
@@ -27,11 +28,15 @@ const partSize = (s, i) => (i < s.parts - 1 ? VIDEO_CHUNK : s.bytes - VIDEO_CHUN
 export const POST = route(async req => {
   if (!videoStore()) return noStore();
   if (params(req).id) throw new V.Invalid("Start a session with POST /api/videos, then PUT its pieces.");
-  return json(await addMapSession(V.mapSession(await readJson(req))), 201);
+  const [user, denied] = await requireUser(req); if (denied) return denied;
+  const s = V.mapSession(await readJson(req));
+  s.author = user.studentId;
+  return json(await addMapSession(s), 201);
 });
 
 export const PUT = route(async req => {
   if (!videoStore()) return noStore();
+  const [, denied] = await requireUser(req); if (denied) return denied;
   const { id, i } = params(req);
   if (!id || i == null) throw new V.Invalid("Pass ?session=&i=");
   const s = await getVideoSession(id);

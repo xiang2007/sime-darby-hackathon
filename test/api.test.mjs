@@ -82,14 +82,16 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
   const { query, closeDb } = await import("../lib/db.js");
   after(closeDb);
   await query("SELECT 1");
-  await query("TRUNCATE plan, versions, sessions, photos, video_chunks, recon, workers RESTART IDENTITY");
+  await query("TRUNCATE plan, versions, sessions, photos, video_chunks, recon, workers, users, logins RESTART IDENTITY");
   const KEY = "open sesame", E = { "x-edit-key": KEY };
   process.env.EDIT_KEY = KEY;
   after(() => { delete process.env.EDIT_KEY; });
   const api = name => import(`../api/${name}.js`);
-  // Calls send the edit key unless a test passes its own x-edit-key ("" for none).
+  // Calls send the edit key unless a test passes its own x-edit-key ("" for none), and,
+  // once the accounts test has logged in, the student's login (A) unless a test passes its own authorization.
+  let A = {};
   const call = async (name, method, body, headers = {}) => {
-    const req = new Request(`http://x/api/${name}`, { method, headers: { "content-type": "application/json", ...E, ...headers },
+    const req = new Request(`http://x/api/${name}`, { method, headers: { "content-type": "application/json", ...E, ...A, ...headers },
       body: body === undefined ? undefined : JSON.stringify(body) });
     const res = await (await api(name.split("?")[0]))[method](new Request(`http://x/api/${name}`, req));
     return { status: res.status, etag: res.headers.get("etag"), body: [204, 304].includes(res.status) ? null : await res.json() };
@@ -101,6 +103,46 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.equal(r.body.editKey, true);
     assert.equal(r.body.editKeySet, true);
     assert.equal(r.body.keyOk, true);
+  });
+
+  await t.test("accounts: sign up, log in, 6-hour logins, log out", async () => {
+    const auth = (body, headers) => call("auth", "POST", body, headers);
+    const reg = await auth({ action: "register", email: " Ana@Uni.edu ", studentId: "tp000001", password: "correct horse" });
+    assert.equal(reg.status, 201);
+    assert.deepEqual(reg.body.user, { email: "ana@uni.edu", studentId: "TP000001" });
+    const hours = (reg.body.expiresAt - Date.now()) / 3600_000;
+    assert.ok(hours > 5.9 && hours <= 6, `login lasts 6 hours, not ${hours}`);
+    assert.equal((await auth({ action: "register", email: "ana@uni.edu", studentId: "TP9", password: "another one" })).body.field, "email");
+    const dupId = await auth({ action: "register", email: "other@uni.edu", studentId: "TP000001", password: "another one" });
+    assert.deepEqual([dupId.status, dupId.body.field], [409, "studentId"]);
+    assert.equal((await auth({ action: "register", email: "x@uni.edu", studentId: "TP2", password: "short" })).status, 400);
+    assert.equal((await auth({ action: "register", email: "not an email", studentId: "TP2", password: "long enough" })).status, 400);
+    assert.equal((await auth({ action: "register", studentId: "TP2", password: "long enough" })).status, 400, "email is required");
+
+    assert.equal((await auth({ action: "login", studentId: "TP000001", password: "wrong password" })).status, 401);
+    assert.equal((await auth({ action: "login", studentId: "TP404", password: "correct horse" })).status, 401);
+    const li = await auth({ action: "login", studentId: "tp000001", password: "correct horse" });
+    assert.equal(li.status, 200);
+    const bearer = t => ({ authorization: `Bearer ${t}` });
+    const me = await call("auth", "GET", undefined, bearer(li.body.token));
+    assert.deepEqual([me.status, me.body.user.studentId], [200, "TP000001"]);
+    assert.equal((await call("auth", "GET", undefined, bearer("x".repeat(43)))).status, 401);
+    assert.equal((await call("auth", "GET")).status, 401, "no login");
+
+    // Logins end after 6 hours
+    await query("UPDATE logins SET expires_at = now() - interval '1 second' WHERE user_id = 1");
+    assert.equal((await call("auth", "GET", undefined, bearer(li.body.token))).status, 401, "expired");
+    const again = await auth({ action: "login", studentId: "TP000001", password: "correct horse" });
+    assert.equal((await call("auth", "DELETE", undefined, bearer(again.body.token))).status, 200);
+    assert.equal((await call("auth", "GET", undefined, bearer(again.body.token))).status, 401, "logged out");
+
+    // Contributing needs a login; viewing doesn't
+    const sess = { block: "B", floor: 3, verdict: "thin", frames: 1, usable: 1, gaps: 0 };
+    const guest = await call("sessions", "POST", sess);
+    assert.deepEqual([guest.status, guest.body.error], [401, "login"]);
+    assert.equal((await call("videos", "POST", { block: "B", floor: 3, bytes: 10, type: "video/mp4" })).status, 401);
+    assert.equal((await call("state", "GET")).status, 200, "guests can still view");
+    A = bearer((await auth({ action: "login", studentId: "TP000001", password: "correct horse" })).body.token);
   });
 
   await t.test("empty state", async () => {
@@ -153,7 +195,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     const s1 = await call("state", "GET", undefined, { "if-none-match": s0.etag });
     assert.equal(s1.status, 200);
     assert.equal(s1.body.sessions[0].room, "B-03-01");
-    assert.equal(s1.body.sessions[0].by, "Ana");
+    assert.equal(s1.body.sessions[0].by, "TP000001", "credited to the logged-in student");
     assert.equal(s1.body.sessions[0].geo, null);
     const tagged = await call("sessions", "POST", { block: "B", floor: 3, verdict: "thin", frames: 9, usable: 9, gaps: 0, geo: { lat: 3.0553, lng: 101.7007, acc: 30 } });
     assert.equal(tagged.status, 201);
@@ -163,7 +205,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
   await t.test("photos: reserve, upload, list, fetch", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
     const up = (q, body = jpeg, headers = {}) => api("photos").then(m => m.POST(new Request(`http://x/api/photos?${q}`,
-      { method: "POST", headers: { "content-type": "image/jpeg", ...headers }, body })));
+      { method: "POST", headers: { "content-type": "image/jpeg", ...A, ...headers }, body })));
     assert.equal((await call("health", "GET")).body.photos, true);
     const s = await call("sessions", "POST", { by: "Ana", block: "B", floor: 3, room: "B-03-02", verdict: "accepted", frames: 20, usable: 18, gaps: 0, photos: 2 });
     assert.equal(s.body.photoSlots, 2);
@@ -198,7 +240,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
 
   await t.test("jobs: claim, report, reset", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
-    const up = (q) => api("photos").then(m => m.POST(new Request(`http://x/api/photos?${q}`, { method: "POST", headers: { "content-type": "image/jpeg" }, body: jpeg })));
+    const up = (q) => api("photos").then(m => m.POST(new Request(`http://x/api/photos?${q}`, { method: "POST", headers: { "content-type": "image/jpeg", ...A }, body: jpeg })));
     const W = { "x-worker-key": "worker secret" };
     const claim = (q = "", h = W) => call("jobs" + q, "POST", { name: "test-pc", version: "1" }, h);
     const result = { poly: [[0, 0], [7.2, 0], [7.2, 5.4], [0, 5.4]], size: [7.2, 5.4], area: 38.88, height: 3, aligned: true, match: 0.9,
@@ -268,7 +310,7 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     const start = { by: "Ana", block: "B", floor: 7, bytes: 9_000_000, type: "video/mp4", name: "floor.mp4", geo: { lat: 3.05545, lng: 101.70012, acc: 12 } };
     // Raw pieces of the video, the way the browser sends them
     const part = (id, i, bytes, headers = {}) => import("../api/videos.js").then(m => m.PUT(new Request(`http://x/api/videos?session=${id}&i=${i}`,
-      { method: "PUT", headers: { "content-type": "application/octet-stream", ...E, ...headers }, body: bytes })))
+      { method: "PUT", headers: { "content-type": "application/octet-stream", ...E, ...A, ...headers }, body: bytes })))
       .then(async r => ({ status: r.status, body: await r.json() }));
     const getPart = (id, i, headers) => import("../api/videos.js").then(m => m.GET(new Request(`http://x/api/videos?session=${id}&i=${i}`, { headers })));
     const fill = (n, v) => new Uint8Array(n).fill(v);
@@ -347,8 +389,11 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.equal(s.status, 201, "viewers can submit sessions");
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
     const up = await (await api("photos")).POST(new Request(`http://x/api/photos?session=${s.body._id}&i=0&w=4&h=3`,
-      { method: "POST", headers: { "content-type": "image/jpeg" }, body: jpeg }));
+      { method: "POST", headers: { "content-type": "image/jpeg", ...A }, body: jpeg }));
     assert.equal(up.status, 201, "and upload their photos");
+    const guestUp = await (await api("photos")).POST(new Request(`http://x/api/photos?session=${s.body._id}&i=0&w=4&h=3`,
+      { method: "POST", headers: { "content-type": "image/jpeg" }, body: jpeg }));
+    assert.equal(guestUp.status, 401, "but not without logging in");
     assert.equal((await call("plan", "GET", undefined, V0)).status, 200, "and view the plan");
     const yes = await call("plan", "PUT", { plan: plan(), baseRev: (await call("plan", "GET")).body.plan.rev });
     assert.equal(yes.status, 200);
