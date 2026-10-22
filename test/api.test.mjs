@@ -76,6 +76,19 @@ test("photo validation", () => {
   assert.equal(V.isJpeg(new Uint8Array([0x89, 0x50, 0x4e, 0x47])), false);
 });
 
+test("guests see public places only: the page and the server use the same rule", async () => {
+  const { readFileSync } = await import("node:fs");
+  const P = await import("../lib/privacy.js");
+  const html = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
+  assert.equal(html.match(/const PUBLIC_NAME=(\/.*\/i);/)[1], String(P.PUBLIC_NAME), "PUBLIC_NAME differs between web/index.html and lib/privacy.js");
+  assert.equal(html.match(/const PUBLIC_TYPES=new Set\((\[.*?\])\)/)[1].replace(/"/g, "'"), JSON.stringify([...P.PUBLIC_TYPES]).replace(/"/g, "'"));
+  const pub = (name, type = "office") => P.isPublic({ name, type });
+  for (const n of ["Library", "Auditorium 3", "Cafeteria", "Surau (prayer room)", "Student lounge", "Multipurpose hall"]) assert.ok(pub(n), n);
+  for (const n of ["Lecture Theatre 3-1", "Robotics Lab", "Dean's office", "Staff lounge", ""]) assert.ok(!pub(n), n);
+  assert.ok(pub("", "toilet") && pub("", "stairs") && !pub("", "lecture"));
+  assert.ok(pub("Robotics Lab", "lab") === false && P.isPublic({ name: "Robotics Lab", type: "lab", public: true }));
+});
+
 const DB = process.env.TEST_DATABASE_URL;
 test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, async t => {
   process.env.DATABASE_URL = DB;
@@ -186,6 +199,29 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     const r = await call("plan", "PUT", { plan: plan([room({ type: "dungeon" })]), baseRev: 4 });
     assert.equal(r.status, 400);
     assert.match(r.body.message, /room type/);
+  });
+
+  await t.test("guests see public places, and only the outline of other rooms", async () => {
+    const rooms = [room(), room({ k: "a2", id: "B-03-02", name: "Library", type: "other" }), room({ k: "a3", id: "B-03-03", name: "", type: "toilet" }),
+      room({ k: "a4", id: "B-03-04", name: "Open lab", type: "lab", public: true }), room({ k: "a5", id: "B-03-05", name: "Staff lobby", type: "lobby", public: false })];
+    const saved = await call("plan", "PUT", { plan: plan(rooms), baseRev: 4, note: "Rooms" });
+    assert.equal(saved.status, 200);
+    const G = { authorization: "" };
+    for (const name of ["state", "plan"]) {
+      const g = (await call(name, "GET", undefined, G)).body;
+      const [lab, lib, wc, open, staff] = g.plan.rooms;
+      assert.deepEqual(lab, { k: "a1", id: "", name: "", type: "other", floor: 3, height: 3.2, poly: rooms[0].poly, doors: rooms[0].doors, private: true }, name);
+      assert.deepEqual([lib.id, lib.name, wc.id, wc.type, open.name], ["B-03-02", "Library", "B-03-03", "toilet", "Open lab"], name);
+      assert.deepEqual([staff.id, staff.private], ["", true], "an editor can hide a public type");
+      assert.equal(g.plan.by, undefined, "who saved it stays hidden");
+      if (name === "state") assert.deepEqual([g.versions, g.sessions], [[], []]);
+    }
+    const full = await call("state", "GET");
+    assert.equal(full.body.plan.rooms[0].id, "B-03-01", "logged-in students see every room");
+    assert.notEqual(full.etag, (await call("state", "GET", undefined, G)).etag, "guests and students don't share a cached copy");
+    assert.equal((await call("versions", "GET", undefined, G)).status, 401);
+    assert.equal((await call("versions?rev=1", "GET", undefined, G)).status, 401);
+    assert.equal((await call("sessions", "GET", undefined, G)).status, 401);
   });
 
   await t.test("sessions and ETag", async () => {

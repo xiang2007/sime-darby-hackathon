@@ -1,12 +1,18 @@
+// GET /api/plan: the current plan. Guests get public places in full and only the outline of other rooms.
 // PUT /api/plan: save the whole plan as a new revision (logged-in editors: edit key and a login).
 // Body: {plan: {block, floors, rooms}, baseRev, note, by, force}
 // 409 with the current plan if someone else saved after baseRev (unless force).
 import { json, readJson, route, requireKey } from "../lib/http.js";
 import * as V from "../lib/validate.js";
 import { getPlan, savePlan } from "../lib/store.js";
-import { requireUser } from "../lib/auth.js";
+import { currentUser, requireUser } from "../lib/auth.js";
+import { guestPlan } from "../lib/privacy.js";
 
-export const GET = route(async () => json({ plan: await getPlan() }));
+// Guests get classrooms, labs and offices without their number, name or type (lib/privacy.js).
+export const GET = route(async req => {
+  const plan = await getPlan();
+  return json({ plan: (await currentUser(req)) ? plan : guestPlan(plan) });
+});
 
 export const PUT = route(async req => {
   const denied = requireKey(req); if (denied) return denied;
