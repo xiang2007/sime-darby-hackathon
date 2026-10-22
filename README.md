@@ -8,6 +8,7 @@ UCampass(PIC) is a crowdsourced web app for mapping a building as a labelled 3D 
 
 ## What's new
 
+- **Student accounts.** Guests can browse **Home** and **Feedback**, but **Navigation** and **Contribution** need a login. Signing up takes an email, a student ID and a password (at least 8 characters); after that, the device opens on **Log in**, which asks only for the student ID and password. A login lasts 6 hours, then the student is sent back to the login page. The header shows the student ID; tap it to log out. Sessions, photos and walk videos are credited to the student ID, and the server refuses them without a login. Accounts are kept in the database (`users`, `logins`), with passwords stored as scrypt hashes and only a hash of each login token. Without a database, accounts are kept in the browser instead.
 - **Toilets, stairs, lifts and emergency exits.** Buttons over the floor plan (and in Directions) highlight every toilet, stairwell, lift or emergency exit on the floor and fade the rest; the side panel lists them with counts per floor, and a tap zooms to one. In Directions, **Nearest** routes from where you are to the closest one, across floors (step-free keeps to lifts). Emergency exits are doors: in **Doors** mode pick **Emergency exit** and tap a door to mark or unmark it, or tap a wall to add an exit door. In the sample building the fire stair doors are the exits.
 - **Open-plan lobbies.** A lobby or corridor can be set to **Open plan** in its room panel: it then has no walls or doors where it meets a corridor or another open-plan lobby, on the plan, in 3D and in Directions (which says "Carry on into …" instead of "Go through the door"). Turning it on removes the doors that sat in those openings. In the sample building the lift lobbies, the central atrium and the Level 4 atrium galleries are open plan.
 - **Universities and Preview.** Navigation opens on **Available universities** (APU, Sunway, UNITEN), searchable by name or location and sortable by name. None has live floor plans yet, so each shows *Coming soon*. **Try the Preview** opens Directions, Floor plan and 3D on the sample building below, view only: nothing is saved, and the shared plan is untouched. A university opens its own map once it's set `live:true` in `UNIS`.
@@ -82,11 +83,11 @@ worker/          the 3D measuring worker, run on your own computer (Python); vid
 ```
 
 - **Front end:** a single HTML page using Three.js. It checks the server for changes every 4 seconds.
-- **Back end:** Vercel functions on Postgres. Six tables (`plan`, `versions`, `sessions`, `photos`, `recon`, `workers`) are created automatically on first use.
+- **Back end:** Vercel functions on Postgres. The tables (`plan`, `versions`, `sessions`, `photos`, `video_chunks`, `recon`, `workers`, `users`, `logins`) are created automatically on first use.
 - **Photos:** opt-in. The phone resizes each usable photo to 2048 px and re-encodes it, which strips GPS and other EXIF data, then uploads them one at a time. They're stored as JPEG bytes in the `photos` table of the same Neon database, and only served back through `/api/photos`. At about 0.5–1 MB a photo, Neon's free 0.5 GB holds roughly 500–1,000 photos. Each session reserves its number of photos up front; uploads beyond that, or more than 2 hours later, are refused.
 - **3D measuring:** a worker on your own computer measures each room from its uploaded photos. See [Measuring rooms from photos](#measuring-rooms-from-photos). It can also trace a corridor and its doors from a walk-through video, or map a whole floor: hallways, rooms and the doors between them. See [Mapping corridors from a walk](#mapping-corridors-from-a-walk) and [Mapping a floor from one walk](#mapping-a-floor-from-one-walk).
 - **Saving:** each save includes the version it was based on. If someone else saved first, the server rejects it and the app merges room by room.
-- **Who can do what:** everyone can view the plan, get directions and contribute (submit capture sessions and upload their photos). Only editors, who enter `EDIT_KEY` under their name, can draw or change rooms, place the block on the map, import walks or restore versions. Without `EDIT_KEY` set, nobody can edit the shared plan.
+- **Who can do what:** guests can use Home and Feedback. Logged-in students can get directions, view the plan and contribute (submit capture sessions and upload their photos and videos). Only editors, who enter `EDIT_KEY` under their name, can draw or change rooms, place the block on the map, import walks or restore versions. Without `EDIT_KEY` set, nobody can edit the shared plan.
 - **Safety:** all input is checked field by field before it's stored.
 - **No database?** The site still works, saving to each visitor's browser, and shows a banner saying so.
 
@@ -96,8 +97,10 @@ worker/          the 3D measuring worker, run on your own computer (Python); vid
 | `GET /api/state` | Current plan, recent versions and sessions |
 | `PUT /api/plan` | Save the plan (editors only: needs `x-edit-key`; returns 409 if someone saved first) |
 | `GET /api/versions?rev=N` | Fetch an old version |
-| `POST /api/sessions` | Submit a capture session (`photos`: how many it will upload) |
-| `POST /api/photos?session=&i=&w=&h=` | Upload one JPEG for a session |
+| `POST /api/auth` | `{action: "register", email, studentId, password}` or `{action: "login", studentId, password}`: returns a login token that lasts 6 hours |
+| `GET /api/auth` / `DELETE /api/auth` | Who is logged in / log out (send `authorization: Bearer <token>`) |
+| `POST /api/sessions` | Submit a capture session (`photos`: how many it will upload). Needs a login |
+| `POST /api/photos?session=&i=&w=&h=` | Upload one JPEG for a session. Needs a login |
 | `GET /api/photos?session=ID` / `?id=ID` | List a session's photos / fetch one (edit key or worker key) |
 | `POST /api/jobs` | Worker: claim the next session to measure |
 | `PUT /api/jobs?session=ID` | Worker: report the measurement, or why it failed |

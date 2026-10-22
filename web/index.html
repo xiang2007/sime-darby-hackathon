@@ -426,6 +426,19 @@ footer.site button:hover{color:#fff}
 .uni-chip .mk{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font:800 .62rem var(--f-display);color:#fff}
 .uni-chip small{font-weight:500;color:#6b7591}
 .uni-chip:hover small{color:var(--accent)}
+/* Log in / sign up */
+.auth{display:grid;place-items:start center}
+.auth-card{width:100%;max-width:420px;padding:28px}
+.auth-card h2{font-family:var(--f-display);font-weight:700;font-size:1.8rem;letter-spacing:-.02em;margin:0 0 6px;color:#fff}
+.auth-card .sub{margin:0 0 20px;color:#aab6d3;font-size:.92rem;line-height:1.5}
+.auth-card .field{margin-bottom:14px}
+.auth-card .field label{font-size:.82rem;font-weight:500;color:#c9d4f0}
+.auth-card .field input{padding:10px 12px;font-size:.95rem;border-radius:8px;color:#fff}
+.auth-card .warn{font-size:.85rem;margin:0 0 12px;color:var(--bad)}
+.auth-card .btn.primary{width:100%;justify-content:center;min-height:44px;font-size:.95rem}
+.auth-card .auth-switch{margin:16px 0 6px;color:#c9d4f0;font-size:.9rem}
+.auth-switch button,.auth-card .warn button{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--gold);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.auth-card .auth-note{margin:0;color:var(--ink-2);font-size:.8rem}
 .unis-main h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,3vw,2.1rem);letter-spacing:-.02em;margin:0 0 6px;color:#fff}
 .unis-main .eyebrow{color:#8fb4ff;margin-bottom:8px}
 .unis-main .sub{margin:0 0 20px;color:#aab6d3}
@@ -599,6 +612,26 @@ footer.site button:hover{color:#fff}
     </div>
   </section>
 
+  <!-- LOG IN / SIGN UP: Navigation and Contribution need a login; guests can still use Home and Feedback -->
+  <section class="view" id="view-auth" hidden>
+    <div class="page auth">
+      <div class="ncard auth-card">
+        <p class="eyebrow" id="authEyebrow">Welcome back</p>
+        <h2 id="authTitle">Log in</h2>
+        <p class="sub" id="authSub"></p>
+        <form id="authForm" novalidate>
+          <div class="field" id="authEmailF"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" maxlength="254" inputmode="email"></div>
+          <div class="field"><label for="authId">Student ID</label><input id="authId" autocomplete="username" maxlength="20" placeholder="e.g. TP012345" autocapitalize="characters" spellcheck="false"></div>
+          <div class="field"><label for="authPw">Password</label><input id="authPw" type="password" autocomplete="current-password" maxlength="200"></div>
+          <p class="warn" id="authErr" role="alert" hidden></p>
+          <button class="btn primary" type="submit" id="authGo">Log in</button>
+        </form>
+        <p class="auth-switch" id="authSwitch"></p>
+        <p class="auth-note" id="authNote"></p>
+      </div>
+    </div>
+  </section>
+
   <!-- PLAN -->
   <section class="view" id="view-plan">
     <div class="plan-wrap">
@@ -699,12 +732,11 @@ footer.site button:hover{color:#fff}
 <div class="toast" id="toast" hidden></div>
 <dialog class="sheet" id="profile" aria-labelledby="profTitle">
   <form id="profForm">
-    <h2 id="profTitle">Your name</h2>
-    <p class="small muted">Your name appears next to your sessions (and edits, if you're an editor). It's saved in this browser. There are no accounts.</p>
-    <div class="field"><label for="profName">Your name</label><input id="profName" maxlength="60" autocomplete="name"></div>
+    <h2 id="profTitle">Your account</h2>
+    <p class="small muted" id="profWho"></p>
     <div class="field" id="profKeyField" hidden><label for="profKey">Edit key (editors only)</label><input id="profKey" type="password" autocomplete="off"><span class="small muted" id="profKeyNote">Leave blank to view and contribute. Editors get the key from whoever runs this deployment.</span></div>
     <p class="warn" id="profErr" hidden></p>
-    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" type="button" id="profCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn danger" type="button" id="profOut" style="margin-right:auto">Log out</button><button class="btn" type="button" id="profCancel">Cancel</button><button class="btn primary" type="submit" id="profSave">Save</button></div>
   </form>
 </dialog>
 
@@ -1322,25 +1354,130 @@ function setPreview(on){
 $("#uniQ").oninput=renderUnis; $("#uniSort").onchange=renderUnis;
 $("#uniChip").onclick=()=>setTab("unis");
 
-const GROUP={unis:"navigation",home:"home",feedback:"feedback",nav:"navigation",plan:"navigation","3d":"navigation",capture:"contribution",sessions:"contribution",history:"contribution"};
+/* ---------- accounts: Navigation and Contribution need a login; guests can use Home and Feedback ----------
+   Signing up takes an email, student ID and password. A login lasts 6 hours. A device that has logged in before
+   opens on "Log in" (student ID and password) instead of "Sign up".
+   With the server (api/auth.js) accounts live in the database. Without one (standalone copy, artifact) they're kept
+   in this browser, with the password stored as a PBKDF2 hash. */
+const AUTH_KEY="apu-auth", KNOWN_KEY="apu-known-id", ACCOUNTS_KEY="apu-accounts", LOGIN_MS=6*3600e3;
+const ls={get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }, set(k,v){ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(e){} }};
+S.auth=null; try{ const a=JSON.parse(ls.get(AUTH_KEY)||"null"); if(a&&a.studentId&&a.exp>Date.now()) S.auth=a; else ls.set(AUTH_KEY,""); }catch(e){}
+S.authView=ls.get(KNOWN_KEY)?"login":"signup";
+const signedIn=()=>!!S.auth && S.auth.exp>Date.now();
+const needsLogin=t=>GROUP[t]==="navigation"||GROUP[t]==="contribution";
+let authReady; const AUTH_SERVER=new Promise(r=>authReady=r);   // true once we know the server keeps accounts
+AUTH_SERVER.then(server=>{ S.authLocal=!server; if(S.tab==="auth") renderAuth(); });
+function saveAuth(a){
+  S.auth=a; ls.set(AUTH_KEY,a?JSON.stringify(a):"");
+  if (a) ls.set(KNOWN_KEY,a.studentId);
+  if (S.api) S.meId=a?a.studentId:null;
+  renderMe();
+}
+function signOut(msg){
+  const tok=S.auth?.token;
+  if (tok) fetch("/api/auth",{method:"DELETE",headers:{authorization:"Bearer "+tok}}).catch(()=>{});
+  saveAuth(null); S.authView="login";
+  if ($("#profile").open) $("#profile").close();
+  if (msg) toast(msg);
+  const cur=S.nav?"nav":S.tab;
+  if (needsLogin(cur)) setTab(cur); else renderAll();   // setTab sends a gated tab to the login page
+}
+function loginExpired(){ if (S.auth && !signedIn()) signOut("Your 6-hour login has ended. Please log in again."); }
+setInterval(loginExpired,15000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) loginExpired(); });
+
+const ID_RE=/^[A-Z0-9-]{3,20}$/, EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function renderAuth(){
+  const up=S.authView==="signup", known=ls.get(KNOWN_KEY), next=S.authNext&&GROUP[S.authNext];
+  const what=next==="contribution"?"contribute":next==="navigation"?"use Navigation":"use Navigation and Contribution";
+  $("#authEyebrow").textContent=up?"Create an account":"Welcome back";
+  $("#authTitle").textContent=up?"Sign up":"Log in";
+  $("#authSub").textContent=up?`Sign up with your email and student ID to ${what}. You can still look around Home and Feedback as a guest.`
+    :`Log in with your student ID and password to ${what}.`;
+  $("#authEmailF").hidden=!up;
+  $("#authPw").autocomplete=up?"new-password":"current-password";
+  $("#authGo").textContent=up?"Create account":"Log in";
+  if (!up && known && !$("#authId").value) $("#authId").value=known;
+  $("#authSwitch").innerHTML=up?`Already have an account? <button type="button" id="authSw">Log in</button>`
+    :`New here? <button type="button" id="authSw">Create an account</button>`;
+  $("#authSw").onclick=()=>{ S.authView=up?"login":"signup"; $("#authErr").hidden=true; renderAuth(); (up?$("#authId"):$("#authEmail")).focus(); };
+  $("#authNote").textContent=`You stay logged in for 6 hours.${S.authLocal?" No server is connected, so accounts are kept in this browser only.":""}`;
+}
+function authError(msg,swap){
+  const e=$("#authErr"); e.hidden=false; e.textContent=msg+" ";
+  if (swap){ const b=document.createElement("button"); b.type="button"; b.textContent=swap==="login"?"Log in instead":"Create an account";
+    b.onclick=()=>{ S.authView=swap; e.hidden=true; renderAuth(); }; e.append(b); }
+}
+// Passwords for browser-only accounts: PBKDF2-SHA256 with a random salt
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))), unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function pwHash(pw,salt){
+  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]);
+  return b64(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:unb64(salt),iterations:150000},key,256));
+}
+async function localAuth(up,email,id,pw){
+  if (!crypto?.subtle) throw new Error("This browser can't store passwords safely here. Open the site over https.");
+  let accts={}; try{ accts=JSON.parse(ls.get(ACCOUNTS_KEY)||"{}")||{}; }catch(e){}
+  if (up){
+    if (accts[id]) throw Object.assign(new Error("That student ID already has an account. Log in instead."),{swap:"login"});
+    if (Object.values(accts).some(a=>a.email===email)) throw Object.assign(new Error("An account with that email already exists. Log in instead."),{swap:"login"});
+    const salt=b64(crypto.getRandomValues(new Uint8Array(16)));
+    accts[id]={email,salt,hash:await pwHash(pw,salt)}; ls.set(ACCOUNTS_KEY,JSON.stringify(accts));
+  } else {
+    const a=accts[id];
+    if (!a || await pwHash(pw,a.salt)!==a.hash) throw new Error("Student ID or password is wrong.");
+    email=a.email;
+  }
+  return {studentId:id,email,exp:Date.now()+LOGIN_MS,local:true};
+}
+$("#authForm").onsubmit=async e=>{
+  e.preventDefault();
+  const up=S.authView==="signup", email=$("#authEmail").value.trim().toLowerCase(), id=$("#authId").value.trim().toUpperCase(), pw=$("#authPw").value;
+  $("#authErr").hidden=true;
+  if (up && !EMAIL_RE.test(email)) return authError("Enter a valid email address.");
+  if (!ID_RE.test(id)) return authError("Student ID must be 3 to 20 letters, digits or dashes.");
+  if (!pw) return authError("Enter your password.");
+  if (up && pw.length<8) return authError("Password must be at least 8 characters.");
+  const go=$("#authGo"); go.disabled=true; const label=go.textContent; go.textContent=up?"Creating account…":"Logging in…";
+  try{
+    let a;
+    if (await AUTH_SERVER){
+      const res=await fetch("/api/auth",{method:"POST",headers:{"content-type":"application/json"},cache:"no-store",
+        body:JSON.stringify(up?{action:"register",email,studentId:id,password:pw}:{action:"login",studentId:id,password:pw})});
+      const d=await res.json().catch(()=>({}));
+      if (!res.ok) throw Object.assign(new Error(d.message||"Couldn't reach the server. Try again."),{swap:d.error==="taken"?"login":null});
+      // The server ends the login after 6 hours; the page counts 6 hours on its own clock too.
+      a={studentId:d.user.studentId,email:d.user.email,token:d.token,exp:Date.now()+LOGIN_MS};
+    } else a=await localAuth(up,email,id,pw);
+    $("#authPw").value=""; saveAuth(a);
+    toast(up?`Account created. Logged in as ${a.studentId}.`:`Logged in as ${a.studentId}.`);
+    const next=S.authNext||"nav"; S.authNext=null; setTab(next); renderAll();
+  }catch(err){ authError(err.message||"Something went wrong. Try again.",err.swap); }
+  finally{ go.disabled=false; go.textContent=label; }
+};
+
+const GROUP={auth:"auth",unis:"navigation",home:"home",feedback:"feedback",nav:"navigation",plan:"navigation","3d":"navigation",capture:"contribution",sessions:"contribution",history:"contribution"};
 const LAST={home:"home",feedback:"feedback",navigation:"nav",contribution:"capture"};
 document.querySelectorAll("nav.main button").forEach(b=>b.onclick=()=>setTab(b.dataset.group==="navigation"&&!S.uni?"unis":LAST[b.dataset.group]));
 $("#brandHome").onclick=()=>setTab("home");
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>setTab(b.dataset.go));
 function setTab(t){
   if (!GROUP[t]) t="home";
+  // Navigation and Contribution need a login; guests are sent to the login page and brought back after
+  if (needsLogin(t) && !signedIn()){ if(S.auth) saveAuth(null); S.authNext=t; t="auth"; }
+  else if (t==="auth" && signedIn()) t=S.authNext||"home";
   // The Navigation tools open only after a university is chosen
   if (GROUP[t]==="navigation" && t!=="unis" && !S.uni){ S.uniNext=t; t="unis"; }
   const grp=GROUP[t]; if (t!=="unis") LAST[grp]=t;
   if (t!=="unis") setPreview(grp==="navigation" && S.uni==="preview");
-  const page=grp==="home"||grp==="feedback"||t==="unis";
-  document.querySelectorAll("nav.main button").forEach(b=>{ if(b.dataset.group===grp) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  const page=grp==="home"||grp==="feedback"||grp==="auth"||t==="unis", hl=t==="auth"?GROUP[S.authNext]:grp;
+  document.querySelectorAll("nav.main button").forEach(b=>{ if(b.dataset.group===hl) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   $("#subbar").hidden = t==="unis" || (grp!=="navigation" && grp!=="contribution");
   document.body.classList.toggle("page-only", page);
   $("#siteFooter").hidden = !page;
   const cu=uniOf(S.uni); $("#uniChip").hidden = grp!=="navigation" || !cu;
   if (cu) $("#uniChip").innerHTML=`${cu.logo?`<img class="mk" src="${cu.logo}" alt="">`:`<span class="mk" style="background:${cu.color}">${esc(cu.mark||cu.short.slice(0,3))}</span>`}${esc(cu.short)} <small>· Change</small>`;
   if (t==="unis") renderUnis();
+  if (t==="auth") renderAuth();
   document.querySelectorAll("nav.tabs button").forEach(b=>b.hidden = b.dataset.group!==grp);
   if (t!=="capture"){ stopLive(); stopGeo(); }
   if (t!=="nav") stopNavGps();
@@ -1349,7 +1486,7 @@ function setTab(t){
   S.tab=t;
   document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===(S.nav?"nav":t))));
   $("#modes").hidden=S.nav||S.readOnly; $("#overlay").hidden=S.nav; if (wasNav!==S.nav) renderFloors();
-  ["home","unis","feedback","plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
+  ["home","auth","unis","feedback","plan","3d","capture","sessions","history"].forEach(v=>$("#view-"+v).hidden = v!==t);
   document.body.classList.toggle("fill", t==="plan"||t==="3d");
   $("#exMenu").open=false; window.scrollTo(0,0);
   if (t==="3d") { init3D(); build3D(); resize3D(); }
@@ -1357,7 +1494,7 @@ function setTab(t){
   if (t==="sessions") renderSessions();
   if (t==="history") renderHistory();
   if (t==="capture") renderCapture();
-  try{ localStorage.setItem("apu-tab",S.nav?"nav":t); }catch(e){}
+  try{ localStorage.setItem("apu-tab",S.nav?"nav":t==="auth"?(S.authNext||"home"):t); }catch(e){}
 }
 
 /* ---------- floors toolbar ---------- */
@@ -1691,8 +1828,7 @@ function markerSvgFile(r){ const inner=qrSvg(markerText(r)).replace(/^<svg[^>]*>
   return `<svg xmlns="http://www.w3.org/2000/svg" width="80mm" height="100mm" viewBox="0 0 80 100"><rect width="80" height="100" fill="#fff"/><svg x="8" y="6" width="64" height="64" viewBox="-2 -2 ${n} ${n}">${inner}</svg><text x="40" y="82" font-family="monospace" font-size="9" text-anchor="middle">${esc(r.id)}</text><text x="40" y="93" font-family="sans-serif" font-size="5" text-anchor="middle">${esc(r.name||TYPES[r.type].label)} · Block ${esc(S.plan.block)} L${r.floor}</text></svg>`; }
 
 /* ---------- edits, saving, versions ---------- */
-function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll();
-  if (S.api && !S.meId && !S.askedName){ S.askedName=true; openProfile(); } }
+function edit(note){ if(S.readOnly) return; S.example=false; scheduleSave(note); renderAll(); }
 function planBody(){ return {block:S.plan.block, floors:S.plan.floors, rooms:S.plan.rooms, ...(S.plan.geo?{geo:S.plan.geo}:{})}; }
 function scheduleSave(note,delay=900){
   if (!S.pendingNote) S.pendingNote=note;
@@ -2651,21 +2787,32 @@ const browserDownloads={ async save({filename,data}){
 } };
 
 /* ---------- server backend (the Vercel deploy with a Postgres database; see api/) ---------- */
-const NAME_KEY="apu-name", EDITKEY_KEY="apu-edit-key";
+const EDITKEY_KEY="apu-edit-key";
 const lsGet=k=>{ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } };
 const lsSet=(k,v)=>{ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(e){} };
-function apiHeaders(){ const h={"content-type":"application/json"}, k=lsGet(EDITKEY_KEY); if(k) h["x-edit-key"]=k; return h; }
+function apiHeaders(){ const h={"content-type":"application/json"}, k=lsGet(EDITKEY_KEY); if(k) h["x-edit-key"]=k;
+  if (S.auth?.token) h.authorization="Bearer "+S.auth.token; return h; }
 const apiSend=(method,path,body)=>fetch(path,{method,headers:apiHeaders(),body:body&&JSON.stringify(body),cache:"no-store"});
-async function apiError(res){ const d=await res.json().catch(()=>({})); return Object.assign(new Error(d.message||"Request failed"),{api:true,status:res.status}); }
+async function apiError(res){ const d=await res.json().catch(()=>({}));
+  if (res.status===401 && d.error==="login") setTimeout(()=>signOut("Your login has ended. Please log in again.")); return Object.assign(new Error(d.message||"Request failed"),{api:true,status:res.status}); }
 
 async function connectApi(h){
-  S.api=true; S.meId=lsGet(NAME_KEY)||null; S.editKey=true; S.editKeySet=h.editKeySet!==false; S.maxVersions=200; S.photoStore=!!h.photos; S.videoStore=!!h.videos;
+  S.api=true; S.meId=signedIn()?S.auth.studentId:null; S.editKey=true;
+  S.authServer=!!h.accounts; authReady(S.authServer); checkLogin(); S.editKeySet=h.editKeySet!==false; S.maxVersions=200; S.photoStore=!!h.photos; S.videoStore=!!h.videos;
   S.readOnly=!h.keyOk;     // only editors (with the edit key) can change the plan; everyone can view and contribute
   if (S.readOnly) setMode("select");
   renderMe(); setSync("saving","Loading shared plan…");
   await poll(true);
   setInterval(()=>poll(),4000);
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) poll(true); });
+}
+// Is the saved login still good on the server? A browser-only account can't be used once the server keeps accounts.
+async function checkLogin(){
+  if (!S.auth) return;
+  if (S.authServer && (S.auth.local || !S.auth.token)){ signOut("Please log in with your student account."); return; }
+  if (!S.auth.token) return;
+  const r=await fetch("/api/auth",{headers:{authorization:"Bearer "+S.auth.token},cache:"no-store"}).catch(()=>null);
+  if (r && r.status===401) signOut("Your login has ended. Please log in again.");
 }
 let polling=false;
 async function poll(force){
@@ -2741,21 +2888,24 @@ function conflictBanner(b){
   $("#cfTheirs").onclick=()=>{ S.conflict=null; if(t) adoptPlan(t); setSync("saved","Saved"); renderAll(); fit(); toast(`Loaded r${t?.rev}. Your unsaved change was discarded.`); };
 }
 function renderMe(){
-  if (!S.api) return;
   const m=$("#me"); m.hidden=false;
-  m.innerHTML=`<button type="button" id="meBtn"${(S.meId||"").length>9?' class="long"':""} title="Change your name${S.editKey?" or edit key":""}"><span>${S.meId?esc(S.meId):"Set your name"}</span><span class="avatar"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11.5" r="6"/><path d="M5 27c1.5-6 6-8.5 11-8.5s9.5 2.5 11 8.5z"/></svg></span></button>`;
-  $("#meBtn").onclick=openProfile;
+  const who=signedIn()?S.auth.studentId:"";
+  m.innerHTML=`<button type="button" id="meBtn"${who.length>9?' class="long"':""} title="${who?"Your account":"Log in or sign up"}"><span>${who?esc(who):"Log in"}</span><span class="avatar"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11.5" r="6"/><path d="M5 27c1.5-6 6-8.5 11-8.5s9.5 2.5 11 8.5z"/></svg></span></button>`;
+  $("#meBtn").onclick=()=>{ if(signedIn()) return openProfile(); const cur=S.nav?"nav":S.tab; S.authNext=cur==="auth"?S.authNext:cur; setTab("auth"); };
 }
 function openProfile(){
   const d=$("#profile"); if(!d.showModal) return;
-  $("#profName").value=S.meId||""; $("#profKeyField").hidden=!S.editKey; $("#profKey").value=lsGet(EDITKEY_KEY); $("#profErr").hidden=true;
+  const a=signedIn()?S.auth:null, end=a&&new Date(a.exp).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+  $("#profWho").innerHTML=a?`Logged in as <b>${esc(a.studentId)}</b> (${esc(a.email)}). Your login ends at ${esc(end)}.`:"You're not logged in.";
+  $("#profOut").hidden=!a; $("#profSave").textContent=S.editKey?"Save":"Close";
+  $("#profKeyField").hidden=!S.editKey; $("#profKey").value=lsGet(EDITKEY_KEY); $("#profErr").hidden=true;
   $("#profKeyNote").textContent=S.editKeySet?"Leave blank to view and contribute. Editors get the key from whoever runs this deployment.":"Editing is turned off until EDIT_KEY is set on the server. You can still view and contribute.";
   if (!d.open) d.showModal();
 }
 $("#profCancel").onclick=()=>$("#profile").close();
+$("#profOut").onclick=()=>signOut("Logged out.");
 $("#profForm").onsubmit=async e=>{
   e.preventDefault();
-  const name=$("#profName").value.trim().slice(0,60); lsSet(NAME_KEY,name); S.meId=name||null;
   if (S.editKey){
     lsSet(EDITKEY_KEY,$("#profKey").value);
     const h=await fetch("/api/health",{headers:apiHeaders(),cache:"no-store"}).then(r=>r.json()).catch(()=>null);
@@ -3316,15 +3466,16 @@ function alignGroup(){
 
 /* ---------- boot ---------- */
 try{ const t=localStorage.getItem("apu-tab"); if(t) S.tab=t; }catch(e){}
-setTab(S.tab); renderAll(); if(S.tab==="plan"){ S.fitted=true; requestAnimationFrame(fit); }
+setTab(S.tab); renderMe(); renderAll(); if(S.tab==="plan"){ S.fitted=true; requestAnimationFrame(fit); }
 
 (async function connect(){
   const c=window.claude;
-  if (c && typeof c.use==="function") return connectArtifact(c);
+  if (c && typeof c.use==="function"){ authReady(false); return connectArtifact(c); }
   const h=await fetch("/api/health",{headers:apiHeaders(),cache:"no-store"})
     .then(r=>r.ok && /json/.test(r.headers.get("content-type")||"") ? r.json() : null).catch(()=>null);
   S.dl=browserDownloads;
   if (h && h.db) return connectApi(h);
+  authReady(false);
   S.serverNote=h?(h.reason||"not_configured"):null; goStandalone();
 })();
 
@@ -3333,7 +3484,7 @@ async function connectArtifact(c){
   S.db=db; S.user=user; S.dl=dl;
   $("#exNote").textContent = dl ? "" : "Saving files isn't available in this view.";
   ["#exGeo","#exGlb","#exJson"].forEach(s=>$(s).disabled=!dl);
-  if (user){ try{ const me=await user.me(); S.meId=me.id; const m=$("#me"); m.hidden=false; m.innerHTML=`<img src="${esc(me.avatarUrl)}" alt=""><span>${esc(me.name||"You")}</span>`;
+  if (user){ try{ const me=await user.me(); S.meId=me.id;
     const w=await user.can("data.write"); if (w===false) S.readOnly=S.noContrib=true; }catch(e){} }
   if (!db){ goStandalone(); return; }
   setSync("saving","Loading shared plan…");
