@@ -1281,8 +1281,10 @@ function renderBanner(){
     $("#pvExit").onclick=()=>setTab("unis"); return; }
   if (S.conflict) return conflictBanner(b);
   if (S.readOnly && S.api && !bannerGone()){ b.hidden=false;
-    b.innerHTML=bannerHTML(`<b>Viewing the floor plan.</b> <span class="more">Get directions, or help map rooms from the Capture tab. Only editors can change the plan.</span>`,`<button class="btn sm" id="keyBtn">Editor sign-in</button>`,true);
-    $("#keyBtn").onclick=openProfile; $("#bnX").onclick=hideBanner; return; }
+    b.innerHTML=bannerHTML(signedIn()?`<b>Viewing the floor plan.</b> <span class="more">Get directions, or help map rooms from the Capture tab. Only editors can change the plan.</span>`
+      :`<b>Browsing as a guest.</b> <span class="more">Directions and landmarks work without an account. Log in to use GPS, contribute or edit.</span>`,
+      `<button class="btn sm" id="keyBtn">${signedIn()?"Editor sign-in":"Log in"}</button>`,true);
+    $("#keyBtn").onclick=()=>signedIn()?openProfile():loginFor(""); $("#bnX").onclick=hideBanner; return; }
   if (S.readOnly && !S.api){ b.hidden=false; b.innerHTML=bannerHTML(`<b>View only.</b> Your sharing level doesn't allow edits${S.noContrib?" or new sessions":""}.`); return; }
   if (S.readOnly){ b.hidden=true; return; }
   if (S.example && S.loaded){
@@ -1354,7 +1356,9 @@ function setPreview(on){
 $("#uniQ").oninput=renderUnis; $("#uniSort").onchange=renderUnis;
 $("#uniChip").onclick=()=>setTab("unis");
 
-/* ---------- accounts: Navigation and Contribution need a login; guests can use Home and Feedback ----------
+/* ---------- accounts: Contribution, GPS and editing need a login; guests can use the map ----------
+   Guests get Home, Feedback and Navigation (universities, Directions, floor plan, 3D, toilets/stairs/lifts/exits),
+   but not their GPS position on the plan, editing the plan or Contribution.
    Signing up takes an email, student ID and password. A login lasts 6 hours. A device that has logged in before
    opens on "Log in" (student ID and password) instead of "Sign up".
    With the server (api/auth.js) accounts live in the database. Without one (standalone copy, artifact) they're kept
@@ -1364,13 +1368,14 @@ const ls={get(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return "";
 S.auth=null; try{ const a=JSON.parse(ls.get(AUTH_KEY)||"null"); if(a&&a.studentId&&a.exp>Date.now()) S.auth=a; else ls.set(AUTH_KEY,""); }catch(e){}
 S.authView=ls.get(KNOWN_KEY)?"login":"signup";
 const signedIn=()=>!!S.auth && S.auth.exp>Date.now();
-const needsLogin=t=>GROUP[t]==="navigation"||GROUP[t]==="contribution";
+const needsLogin=t=>GROUP[t]==="contribution";
 let authReady; const AUTH_SERVER=new Promise(r=>authReady=r);   // true once we know the server keeps accounts
 AUTH_SERVER.then(server=>{ S.authLocal=!server; if(S.tab==="auth") renderAuth(); });
 function saveAuth(a){
   S.auth=a; ls.set(AUTH_KEY,a?JSON.stringify(a):"");
   if (a) ls.set(KNOWN_KEY,a.studentId);
-  if (S.api) S.meId=a?a.studentId:null;
+  if (S.api){ S.meId=a?a.studentId:null; S.readOnly=!(a&&S.keyOk); if(S.readOnly) setMode("select"); }
+  if (!a) stopNavGps();
   renderMe();
 }
 function signOut(msg){
@@ -1382,6 +1387,8 @@ function signOut(msg){
   const cur=S.nav?"nav":S.tab;
   if (needsLogin(cur)) setTab(cur); else renderAll();   // setTab sends a gated tab to the login page
 }
+// Send a guest to the login page for one feature, then back to where they were
+function loginFor(why){ const cur=S.nav?"nav":S.tab; S.authNext=cur==="auth"?S.authNext:cur; S.authWhy=why; setTab("auth"); }
 function loginExpired(){ if (S.auth && !signedIn()) signOut("Your 6-hour login has ended. Please log in again."); }
 setInterval(loginExpired,15000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) loginExpired(); });
@@ -1389,10 +1396,10 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden) loginExp
 const ID_RE=/^[A-Z0-9-]{3,20}$/, EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function renderAuth(){
   const up=S.authView==="signup", known=ls.get(KNOWN_KEY), next=S.authNext&&GROUP[S.authNext];
-  const what=next==="contribution"?"contribute":next==="navigation"?"use Navigation":"use Navigation and Contribution";
+  const what=S.authWhy||(next==="contribution"?"contribute":"contribute, edit the plan and show your GPS position on the map");
   $("#authEyebrow").textContent=up?"Create an account":"Welcome back";
   $("#authTitle").textContent=up?"Sign up":"Log in";
-  $("#authSub").textContent=up?`Sign up with your email and student ID to ${what}. You can still look around Home and Feedback as a guest.`
+  $("#authSub").textContent=up?`Sign up with your email and student ID to ${what}. You can still use the map and directions as a guest.`
     :`Log in with your student ID and password to ${what}.`;
   $("#authEmailF").hidden=!up;
   $("#authPw").autocomplete=up?"new-password":"current-password";
@@ -1450,7 +1457,8 @@ $("#authForm").onsubmit=async e=>{
     } else a=await localAuth(up,email,id,pw);
     $("#authPw").value=""; saveAuth(a);
     toast(up?`Account created. Logged in as ${a.studentId}.`:`Logged in as ${a.studentId}.`);
-    const next=S.authNext||"nav"; S.authNext=null; setTab(next); renderAll();
+    const next=S.authNext||"nav", gps=S.authGps; S.authNext=null; S.authWhy=""; S.authGps=false; setTab(next); renderAll();
+    if (gps && S.nav) startNavGps();
   }catch(err){ authError(err.message||"Something went wrong. Try again.",err.swap); }
   finally{ go.disabled=false; go.textContent=label; }
 };
@@ -2799,7 +2807,7 @@ async function apiError(res){ const d=await res.json().catch(()=>({}));
 async function connectApi(h){
   S.api=true; S.meId=signedIn()?S.auth.studentId:null; S.editKey=true;
   S.authServer=!!h.accounts; authReady(S.authServer); checkLogin(); S.editKeySet=h.editKeySet!==false; S.maxVersions=200; S.photoStore=!!h.photos; S.videoStore=!!h.videos;
-  S.readOnly=!h.keyOk;     // only editors (with the edit key) can change the plan; everyone can view and contribute
+  S.keyOk=!!h.keyOk; S.readOnly=!(S.keyOk&&signedIn());     // only logged-in editors (with the edit key) change the plan
   if (S.readOnly) setMode("select");
   renderMe(); setSync("saving","Loading shared plan…");
   await poll(true);
@@ -2871,6 +2879,7 @@ async function commitApi(note){
       if (m && !m.clash.length){ applyMerged(m.plan,t); toast(`Merged with ${t.by||"another contributor"}'s changes (r${t.rev}).`); return await commitApi(note); }
       S.conflict={note,theirs:t,merged:m&&m.plan,clash:m?m.clash:[]}; setSync("error","Not saved"); renderBanner(); return;
     }
+    if (res.status===401 && (await res.clone().json().catch(()=>({}))).error==="login"){ S.failedNote=note; setSync("error","Not saved"); signOut("Your login has ended. Log in again to save your change."); return; }
     if (res.status===401||res.status===503){ S.failedNote=note; S.readOnly=true; setSync("error","View only"); toast(res.status===503?"Editing is turned off on this deployment, so that change wasn't saved.":"The edit key is missing or wrong, so that change wasn't saved."); renderAll(); openProfile(); return; }
     if (!res.ok){ const e=await apiError(res); S.failedNote=note; setSync("error","Not saved"); toast(e.message); return; }
     const d=await res.json(); S.plan.rev=d.rev; S.lastWritten=d.rev; S.base=body; S.failedNote=""; setSync("saved","Saved");
@@ -2891,7 +2900,7 @@ function renderMe(){
   const m=$("#me"); m.hidden=false;
   const who=signedIn()?S.auth.studentId:"";
   m.innerHTML=`<button type="button" id="meBtn"${who.length>9?' class="long"':""} title="${who?"Your account":"Log in or sign up"}"><span>${who?esc(who):"Log in"}</span><span class="avatar"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11.5" r="6"/><path d="M5 27c1.5-6 6-8.5 11-8.5s9.5 2.5 11 8.5z"/></svg></span></button>`;
-  $("#meBtn").onclick=()=>{ if(signedIn()) return openProfile(); const cur=S.nav?"nav":S.tab; S.authNext=cur==="auth"?S.authNext:cur; setTab("auth"); };
+  $("#meBtn").onclick=()=>{ if(signedIn()) return openProfile(); loginFor(""); };
 }
 function openProfile(){
   const d=$("#profile"); if(!d.showModal) return;
@@ -2912,8 +2921,8 @@ $("#profForm").onsubmit=async e=>{
     const key=$("#profKey").value;
     if (h) S.editKeySet=h.editKeySet!==false;
     if (!h || (key && !h.keyOk)){ const er=$("#profErr"); er.hidden=false; er.textContent=!h?"Couldn't reach the server to check the key.":!S.editKeySet?"Editing is turned off on this deployment (EDIT_KEY isn't set).":"That edit key isn't right."; S.readOnly=true; setMode("select"); renderMe(); renderAll(); return; }
-    S.readOnly=!h.keyOk; if (S.readOnly) setMode("select");
-    if (!S.readOnly) toast("Signed in as an editor.");
+    S.keyOk=!!h.keyOk; S.readOnly=!(S.keyOk&&signedIn()); if (S.readOnly) setMode("select");
+    if (!S.readOnly) toast("Signed in as an editor."); else if (S.keyOk) toast("Edit key saved. Log in to edit the plan.");
   }
   $("#profile").close(); renderMe(); renderAll();
   if (S.failedNote && !S.readOnly){ const n=S.failedNote; S.failedNote=""; scheduleSave(n,0); }
@@ -3112,7 +3121,9 @@ function renderDirections(){
       :g.msg?`<p class="warn">${esc(g.msg)}</p>`:`<p class="small muted">Pick where you are and where you're going, or tap rooms on the plan.</p>`}
     ${facilitiesHTML(true)}
     <h3>Your position</h3>
-    ${S.plan.geo?`<label class="consent"><input type="checkbox" id="goGps" ${g.gpsOn?"checked":""}><span>Show my GPS position on the plan${g.gpsOn&&g.gps?` (±${Math.round(g.gps.acc)} m)`:""}. Indoors it's usually only accurate to 10–50 m, so scan a door marker to be sure where you are.</span></label>
+    ${S.plan.geo&&!signedIn()?`<p class="small muted">Log in to show your GPS position on the plan. You can still scan a door marker to start from there.</p><button class="btn sm" id="goGpsLogin">Log in to use GPS</button>
+      <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&amp;destination=${centre[0].toFixed(6)},${centre[1].toFixed(6)}">Get to Block ${esc(S.plan.block)} in Google Maps</a>`
+    :S.plan.geo?`<label class="consent"><input type="checkbox" id="goGps" ${g.gpsOn?"checked":""}><span>Show my GPS position on the plan${g.gpsOn&&g.gps?` (±${Math.round(g.gps.acc)} m)`:""}. Indoors it's usually only accurate to 10–50 m, so scan a door marker to be sure where you are.</span></label>
       <a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&amp;destination=${centre[0].toFixed(6)},${centre[1].toFixed(6)}">Get to Block ${esc(S.plan.block)} in Google Maps</a>`
       :`<p class="small muted">Scan the door marker next to you to start from there. GPS can be shown here once the block is placed on the map (Floor plan tab, no room selected).</p>`}`;
   $("#goFrom").onchange=e=>{ g.from=e.target.value||null; g.fromDoor=false; navUpdate(); renderFloors(); renderPlan(); };
@@ -3123,6 +3134,7 @@ function renderDirections(){
   $("#goScan").onclick=()=>$("#goScanIn").click();
   $("#goScanIn").onchange=e=>{ const f=e.target.files[0]; e.target.value=""; if(f) scanDoorPhoto(f); };
   bindFacilities(el,true);
+  const gl=$("#goGpsLogin"); if(gl) gl.onclick=()=>{ S.authGps=true; loginFor("show your GPS position on the map"); };
   const gp=$("#goGps"); if(gp) gp.onchange=e=>{ if(e.target.checked) startNavGps(); else { stopNavGps(); renderPlan(); } };
   el.querySelectorAll(".steps [data-i]").forEach(b=>b.onclick=()=>{ const s=R.steps[+b.dataset.i]; if(s.f!==S.floor){ S.floor=s.f; renderFloors(); }
     if (s.at){ S.view.cx=s.at[0]; S.view.cy=s.at[1]; S.view.scale=Math.max(S.view.scale,18); } if(TOUCH) setSheet(false); renderPlan(); });
@@ -3157,6 +3169,7 @@ const blockCentre=()=>toLatLng(planCentre());
 
 let navWatch=null;
 function startNavGps(){
+  if (!signedIn()){ S.go.gpsOn=false; S.authGps=true; loginFor("show your GPS position on the map"); return; }
   if (!navigator.geolocation){ S.go.gpsOn=false; toast("This browser can't share your location."); renderPlan(); return; }
   S.go.gpsOn=true; renderPlan();
   navWatch=navigator.geolocation.watchPosition(p=>{ S.go.gps={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}; renderPlan(); },
@@ -3200,7 +3213,8 @@ async function openMapDlg(){
 $("#mapRot").oninput=e=>{ if(!MAP) return; MAP.rot=+e.target.value; drawMapOutline(); };
 $("#mapCancel").onclick=()=>$("#mapDlg").close();
 $("#mapSnap").onclick=snapToPick;
-$("#mapHere").onclick=()=>{ if(!navigator.geolocation||!MAP){ toast("This browser can't share your location."); return; }
+$("#mapHere").onclick=()=>{ if(!signedIn()){ toast("Log in to use your location."); return; }
+  if(!navigator.geolocation||!MAP){ toast("This browser can't share your location."); return; }
   navigator.geolocation.getCurrentPosition(p=>MAP.map.setView([p.coords.latitude,p.coords.longitude],19),()=>toast("Location is blocked or unavailable."),{enableHighAccuracy:true,timeout:15000}); };
 $("#mapSave").onclick=()=>{ if(!MAP) return; const g=mapGeo();
   S.plan.geo={x:+g.x.toFixed(3),y:+g.y.toFixed(3),lat:+g.lat.toFixed(7),lng:+g.lng.toFixed(7),rot:+g.rot.toFixed(2),...(MAP.osm?{osm:MAP.osm}:{})};
