@@ -7,7 +7,11 @@ import { addSession, listSessions } from "../lib/store.js";
 import { photoStore } from "../lib/photos.js";
 import { requireUser } from "../lib/auth.js";
 
-export const GET = route(async () => json({ sessions: await listSessions() }));
+// Needs a login: sessions name rooms and contributors.
+export const GET = route(async req => {
+  const [, guest] = await requireUser(req); if (guest) return guest;
+  return json({ sessions: await listSessions() });
+});
 
 export const POST = route(async req => {
   const [user, denied] = await requireUser(req); if (denied) return denied;
