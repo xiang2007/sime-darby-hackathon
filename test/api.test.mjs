@@ -142,6 +142,8 @@ test("API against Postgres", { skip: !DB && "set TEST_DATABASE_URL to run" }, as
     assert.deepEqual([guest.status, guest.body.error], [401, "login"]);
     assert.equal((await call("videos", "POST", { block: "B", floor: 3, bytes: 10, type: "video/mp4" })).status, 401);
     assert.equal((await call("state", "GET")).status, 200, "guests can still view");
+    const guestEdit = await call("plan", "PUT", { plan: plan(), baseRev: 0 });
+    assert.deepEqual([guestEdit.status, guestEdit.body.error], [401, "login"], "editing needs a login as well as the edit key");
     A = bearer((await auth({ action: "login", studentId: "TP000001", password: "correct horse" })).body.token);
   });
 
